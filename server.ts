@@ -28,7 +28,74 @@ import {
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import crypto from 'crypto';
 import { VIRTUAL_PROFILES } from './src/data/virtualProfiles.js';
+import { INITIAL_CONSULTANTS } from './src/data/mockData.js';
 import { ConsultationIntent, OracleResponseValidation } from './src/types.js';
+
+function verifyConsultantOracleAuthorization(
+  consultantId: string | undefined,
+  normalizedOracleId: string
+): { authorized: boolean; statusCode?: number; code?: string; message?: string } {
+  if (!consultantId) {
+    return { authorized: true };
+  }
+
+  const cid = String(consultantId).trim();
+
+  // 1. Check Virtual Profiles (AI)
+  const virtualProfile = VIRTUAL_PROFILES.find(
+    (p) =>
+      p.id === cid ||
+      `c_${p.id}` === cid ||
+      p.id.replace(/^ai_/, '') === cid.replace(/^(ai_|c_)/, '')
+  );
+
+  if (virtualProfile) {
+    const authorizedList = (virtualProfile.authorizedOracles || [])
+      .map((o) => normalizarOracleProfileId(o))
+      .filter(Boolean);
+
+    if (!authorizedList.includes(normalizedOracleId as any)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
+        message: `O atendente virtual '${virtualProfile.name}' não está autorizado para o oráculo '${normalizedOracleId}'.`,
+      };
+    }
+    return { authorized: true };
+  }
+
+  // 2. Check Human Consultants
+  const humanConsultant = INITIAL_CONSULTANTS.find((c) => c.id === cid);
+  if (humanConsultant) {
+    const rawList =
+      humanConsultant.allowedOracles && humanConsultant.allowedOracles.length > 0
+        ? humanConsultant.allowedOracles
+        : humanConsultant.specialties;
+
+    const authorizedList = rawList
+      .map((o) => normalizarOracleProfileId(o))
+      .filter(Boolean);
+
+    if (!authorizedList.includes(normalizedOracleId as any)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
+        message: `O consultor '${humanConsultant.name}' não está autorizado para o oráculo '${normalizedOracleId}'.`,
+      };
+    }
+    return { authorized: true };
+  }
+
+  // Consultant provided but not found anywhere
+  return {
+    authorized: false,
+    statusCode: 404,
+    code: 'CONSULTANT_NOT_FOUND',
+    message: `Consultor com ID '${cid}' não foi encontrado.`,
+  };
+}
 
 const getFilename = () => {
   try {
@@ -2904,26 +2971,59 @@ app.post(
         });
       }
     const {
-  oracleType,
-  cardOrSymbol,
-  userQuestion,
-  contextPrompt,
-  userProfile,
-} = req.body as {
-  oracleType?: string;
-  cardOrSymbol?: string;
-  userQuestion?: string;
-  contextPrompt?: string;
+      oracleType,
+      cardOrSymbol,
+      userQuestion,
+      contextPrompt,
+      userProfile,
+      consultantId: rawConsultantId,
+      attendantId: rawAttendantId,
+    } = req.body as {
+      oracleType?: string;
+      cardOrSymbol?: string;
+      userQuestion?: string;
+      contextPrompt?: string;
+      consultantId?: string;
+      attendantId?: string;
 
-  userProfile?: {
-    fullName?: string;
-    birthFullName?: string;
-    name?: string;
-    birthDate?: string;
-    birthTime?: string;
-    city?: string;
-  };
-};
+      userProfile?: {
+        fullName?: string;
+        birthFullName?: string;
+        name?: string;
+        birthDate?: string;
+        birthTime?: string;
+        city?: string;
+      };
+    };
+
+    if (!oracleType || typeof oracleType !== 'string' || !oracleType.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_ORACLE', message: 'O tipo do oráculo é obrigatório.' },
+      });
+    }
+
+    const normalizedOracleId = normalizarOracleProfileId(oracleType);
+    if (!normalizedOracleId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_ORACLE', message: `Oráculo '${oracleType}' não é suportado ou é inválido.` },
+      });
+    }
+
+    const consultantId = rawConsultantId || rawAttendantId;
+    if (consultantId) {
+      const authCheck = verifyConsultantOracleAuthorization(consultantId, normalizedOracleId);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.statusCode || 403).json({
+          success: false,
+          error: {
+            code: authCheck.code || 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
+            message: authCheck.message || 'Oráculo não autorizado para este consultor.',
+          },
+        });
+      }
+    }
 
     // INPUT LENGTH LIMIT (Max 2000 chars)
     const combinedPromptLength = (userQuestion || '').length + (contextPrompt || '').length;
@@ -2972,18 +3072,13 @@ app.post(
 
 
 
-const normalizedOracleId =
-  normalizarOracleProfileId(
-    String(oracleType || 'tarot'),
-  );
-
-const profileFullName =
-  String(
-    userProfile?.birthFullName ||
-    userProfile?.fullName ||
-    userProfile?.name ||
-    '',
-  ).trim();
+    const profileFullName =
+      String(
+        userProfile?.birthFullName ||
+        userProfile?.fullName ||
+        userProfile?.name ||
+        '',
+      ).trim();
 
 const profileBirthDate =
   String(
@@ -3505,8 +3600,80 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
       }
     }
 
-    // Find attendant profile or default
-    const attendant = VIRTUAL_PROFILES.find((p) => p.id === attendantId) || VIRTUAL_PROFILES[0];
+    // Find attendant profile
+    let attendant = null;
+    if (attendantId) {
+      attendant = VIRTUAL_PROFILES.find(
+        (p) =>
+          p.id === attendantId ||
+          `c_${p.id}` === attendantId ||
+          p.id.replace(/^ai_/, '') === String(attendantId).replace(/^(ai_|c_)/, '')
+      );
+      if (!attendant) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'ATTENDANT_NOT_FOUND',
+            message: `Atendente virtual com ID '${attendantId}' não foi encontrado.`,
+          },
+        });
+      }
+    } else {
+      attendant = VIRTUAL_PROFILES[0];
+    }
+
+    const requestedOracle = oracleType || attendant.authorizedOracles[0];
+    const normalizedOracleId = normalizarOracleProfileId(String(requestedOracle));
+
+    if (!normalizedOracleId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_ORACLE',
+          message: `Oráculo '${requestedOracle}' não é suportado ou é inválido.`,
+        },
+      });
+    }
+
+    const authorizedList = (attendant.authorizedOracles || [])
+      .map((o) => normalizarOracleProfileId(o))
+      .filter(Boolean);
+
+    if (!authorizedList.includes(normalizedOracleId)) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
+          message: `O atendente virtual '${attendant.name}' não está autorizado para o oráculo '${normalizedOracleId}'.`,
+        },
+      });
+    }
+
+    // Run specialized Oracle Engine calculation if user profile available
+    const profileFullName = String(
+      userProfile?.birthFullName || userProfile?.fullName || userProfile?.name || ''
+    ).trim();
+    const profileBirthDate = String(userProfile?.birthDate || '').trim();
+
+    let oracleProfileSummary = '';
+    if (normalizedOracleId && profileFullName && profileBirthDate) {
+      try {
+        const oracleProfileResult = executarOracleProfile(normalizedOracleId, {
+          fullName: profileFullName,
+          birthDate: profileBirthDate,
+          birthTime: userProfile?.birthTime,
+          city: userProfile?.city,
+          question: cleanMessage,
+        }) as { resumoParaOraculo?: string; resumoParaMariaPadilha?: string };
+
+        oracleProfileSummary =
+          oracleProfileResult.resumoParaOraculo ||
+          oracleProfileResult.resumoParaMariaPadilha ||
+          '';
+      } catch (profileError) {
+        console.error('[ORACULOS.TS] Erro na execução do perfil oracular em chat virtual:', profileError);
+      }
+    }
 
     // Intent Classification Logic
     let classifiedIntent: ConsultationIntent = 'general_conversation';
@@ -3585,7 +3752,10 @@ Nova mensagem do consulente: "${cleanMessage}"
 Intenção identificada: ${classifiedIntent}
 ${thirdPersonName ? `Pessoa mencionada na pergunta: ${thirdPersonName}` : ''}
 
-Responda como ${attendant.name} de forma direta, acolhedora e alinhada ao seu oráculo principal (${oracleType || attendant.authorizedOracles[0]}).`;
+RESULTADO INTERNO DO PERFIL ORACULAR (${normalizedOracleId}):
+${oracleProfileSummary || 'Utilize os dados do consulente e o oráculo ativo sem inventar valores aleatórios.'}
+
+Responda como ${attendant.name} de forma direta, acolhedora e alinhada ao oráculo (${normalizedOracleId}).`;
 
 
 

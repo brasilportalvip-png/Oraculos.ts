@@ -7,17 +7,26 @@ import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 
 interface Props {
   consultant: Consultant;
+  activeOracle?: OracleType;
   onSelect: (consultant: Consultant) => void;
   onStartConsultation: (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => void;
 }
 
 export const ConsultantCard: React.FC<Props> = ({
   consultant,
+  activeOracle,
   onSelect,
   onStartConsultation,
 }) => {
   const { isFavorite, toggleFavorite } = useAuth();
   const fav = isFavorite(consultant.id);
+
+  const chosenOracle: OracleType =
+    activeOracle &&
+    (consultant.specialties.includes(activeOracle) ||
+      (consultant.allowedOracles && consultant.allowedOracles.includes(activeOracle)))
+      ? activeOracle
+      : (consultant.specialties[0] as OracleType) || 'tarot';
 
   const getStatusBadge = () => {
     switch (consultant.status) {
@@ -137,7 +146,7 @@ export const ConsultantCard: React.FC<Props> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onStartConsultation(consultant, consultant.specialties[0], 'chat')}
+            onClick={() => onStartConsultation(consultant, chosenOracle, 'chat')}
             disabled={consultant.status === 'offline'}
             className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-[#d4af37] hover:text-black py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
@@ -146,7 +155,7 @@ export const ConsultantCard: React.FC<Props> = ({
           </button>
 
           <button
-            onClick={() => onStartConsultation(consultant, consultant.specialties[0], 'video')}
+            onClick={() => onStartConsultation(consultant, chosenOracle, 'video')}
             disabled={consultant.status === 'offline'}
             className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-white/20 hover:border-[#d4af37] py-2.5 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >

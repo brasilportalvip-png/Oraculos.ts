@@ -1,33 +1,51 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Sparkles, Filter, SlidersHorizontal, Heart, ShieldCheck, Zap } from 'lucide-react';
 import { useConsultation } from '../../context/ConsultationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Consultant, OracleType } from '../../types';
 import { ConsultantCard } from '../ConsultantCard';
 import { ORACLE_CATEGORIES } from '../../data/oracleConfig';
+import { normalizarOracleProfileId } from '../../oracle-engine';
 
 interface Props {
+  selectedOracleCategory?: string | null;
+  onSelectOracleCategory?: (category: string | null) => void;
   onSelectConsultant: (consultant: Consultant) => void;
   onStartConsultation: (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => void;
 }
 
 export const ConsultantShowcase: React.FC<Props> = ({
+  selectedOracleCategory,
+  onSelectOracleCategory,
   onSelectConsultant,
   onStartConsultation,
 }) => {
   const { consultants } = useConsultation();
-const { user } = useAuth();
+  const { user } = useAuth();
 
-const favoriteIds = Array.isArray(user?.favorites)
-  ? user.favorites
-  : [];
+  const favoriteIds = Array.isArray(user?.favorites) ? user.favorites : [];
 
-const [searchTerm, setSearchTerm] = useState('');
-  const [selectedOracle, setSelectedOracle] = useState<OracleType | 'all'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOracle, setSelectedOracle] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'favorites'>('all');
   const [sortBy, setSortBy] = useState<'rating' | 'price_asc' | 'consultations'>('rating');
 
+  useEffect(() => {
+    if (selectedOracleCategory) {
+      setSelectedOracle(selectedOracleCategory);
+    }
+  }, [selectedOracleCategory]);
+
+  const handleOracleChange = (newOracle: string) => {
+    setSelectedOracle(newOracle);
+    if (onSelectOracleCategory) {
+      onSelectOracleCategory(newOracle === 'all' ? null : newOracle);
+    }
+  };
+
   const filteredConsultants = useMemo(() => {
+    const normalizedFilter = selectedOracle !== 'all' ? normalizarOracleProfileId(selectedOracle) : null;
+
     return consultants
       .filter((c) => {
         // Search term filter
@@ -36,9 +54,16 @@ const [searchTerm, setSearchTerm] = useState('');
           c.bio.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.title.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Oracle category filter
-        const matchesOracle =
-          selectedOracle === 'all' || c.specialties.includes(selectedOracle);
+        // Oracle category filter using normalization
+        const consultantOracles = [
+          ...(c.specialties || []),
+          ...(c.allowedOracles || []),
+          ...(c.authorizedOracles || []),
+        ]
+          .map((o) => normalizarOracleProfileId(o))
+          .filter(Boolean);
+
+        const matchesOracle = !normalizedFilter || consultantOracles.includes(normalizedFilter);
 
         // Status / Favorites filter
         let matchesStatus = true;
@@ -57,13 +82,13 @@ const [searchTerm, setSearchTerm] = useState('');
         return 0;
       });
   }, [
-  consultants,
-  searchTerm,
-  selectedOracle,
-  statusFilter,
-  sortBy,
-  favoriteIds,
-]);
+    consultants,
+    searchTerm,
+    selectedOracle,
+    statusFilter,
+    sortBy,
+    favoriteIds,
+  ]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -176,7 +201,7 @@ const [searchTerm, setSearchTerm] = useState('');
           {Object.values(ORACLE_CATEGORIES).map((cat) => (
             <button
               key={cat.type}
-              onClick={() => setSelectedOracle(cat.type)}
+              onClick={() => handleOracleChange(cat.type)}
               className={`flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 selectedOracle === cat.type
                   ? 'bg-[#d4af37]/20 border border-[#d4af37] text-[#d4af37] shadow-md'
@@ -200,7 +225,7 @@ const [searchTerm, setSearchTerm] = useState('');
           <button
             onClick={() => {
               setSearchTerm('');
-              setSelectedOracle('all');
+              handleOracleChange('all');
               setStatusFilter('all');
             }}
             className="px-4 py-2 bg-[#d4af37] text-black font-bold text-xs rounded-xl uppercase tracking-wider"
@@ -214,6 +239,7 @@ const [searchTerm, setSearchTerm] = useState('');
             <ConsultantCard
               key={consultant.id}
               consultant={consultant}
+              activeOracle={selectedOracle !== 'all' ? (selectedOracle as OracleType) : undefined}
               onSelect={onSelectConsultant}
               onStartConsultation={onStartConsultation}
             />

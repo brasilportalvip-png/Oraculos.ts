@@ -19,6 +19,7 @@ import {
 import { useConsultation } from '../context/ConsultationContext';
 import { useAuth } from '../context/AuthContext';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
+import { auth } from '../firebase';
 
 export const ConsultationRoom: React.FC = () => {
   const { user } = useAuth();
@@ -42,67 +43,32 @@ export const ConsultationRoom: React.FC = () => {
     setAiLoading(true);
     setAiInterpretation(null);
     try {
+      const firebaseUser = auth.currentUser;
+      const idToken = firebaseUser ? await firebaseUser.getIdToken(true) : '';
+
       const res = await fetch('/api/ai/oracle-interpretation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({
+          oracleType: activeSession?.oracleType || 'tarot',
+          cardOrSymbol: 'Tiragem em Tempo Real',
+          userQuestion: aiQuestion || 'Orientação espiritual para a dúvida atual',
+          contextPrompt: 'Atendimento ao vivo na sala do ORACULOS.TS',
+          consultantId: activeSession?.consultantId,
+          userProfile: {
+            fullName: user.birthFullName || user.name,
+            birthFullName: user.birthFullName || user.name,
+            name: user.name,
+            birthDate: user.birthDate,
+            birthTime: user.doesNotKnowBirthTime ? undefined : user.birthTime || undefined,
+          },
+        }),
+      });
 
-
-
-
-
-
-
-
-
-
-body: JSON.stringify({
-  oracleType:
-    activeSession?.oracleType ||
-    'tarot',
-
-  cardOrSymbol:
-    'Tiragem em Tempo Real',
-
-  userQuestion:
-    aiQuestion ||
-    'Orientação espiritual para a dúvida atual',
-
-  contextPrompt:
-    'Atendimento ao vivo na sala do ORACULOS.TS',
-
-  userProfile: {
-    fullName:
-      user.birthFullName ||
-      user.name,
-
-    birthFullName:
-      user.birthFullName ||
-      user.name,
-
-    name:
-      user.name,
-
-    birthDate:
-      user.birthDate,
-
-    birthTime:
-      user.doesNotKnowBirthTime
-        ? undefined
-        : user.birthTime || undefined,
-  },
-}),
-
-
-
-
-
-
-
-
-});
-
-const data = await res.json();
+      const data = await res.json();
 
 const interpretation =
   data?.data?.interpretation ||
