@@ -1,0 +1,6 @@
+{
+  "name": "ORACULOS.TS",
+  "description": "Plataforma empresarial moderna de consultas espirituais online com marketplace de consultores, chat/vídeo em tempo real, carteira digital Mercado Pago e painel administrativo completo.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-serif {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+  }
+  .font-sans {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  .mystical-gradient {
+    background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #050508 100%);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-card-gold {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+  }
+  .gold-accent {
+    color: #d4af37;
+  }
+  .gold-border {
+    border-color: rgba(212, 175, 55, 0.3);
+  }
+  .status-online {
+    background-color: #10b981;
+  }
+  .status-busy {
+    background-color: #f59e0b;
+  }
+}
+
+/* Custom scrollbars for dark mystic aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050508;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.5);
+}
