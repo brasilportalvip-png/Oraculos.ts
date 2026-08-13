@@ -152,68 +152,83 @@ export const AuthProvider: React.FC<{
   }, [user, isAuthenticated]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (firebaseUser) => {
-        if (!firebaseUser) {
-          setUser(guestUser);
-          setIsAuthenticated(false);
-          setAuthLoading(false);
-          return;
-        }
+    let unsubscribe = () => {};
 
-        try {
-          const idToken =
-            await firebaseUser.getIdToken();
+    try {
+      if (auth && typeof auth === 'object' && 'app' in auth) {
+        unsubscribe = onAuthStateChanged(
+          auth,
+          async (firebaseUser) => {
+            if (!firebaseUser) {
+              setUser(guestUser);
+              setIsAuthenticated(false);
+              setAuthLoading(false);
+              return;
+            }
 
-          const response = await fetch(
-            '/api/user/profile',
-            {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${idToken}`,
-              },
-            },
-          );
+            try {
+              const idToken = await firebaseUser.getIdToken();
 
-          const body = await response.json();
+              const response = await fetch('/api/user/profile', {
+                method: 'GET',
+                headers: {
+                  Authorization: `Bearer ${idToken}`,
+                },
+              });
 
-          if (response.ok && body.success) {
-            setUser(
-              normalizeUserProfile(body.data),
-            );
-            setIsAuthenticated(true);
-            return;
-          }
+              const body = await response.json();
 
-          if (
-            response.status === 404 &&
-            body.error?.code === 'USER_NOT_FOUND'
-          ) {
-            console.warn(
-              'Conta encontrada no Authentication, mas sem perfil no Firestore.',
-            );
+              if (response.ok && body.success) {
+                setUser(normalizeUserProfile(body.data));
+                setIsAuthenticated(true);
+                return;
+              }
 
-            await signOut(auth);
+              if (
+                response.status === 404 &&
+                body.error?.code === 'USER_NOT_FOUND'
+              ) {
+                console.warn(
+                  'Conta encontrada no Authentication, mas sem perfil no Firestore.',
+                );
+
+                await signOut(auth).catch(() => {});
+                setUser(guestUser);
+                setIsAuthenticated(false);
+              }
+            } catch (error) {
+              console.error('Erro ao carregar perfil autenticado:', error);
+              setUser(guestUser);
+              setIsAuthenticated(false);
+            } finally {
+              setAuthLoading(false);
+            }
+          },
+          (error) => {
+            console.error('Auth state change listener error:', error);
             setUser(guestUser);
             setIsAuthenticated(false);
+            setAuthLoading(false);
           }
-        } catch (error) {
-          console.error(
-            'Erro ao carregar perfil autenticado:',
-            error,
-          );
-
-          setUser(guestUser);
-          setIsAuthenticated(false);
-        } finally {
-          setAuthLoading(false);
-        }
-      },
-    );
+        );
+      } else {
+        setUser(guestUser);
+        setIsAuthenticated(false);
+        setAuthLoading(false);
+      }
+    } catch (err) {
+      console.warn('Could not initialize Firebase Auth listener:', err);
+      setUser(guestUser);
+      setIsAuthenticated(false);
+      setAuthLoading(false);
+    }
 
     return () => {
-      unsubscribe();
+      try {
+        unsubscribe();
+      } catch {
+        // ignore cleanup error
+      }
     };
   }, []);
 

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState, ReactNode } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConsultationProvider, useConsultation } from './context/ConsultationContext';
 import { Header } from './components/Header';
@@ -16,6 +17,63 @@ import { HowItWorks } from './components/HowItWorks';
 import { HelpAndPrivacy } from './components/showcase/HelpAndPrivacy';
 import { FloatingSupport } from './components/FloatingSupport';
 import { Consultant, OracleType } from './types';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.props = props;
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[ORACULOS.TS] Uncaught React UI Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#050508] text-gray-200 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-md w-full glass-card border border-amber-500/30 rounded-3xl p-8 space-y-6 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto">
+              <span className="text-2xl text-[#d4af37]">✨</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">ORACULOS.TS</h2>
+              <p className="text-sm text-gray-400">
+                Ocorreu uma oscilação temporária na conexão visual da aplicação.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                window.location.reload();
+              }}
+              className="w-full py-3 px-6 rounded-xl bg-[#d4af37] text-black font-bold hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/10 cursor-pointer"
+            >
+              Recarregar Aplicação
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function MainAppContent() {
   const { user } = useAuth();
@@ -48,7 +106,7 @@ function MainAppContent() {
 
         {currentTab === 'oracles' && (
           <OraclesDirectory
-            onSelectOracleCategory={(oracle) => {
+            onSelectOracleCategory={() => {
               setCurrentTab('showcase');
             }}
           />
@@ -101,10 +159,13 @@ function MainAppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ConsultationProvider>
-        <MainAppContent />
-      </ConsultationProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ConsultationProvider>
+          <MainAppContent />
+        </ConsultationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
+
