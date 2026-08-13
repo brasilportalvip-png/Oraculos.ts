@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // HELPER FUNCTIONS & RBAC PRIMITIVES
+    // ==========================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      return request.auth.token.role != null ? request.auth.token.role : 'user';
+    }
+
+    function isSupport() {
+      return isAuthenticated() && (getUserRole() == 'support' || getUserRole() == 'admin' || getUserRole() == 'superadmin');
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'superadmin' || request.auth.token.admin == true);
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (getUserRole() == 'superadmin');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ==========================================
+    // USER PROFILES & WALLET BALANCES
+    // ==========================================
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isSupport() || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'user'; // Prevent self-assignment of admin roles
+      
+      // Users can update non-privileged fields (name, avatar, favorites).
+      // Only Server Admin SDK or SuperAdmin can alter balance, role, or status.
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'email', 'status', 'isAdmin'])) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Private PII Subcollection
+    match /users/{userId}/private/{docId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+
+    // ==========================================
+    // FINANCIAL TRANSACTIONS (IMMUTABLE LEDGER)
+    // ==========================================
+    match /transactions/{txId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Transactions must be created by owner or backend, cannot be updated or deleted by clients
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Immutable ledger
+    }
+
+    // ==========================================
+    // CONSULTANTS CATALOG
+    // ==========================================
+    match /consultants/{consultantId} {
+      allow read: if true; // Public catalog for clients
+      allow create, update: if isAuthenticated() && (request.auth.uid == consultantId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // CONSULTATION SESSIONS & MESSAGES
+    // ==========================================
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.consultantId == request.auth.uid || isSupport() || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.clientId == request.auth.uid || request.resource.data.consultantId == request.auth.uid);
+      allow update: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.consultantId == request.auth.uid || isAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ==========================================
+    // COUPONS & DISCOUNTS
+    // ==========================================
+    match /coupons/{couponId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // BLOG & PUBLIC CONTENT
+    // ==========================================
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // SECURITY AUDIT LOGS & TELEMETRY
+    // ==========================================
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Append-only immutable log
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

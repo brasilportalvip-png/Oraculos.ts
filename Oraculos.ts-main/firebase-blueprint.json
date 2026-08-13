@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile details and wallet minute balance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "birthFullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "birthDate": { "type": "string" },
+        "birthTime": { "type": "string" },
+        "doesNotKnowBirthTime": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "employee", "support", "admin", "superadmin"] },
+        "status": { "type": "string", "enum": ["active", "blocked", "pending"] },
+        "minuteBalance": { "type": "number" },
+        "termsAccepted": { "type": "boolean" },
+        "privacyAccepted": { "type": "boolean" },
+        "birthDataConsent": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "birthFullName", "email", "birthDate", "role", "status", "minuteBalance", "termsAccepted", "privacyAccepted", "birthDataConsent", "createdAt"]
+    },
+    "MinuteTransaction": {
+      "title": "MinuteTransaction",
+      "description": "Ledger of minute wallet transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["purchase", "bonus", "consultation_debit", "refund", "admin_adjustment"] },
+        "minutes": { "type": "number" },
+        "balanceBefore": { "type": "number" },
+        "balanceAfter": { "type": "number" },
+        "consultationId": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "minutes", "balanceBefore", "balanceAfter", "reason", "createdBy", "createdAt"]
+    },
+    "MinutePackage": {
+      "title": "MinutePackage",
+      "description": "Purchasable minute package",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "priceBrl": { "type": "number" },
+        "minutes": { "type": "number" },
+        "bonusMinutes": { "type": "number" },
+        "active": { "type": "boolean" },
+        "displayOrder": { "type": "number" },
+        "expirationDays": { "type": "number" },
+        "maxPerUser": { "type": "number" }
+      },
+      "required": ["id", "title", "priceBrl", "minutes", "bonusMinutes", "active", "displayOrder"]
+    },
+    "CandidateApplication": {
+      "title": "CandidateApplication",
+      "description": "Consultant application submission for Trabalhe Conosco",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "professionalName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "documentNumber": { "type": "string" },
+        "profilePhoto": { "type": "string" },
+        "bio": { "type": "string" },
+        "experienceYears": { "type": "number" },
+        "specialties": { "type": "string" },
+        "oracles": { "type": "string" },
+        "education": { "type": "string" },
+        "languages": { "type": "string" },
+        "modality": { "type": "string", "enum": ["chat", "video", "both"] },
+        "status": { "type": "string", "enum": ["submitted", "in_review", "documents_pending", "interview", "approved", "rejected", "suspended"] },
+        "termsAccepted": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "professionalName", "email", "phone", "modality", "status", "termsAccepted", "createdAt"]
+    },
+    "ConsultantProfile": {
+      "title": "ConsultantProfile",
+      "description": "Human consultant public and operational profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "professionalName": { "type": "string" },
+        "photo": { "type": "string" },
+        "bio": { "type": "string" },
+        "specialties": { "type": "string" },
+        "oracles": { "type": "string" },
+        "modalities": { "type": "string" },
+        "pricePerMinute": { "type": "number" },
+        "platformCommissionRate": { "type": "number" },
+        "rating": { "type": "number" },
+        "totalConsultations": { "type": "number" },
+        "languages": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "busy", "offline"] },
+        "isAI": { "type": "boolean" }
+      },
+      "required": ["id", "professionalName", "pricePerMinute", "platformCommissionRate", "status", "isAI"]
+    },
+    "ConsultationFinancialRecord": {
+      "title": "ConsultationFinancialRecord",
+      "description": "Financial distribution ledger record per consultation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "consultationId": { "type": "string" },
+        "userId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "minutesUsed": { "type": "number" },
+        "pricePerMinute": { "type": "number" },
+        "grossAmount": { "type": "number" },
+        "platformFeePercentage": { "type": "number" },
+        "platformFeeAmount": { "type": "number" },
+        "employeeNetAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "completed", "refunded", "disputed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "consultationId", "userId", "employeeId", "minutesUsed", "pricePerMinute", "grossAmount", "platformFeePercentage", "platformFeeAmount", "employeeNetAmount", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "User profile document containing balance and account details"
+    },
+    "/users/{userId}/minuteTransactions/{transactionId}": {
+      "schema": "#/entities/MinuteTransaction",
+      "description": "Subcollection of minute ledger transactions for a user"
+    },
+    "/minutePackages/{packageId}": {
+      "schema": "#/entities/MinutePackage",
+      "description": "Minute packages configured by administrators"
+    },
+    "/applications/{applicationId}": {
+      "schema": "#/entities/CandidateApplication",
+      "description": "Consultant application candidates for Trabalhe Conosco"
+    },
+    "/consultants/{consultantId}": {
+      "schema": "#/entities/ConsultantProfile",
+      "description": "Human consultant public profiles"
+    },
+    "/financialRecords/{recordId}": {
+      "schema": "#/entities/ConsultationFinancialRecord",
+      "description": "Consultation financial records with 30% platform fee"
+    }
+  }
+}
