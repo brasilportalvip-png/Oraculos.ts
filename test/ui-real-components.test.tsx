@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 import React, { useState } from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { ConsultantProfileModal } from '../src/components/ConsultantProfileModal';
 import { OraclesDirectory } from '../src/components/OraclesDirectory';
 import { INITIAL_CONSULTANTS } from '../src/data/mockData';
 import { Consultant, OracleType } from '../src/types';
 
 describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', () => {
+  let consoleErrorSpy: any;
+
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   afterEach(() => {
     cleanup();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   const consultantHelena: Consultant = INITIAL_CONSULTANTS.find((c) => c.id === 'c1')!;
@@ -62,7 +70,31 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     expect(handleStart).toHaveBeenCalledWith(consultantHelena, 'mesaradionica', 'chat');
   });
 
-  it('3. Deve sincronizar e atualizar o oráculo selecionado quando o consultor ou initialOracle for alterado', () => {
+  it('3. Deve permitir selecionar outro oráculo interativamente no modal e disparar consulta', () => {
+    const handleClose = vi.fn();
+    const handleStart = vi.fn();
+
+    const { getByText } = render(
+      <ConsultantProfileModal
+        consultant={consultantHelena}
+        initialOracle="tarot"
+        onClose={handleClose}
+        onStartConsultation={handleStart}
+      />
+    );
+
+    // Clica em Baralho Cigano no modal
+    const ciganoBtn = getByText('Baralho Cigano');
+    fireEvent.click(ciganoBtn);
+
+    // Inicia a consulta
+    const startButton = getByText('Iniciar Chat Agora');
+    fireEvent.click(startButton);
+
+    expect(handleStart).toHaveBeenCalledWith(consultantHelena, 'cigano', 'chat');
+  });
+
+  it('4. Deve sincronizar e atualizar o oráculo selecionado quando o consultor ou initialOracle for alterado', () => {
     const handleClose = vi.fn();
     const handleStart = vi.fn();
 
@@ -97,7 +129,7 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     expect(handleStart).toHaveBeenCalledWith(consultantGabriel, 'numerologia', 'chat');
   });
 
-  it('4. Deve aplicar fallback para a primeira especialidade permitida quando initialOracle for não-autorizado para o consultor', () => {
+  it('5. Deve aplicar fallback para a primeira especialidade permitida quando initialOracle for não-autorizado para o consultor', () => {
     const handleClose = vi.fn();
     const handleStart = vi.fn();
 
@@ -119,10 +151,9 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     expect(handleStart).toHaveBeenCalledWith(consultantHelena, 'tarot', 'chat');
   });
 
-  it('5. Deve testar o fluxo real completo: Seleção no Diretório -> Abertura de Perfil -> Início de Consulta', () => {
+  it('6. Deve testar o fluxo real completo em viewport desktop (1280px) e mobile (375px)', () => {
     const handleStartFinal = vi.fn();
 
-    // Componente de orquestração simulando a página real
     const AppIntegrationFlow: React.FC = () => {
       const [selectedCategory, setSelectedCategory] = useState<OracleType | null>(null);
       const [activeConsultant, setActiveConsultant] = useState<Consultant | null>(null);
@@ -132,7 +163,6 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
           <OraclesDirectory
             onSelectOracleCategory={(oracle) => {
               setSelectedCategory(oracle);
-              // Seleciona consultor humano específico credenciado nessa categoria
               const matched = INITIAL_CONSULTANTS.find(
                 (c) => !c.isAI && (c.specialties || []).includes(oracle)
               );
@@ -154,7 +184,14 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
       );
     };
 
-    const { getByText, getAllByText } = render(<AppIntegrationFlow />);
+    // 1. Simula Desktop (1280x800)
+    act(() => {
+      window.innerWidth = 1280;
+      window.innerHeight = 800;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    const { getByText, getAllByText, queryByText } = render(<AppIntegrationFlow />);
 
     // Clica no card de Astrologia & Mapa Astral no Diretório
     const astroCards = getAllByText('Astrologia & Mapa Astral');
@@ -168,5 +205,23 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
 
     expect(handleStartFinal).toHaveBeenCalledTimes(1);
     expect(handleStartFinal).toHaveBeenCalledWith('c2', 'astrologia', 'video');
+
+    // 2. Simula Mobile (375x667)
+    act(() => {
+      window.innerWidth = 375;
+      window.innerHeight = 667;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    // Reabre o modal pelo diretório mobile
+    fireEvent.click(astroCards[0]);
+    expect(getByText('Mestre Gabriel Astros')).toBeTruthy();
+
+    // Fecha o modal via botão de fechar
+    const closeBtn = screen.getByLabelText('Fechar modal');
+    fireEvent.click(closeBtn);
+
+    // Confirma que o modal fechou
+    expect(queryByText('Mestre Gabriel Astros')).toBeNull();
   });
 });

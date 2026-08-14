@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
-export const mockGenerateContent = vi.fn();
+const { mockGenerateContent } = vi.hoisted(() => {
+  return {
+    mockGenerateContent: vi.fn(),
+  };
+});
 
 vi.mock('@google/genai', () => {
   return {
-    GoogleGenAI: function MockGoogleGenAI() {
-      return {
-        models: {
-          generateContent: mockGenerateContent,
-        },
+    GoogleGenAI: class MockGoogleGenAI {
+      models = {
+        generateContent: mockGenerateContent,
       };
     },
   };

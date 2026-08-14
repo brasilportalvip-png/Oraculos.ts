@@ -51,6 +51,7 @@ export const ConsultantProfileModal: React.FC<Props> = ({
           <div className="relative h-32 bg-gradient-to-r from-purple-950 via-[#1F1638] to-indigo-950 p-6 flex items-end">
             <button
               onClick={onClose}
+              aria-label="Fechar modal"
               className="absolute top-4 right-4 p-2 rounded-xl bg-black/40 hover:bg-black/60 text-slate-300 transition-colors"
             >
               <X className="w-5 h-5" />
