@@ -15,6 +15,10 @@ import {
   ShieldAlert,
   AlertCircle,
   Gem,
+  Compass,
+  Scroll,
+  Info,
+  CheckCircle,
 } from 'lucide-react';
 import { useConsultation } from '../context/ConsultationContext';
 import { useAuth } from '../context/AuthContext';
@@ -27,8 +31,8 @@ export const ConsultationRoom: React.FC = () => {
 
   const [mode, setMode] = useState<'chat' | 'video'>('chat');
   const [inputText, setInputText] = useState('');
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(false);
+  const [isVideoOn, setIsVideoOn] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [rating, setRating] = useState<number>(5);
   const [reviewText, setReviewText] = useState('');
@@ -37,6 +41,61 @@ export const ConsultationRoom: React.FC = () => {
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiInterpretation, setAiInterpretation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeSession) {
+      setMode(activeSession.mode);
+    }
+  }, [activeSession?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeSession?.messages]);
+
+  if (!activeSession) return null;
+
+  const isVirtual =
+    activeSession.consultantId.startsWith('ai_') ||
+    activeSession.consultantId.startsWith('c_ai_');
+
+  const oracleInfo = ORACLE_CATEGORIES[activeSession.oracleType];
+
+  // Duration formatting (00:00)
+  const minutes = Math.floor(activeSession.durationSeconds / 60);
+  const seconds = activeSession.durationSeconds % 60;
+  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const consumedWalletMinutes =
+    (Math.ceil(activeSession.durationSeconds / 60) || 1) *
+    activeSession.pricePerMinute;
+
+  const remainingWalletMinutes = Math.max(
+    0,
+    user.minuteBalance - consumedWalletMinutes,
+  );
+
+  const estimatedConsultationMinutes = Math.floor(
+    remainingWalletMinutes / activeSession.pricePerMinute,
+  );
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+    sendMessage(inputText);
+    setInputText('');
+  };
+
+  const handleFinishConsultation = () => {
+    setShowEndConfirm(false);
+    setShowReviewModal(true);
+  };
+
+  const submitReviewAndExit = () => {
+    endConsultation(rating, reviewText);
+    setShowReviewModal(false);
+  };
 
   const handleAskAiCopilot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,12 +118,6 @@ export const ConsultationRoom: React.FC = () => {
       return;
     }
 
-    if (!idToken) {
-      setAiLoading(false);
-      setAiInterpretation('Token de autenticação ausente. Faça login novamente.');
-      return;
-    }
-
     try {
       const res = await fetch('/api/ai/oracle-interpretation', {
         method: 'POST',
@@ -76,7 +129,7 @@ export const ConsultationRoom: React.FC = () => {
           oracleType: activeSession?.oracleType || 'tarot',
           cardOrSymbol: 'Tiragem em Tempo Real',
           userQuestion: aiQuestion || 'Orientação espiritual para a dúvida atual',
-          contextPrompt: 'Atendimento ao vivo na sala do ORACULOS.TS',
+          contextPrompt: 'Atendimento oracular na sala ORACULOS.TS',
           consultantId: activeSession?.consultantId,
           userProfile: {
             fullName: user?.birthFullName || user?.name || '',
@@ -105,67 +158,22 @@ export const ConsultationRoom: React.FC = () => {
       setAiLoading(false);
     }
   };
-     
 
-
-
-
-
-
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (activeSession) {
-      setMode(activeSession.mode);
+  // Specialized Oracle Button Text
+  const getOracleButtonLabel = () => {
+    switch (activeSession.oracleType) {
+      case 'tarot': return 'Tirar Arcano do Tarot';
+      case 'cigano': return 'Tirar Carta Cigana';
+      case 'astrologia': return 'Trânsito Planetário';
+      case 'numerologia': return 'Calcular Vibração';
+      case 'buzios': return 'Jogar os 16 Búzios';
+      case 'ifa': return 'Consultar Odù de Ifá';
+      case 'runas': return 'Lançar Runas';
+      case 'iching': return 'Jogar Moedas I Ching';
+      case 'cristais': return 'Emanar Cristal';
+      case 'mesaradionica': return 'Medir no Pêndulo';
+      default: return 'Tirar Carta do Oráculo';
     }
-  }, [activeSession?.id]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeSession?.messages]);
-
-  if (!activeSession) return null;
-
-  const oracleInfo = ORACLE_CATEGORIES[activeSession.oracleType];
-
-  // Duration formatting (00:00)
-  const minutes = Math.floor(activeSession.durationSeconds / 60);
-  const seconds = activeSession.durationSeconds % 60;
-  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-  
-
-const consumedWalletMinutes =
-  (Math.ceil(activeSession.durationSeconds / 60) || 1) *
-  activeSession.pricePerMinute;
-
-const remainingWalletMinutes = Math.max(
-  0,
-  user.minuteBalance - consumedWalletMinutes,
-);
-
-const estimatedConsultationMinutes = Math.floor(
-  remainingWalletMinutes / activeSession.pricePerMinute,
-);
-
-
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    sendMessage(inputText);
-    setInputText('');
-  };
-
-  const handleFinishConsultation = () => {
-    setShowEndConfirm(false);
-    setShowReviewModal(true);
-  };
-
-  const submitReviewAndExit = () => {
-    endConsultation(rating, reviewText);
-    setShowReviewModal(false);
   };
 
   return (
@@ -185,7 +193,16 @@ const estimatedConsultationMinutes = Math.floor(
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-sm md:text-base text-amber-200">{activeSession.consultantName}</h2>
-              <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              {isVirtual ? (
+                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  Atendente Virtual
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                  Consultor Especialista
+                </span>
+              )}
+              <span className="hidden xs:inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {oracleInfo?.name || activeSession.oracleType}
               </span>
             </div>
@@ -196,35 +213,18 @@ const estimatedConsultationMinutes = Math.floor(
         {/* Live Timer & Balance Counter */}
         <div className="hidden sm:flex items-center gap-4 bg-[#1F1638] px-4 py-1.5 rounded-xl border border-purple-800/40">
           <div className="flex items-center gap-1.5 text-emerald-400 font-mono font-bold text-sm">
-            <Clock className="w-4 h-4 animate-spin-slow text-emerald-400" />
+            <Clock className="w-4 h-4 text-emerald-400" />
             <span>{formattedTime}</span>
           </div>
           <div className="h-4 w-[1px] bg-purple-800/60" />
-          
-
-
-
-<div className="text-xs text-slate-300">
-  Consumo:{' '}
-  <strong className="text-amber-300">
-    {consumedWalletMinutes.toFixed(2)} min
-  </strong>
-</div>
-
-<div className="h-4 w-[1px] bg-purple-800/60" />
-
-<div className="flex items-center gap-1 text-xs text-purple-200">
-  <Wallet className="w-3.5 h-3.5 text-amber-400" />
-
-  <span>
-    Saldo: {remainingWalletMinutes.toFixed(2)} min
-    {' '}(~{estimatedConsultationMinutes} min de atendimento)
-  </span>
-</div>
-
-
-
-
+          <div className="text-xs text-slate-300">
+            Consumo: <strong className="text-amber-300">{consumedWalletMinutes.toFixed(2)} min</strong>
+          </div>
+          <div className="h-4 w-[1px] bg-purple-800/60" />
+          <div className="flex items-center gap-1 text-xs text-purple-200">
+            <Wallet className="w-3.5 h-3.5 text-amber-400" />
+            <span>Saldo: {remainingWalletMinutes.toFixed(2)} min</span>
+          </div>
         </div>
 
         {/* Mode Switcher & Exit Button */}
@@ -264,96 +264,40 @@ const estimatedConsultationMinutes = Math.floor(
         </div>
       </header>
 
+      {/* Transparency Banner */}
+      {isVirtual ? (
+        <div className="px-4 py-1.5 bg-cyan-950/50 border-b border-cyan-800/40 text-center text-xs text-cyan-200 flex items-center justify-center gap-2">
+          <Info className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+          <span>Esta sessão é conduzida por um sistema de orientação virtual inteligente ORACULOS.TS.</span>
+        </div>
+      ) : (
+        <div className="px-4 py-1.5 bg-purple-950/50 border-b border-purple-800/40 text-center text-xs text-purple-200 flex items-center justify-center gap-2">
+          <Info className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+          <span>Atendimento direto em tempo real com consultor oracular credenciado.</span>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Video Mode Container */}
         {mode === 'video' && (
-          <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-4">
-            {/* Consultant Video Screen */}
-            <div className="relative w-full max-w-3xl aspect-video bg-[#150F26] rounded-2xl border border-purple-800/40 shadow-2xl overflow-hidden flex flex-col items-center justify-center">
-              {isVideoOn ? (
-                <div className="relative w-full h-full">
-                  <img
-                    src={activeSession.consultantAvatar}
-                    alt="Consultant Video Stream"
-                    className="w-full h-full object-cover filter brightness-90"
-                  />
-                  {/* Subtle mystic aura overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                  <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-amber-500/30 text-xs text-amber-200">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                    Transmissão HD Criptografada
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center space-y-3">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-purple-900/40 border border-purple-500/40 flex items-center justify-center text-purple-300">
-                    <VideoOff className="w-8 h-8" />
-                  </div>
-                  <p className="text-sm text-slate-400">Vídeo temporariamente desativado</p>
-                </div>
-              )}
-
-              {/* Client Self Mirror (PIP) */}
-              <div className="absolute bottom-4 right-4 w-28 sm:w-36 aspect-video bg-black/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-2xl">
-                <img
-                  src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
-                  alt="Você"
-                  className="w-full h-full object-cover filter contrast-105"
-                />
-                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white">Você</span>
+          <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-4 text-center">
+            <div className="max-w-md p-6 bg-[#150F26] border border-purple-800/40 rounded-2xl shadow-2xl space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Video className="w-8 h-8" />
               </div>
-
-              {/* Audio Visualizer Wave */}
-              <div className="absolute bottom-4 left-4 flex items-center gap-1">
-                {[40, 75, 50, 90, 60, 30, 80].map((h, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ height: [10, h, 10] }}
-                    transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }}
-                    className="w-1 bg-amber-400/80 rounded-full"
-                  />
-                ))}
+              <h3 className="text-base font-bold text-white">Transmissão em Vídeo P2P</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                O atendimento prioritário com leitura oracular completa ocorre via <strong>Chat em Tempo Real</strong> com registro criptografado. A transmissão de vídeo WebRTC requer permissão de câmera do seu dispositivo e disponibilidade de vídeo do consultor.
+              </p>
+              <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+                <button
+                  onClick={() => setMode('chat')}
+                  className="px-4 py-2 bg-amber-500 text-black font-bold text-xs rounded-xl shadow hover:bg-amber-400 transition"
+                >
+                  Continuar no Chat Interativo
+                </button>
               </div>
-            </div>
-
-            {/* Video Control Floating Bar */}
-            <div className="flex items-center gap-3 mt-4 p-2 bg-[#150F26]/90 border border-purple-800/40 backdrop-blur-md rounded-2xl shadow-xl">
-              <button
-                onClick={() => setIsMicOn(!isMicOn)}
-                className={`p-3 rounded-xl border transition-all ${
-                  isMicOn
-                    ? 'bg-purple-900/40 border-purple-600/50 text-purple-200'
-                    : 'bg-rose-600/30 border-rose-500/50 text-rose-300'
-                }`}
-              >
-                {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setIsVideoOn(!isVideoOn)}
-                className={`p-3 rounded-xl border transition-all ${
-                  isVideoOn
-                    ? 'bg-purple-900/40 border-purple-600/50 text-purple-200'
-                    : 'bg-rose-600/30 border-rose-500/50 text-rose-300'
-                }`}
-              >
-                {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-              </button>
-
-              <button
-                onClick={drawOracleCard}
-                className="flex items-center gap-2 px-4 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-xl font-bold text-xs transition-colors"
-              >
-                <Gem className="w-4 h-4 text-amber-400" />
-                Tirar Carta do Oráculo
-              </button>
-
-              <button
-                onClick={() => setShowEndConfirm(true)}
-                className="p-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-lg transition-colors"
-              >
-                <PhoneOff className="w-5 h-5" />
-              </button>
             </div>
           </div>
         )}
@@ -387,7 +331,7 @@ const estimatedConsultationMinutes = Math.floor(
                             />
                           )}
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Carta Revelada</span>
+                            <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Símbolo Revelado</span>
                             <h4 className="text-lg font-bold text-white">{msg.cardDrawn.name}</h4>
                             <p className="text-xs text-purple-200/90 italic">{msg.cardDrawn.meaning}</p>
                           </div>
@@ -431,7 +375,7 @@ const estimatedConsultationMinutes = Math.floor(
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-semibold transition-colors"
             >
               <Gem className="w-3.5 h-3.5 text-amber-400" />
-              Tirar Carta do Tarot
+              {getOracleButtonLabel()}
             </button>
             <button
               onClick={() => setShowAiCopilot(!showAiCopilot)}
@@ -451,19 +395,70 @@ const estimatedConsultationMinutes = Math.floor(
             ))}
           </div>
 
-          {/* Chat Input Form */}
-          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2">
+          {/* AI Copilot Drawer */}
+          <AnimatePresence>
+            {showAiCopilot && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="border-t border-purple-800/50 bg-[#150F26] p-4 space-y-3 overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold text-amber-200">
+                      Interpretação Oracular Assistida por IA Gemini
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowAiCopilot(false)}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Fechar
+                  </button>
+                </div>
+
+                <form onSubmit={handleAskAiCopilot} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiQuestion}
+                    onChange={(e) => setAiQuestion(e.target.value)}
+                    placeholder="Faça uma pergunta específica para aprofundar a tiragem..."
+                    className="flex-1 bg-[#0B0813] border border-purple-800/60 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={aiLoading}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-amber-500 text-white rounded-xl text-xs font-bold shadow-md hover:opacity-90 disabled:opacity-50"
+                  >
+                    {aiLoading ? 'Analisando...' : 'Consultar'}
+                  </button>
+                </form>
+
+                {aiInterpretation && (
+                  <div className="p-3 bg-purple-950/40 border border-purple-700/40 rounded-xl text-xs text-purple-100 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
+                    {aiInterpretation}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Text Input Footer */}
+          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/40 flex items-center gap-2">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Digite sua dúvida para o consultor..."
-              className="flex-1 px-4 py-2.5 bg-[#0B0813] border border-purple-900/60 rounded-xl text-sm text-white placeholder-purple-400/60 focus:outline-none focus:border-amber-400 transition-colors"
+              placeholder="Digite sua mensagem ou dúvida para o oráculo..."
+              className="flex-1 bg-[#0B0813] border border-purple-900/60 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
             />
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold rounded-xl transition-all shadow-md cursor-pointer"
+              className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 rounded-xl font-bold transition-all shadow-md"
+              aria-label="Enviar mensagem"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -471,73 +466,52 @@ const estimatedConsultationMinutes = Math.floor(
         </div>
       </div>
 
-      {/* Confirmation Modal to End Consultation */}
+      {/* Confirmation Modal to End Session */}
       {showEndConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-[#150F26] border border-purple-800/50 rounded-2xl p-6 space-y-4 text-center">
-            <ShieldAlert className="w-12 h-12 text-amber-400 mx-auto" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#150F26] border border-purple-800/60 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 mx-auto flex items-center justify-center">
+              <AlertCircle className="w-6 h-6" />
+            </div>
             <h3 className="text-lg font-bold text-white">Deseja encerrar o atendimento?</h3>
-            
-
-
-<p className="text-xs text-slate-300">
-  Sua sessão durou{' '}
-  <strong className="text-amber-300">
-    {formattedTime}
-  </strong>
-  . O consumo de{' '}
-  <strong className="text-amber-300">
-    {consumedWalletMinutes.toFixed(2)} min
-  </strong>{' '}
-  será debitado da sua carteira.
-</p>
-
-
-
-
-            <div className="flex gap-3 pt-2">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              O tempo de consulta decorrido foi de <strong>{formattedTime}</strong>. A tarifação será finalizada e você poderá avaliar o especialista.
+            </p>
+            <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowEndConfirm(false)}
-                className="flex-1 py-2.5 bg-[#1F1638] hover:bg-purple-900/40 border border-purple-700/50 rounded-xl text-xs font-semibold text-slate-300"
+                className="flex-1 py-2.5 rounded-xl border border-purple-800 text-slate-300 hover:bg-purple-900/40 text-xs font-semibold"
               >
-                Continuar Sessão
+                Continuar Consulta
               </button>
               <button
                 onClick={handleFinishConsultation}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 rounded-xl text-xs font-bold text-white shadow-md"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg"
               >
-                Sim, Encerrar
+                Encerrar Agora
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Post Session Review Modal */}
+      {/* Review Modal on Exit */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md bg-[#150F26] border border-amber-500/30 rounded-2xl p-6 space-y-5 text-center text-slate-100"
-          >
-            <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <Star className="w-7 h-7 fill-amber-400" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#150F26] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="text-center space-y-1">
+              <span className="text-xs uppercase font-bold text-amber-400 tracking-wider">Atendimento Finalizado</span>
+              <h3 className="text-lg font-bold text-white">Como foi sua experiência?</h3>
+              <p className="text-xs text-slate-400">Sua avaliação ajuda a manter a excelência da plataforma.</p>
             </div>
 
-            <h3 className="text-xl font-bold text-amber-200">Como foi seu atendimento?</h3>
-            <p className="text-xs text-slate-300">
-              Avalie sua experiência com <strong className="text-amber-300">{activeSession.consultantName}</strong>
-            </p>
-
-            {/* Rating Stars */}
-            <div className="flex items-center justify-center gap-2">
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 py-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  type="button"
                   onClick={() => setRating(star)}
-                  className="p-1.5 transition-transform hover:scale-125"
+                  className="p-1 text-2xl transition-transform hover:scale-125 focus:outline-none"
                 >
                   <Star
                     className={`w-7 h-7 ${
@@ -549,64 +523,19 @@ const estimatedConsultationMinutes = Math.floor(
             </div>
 
             <textarea
-              rows={3}
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
-              placeholder="Escreva um depoimento para o consultor (opcional)..."
-              className="w-full p-3 bg-[#0B0813] border border-purple-900/60 rounded-xl text-xs text-white placeholder-purple-400/60 focus:outline-none focus:border-amber-400"
+              placeholder="Deixe um comentário sobre a clareza e acolhimento da consulta (opcional)..."
+              rows={3}
+              className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
             />
 
             <button
               onClick={submitReviewAndExit}
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-colors"
             >
-              Enviar Avaliação e Concluir
+              Enviar Avaliação e Voltar ao Início
             </button>
-          </motion.div>
-        </div>
-      )}
-
-      {/* AI Copilot Drawer / Modal */}
-      {showAiCopilot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-lg glass-card border border-[#d4af37]/40 rounded-3xl p-6 space-y-4 bg-[#050508]/95 text-gray-100 shadow-2xl">
-            <button
-              onClick={() => setShowAiCopilot(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white text-sm font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 gold-accent" />
-              <h3 className="font-serif text-xl font-light text-white">Copiloto Oracular Gemini IA</h3>
-            </div>
-            <p className="text-xs text-gray-400 font-light">
-              Solicite auxílio simbólico instantâneo para tiragens de {activeSession.oracleType.toUpperCase()} ou dúvidas profundas durante o atendimento.
-            </p>
-
-            <form onSubmit={handleAskAiCopilot} className="space-y-3">
-              <input
-                type="text"
-                value={aiQuestion}
-                onChange={(e) => setAiQuestion(e.target.value)}
-                placeholder="Ex: O que indica O Louco junto com a Imperatriz no amor?"
-                className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
-              />
-              <button
-                type="submit"
-                disabled={aiLoading}
-                className="w-full py-2.5 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer disabled:opacity-50"
-              >
-                {aiLoading ? 'Consultando Sabedoria IA...' : 'Interpretar com IA'}
-              </button>
-            </form>
-
-            {aiInterpretation && (
-              <div className="p-4 bg-white/5 border border-white/10 rounded-2xl max-h-60 overflow-y-auto space-y-2 text-xs text-gray-200 leading-relaxed font-light whitespace-pre-wrap">
-                {aiInterpretation}
-              </div>
-            )}
           </div>
         </div>
       )}

@@ -1,72 +1,132 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, Lock, Heart, CheckCircle, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Lock, Heart, FileText, Scale, Eye, HelpCircle } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const handleNav = (tab: string) => {
+    if (onNavigate) {
+      onNavigate(tab);
+    } else {
+      window.location.hash = tab;
+    }
+  };
+
   return (
-    <footer className="bg-[#050508] border-t border-white/5 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <footer className="bg-[#050508] border-t border-white/5 text-gray-400 py-12 px-4 sm:px-6 lg:px-8 mt-12">
+      <div className="max-w-7xl mx-auto space-y-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Col 1 Brand */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#7c3aed] flex items-center justify-center text-black font-serif font-bold">
-                Ω
-              </div>
-              <span className="text-lg font-bold text-white tracking-tight">ORACULOS<span className="gold-accent">.TS</span></span>
+          {/* Col 1 Brand & Ethics */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <img
+                src="/brand/logo-oraculos.png"
+                alt="ORACULOS.TS Logo"
+                className="w-8 h-8 rounded-lg object-contain border border-[#d4af37]/30 shadow-md"
+              />
+              <span className="text-lg font-bold text-white tracking-tight">
+                ORACULOS<span className="gold-accent">.TS</span>
+              </span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Plataforma empresarial de consultas espirituais online em tempo real. Conectando você aos melhores oraculistas do Brasil com sigilo, transparência e elegância.
+              Plataforma tecnológica de consultas oraculares e orientação pessoal online em tempo real. Conectando consulentes a especialistas e atendentes virtuais com rigor ético, transparência e segurança.
             </p>
+            <div className="pt-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 text-[11px] font-mono text-amber-300 rounded-full">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                Conformidade LGPD & Zero-Trust
+              </span>
+            </div>
           </div>
 
-          {/* Col 2 Oracles */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">Oráculos Populares</h4>
-            <ul className="text-xs space-y-1.5 text-gray-400">
-              <li>• Tarot de Marseille & Lenormand</li>
-              <li>• Baralho Cigano Tradicional</li>
-              <li>• Astrologia & Mapa Astral</li>
-              <li>• Jogo de Búzios & Ifá</li>
-              <li>• Mesa Radiônica Quântica</li>
+          {/* Col 2 Oracles Canônicos */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">
+              Tradições Oraculares
+            </h4>
+            <ul className="text-xs space-y-2 text-gray-400">
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Tarot (Arcanos Maiores e Menores)</button></li>
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Baralho Cigano (Lenormand)</button></li>
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Astrologia & Trânsitos Planetários</button></li>
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Numerologia Pessoal & Destino</button></li>
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Jogo de Búzios, Ifá & Runas</button></li>
+              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">I Ching, Cristais & Mesa Radiônica</button></li>
             </ul>
           </div>
 
-          {/* Col 3 Compliance & Security */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">Segurança Garantida</h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                <ShieldCheck className="w-4 h-4" />
-                <span>SSL 256-bit Encryption</span>
-              </div>
-              <div className="flex items-center gap-2 gold-accent font-semibold">
-                <Lock className="w-4 h-4" />
-                <span>Checkout Mercado Pago SDK</span>
-              </div>
-              <p className="text-[11px] text-gray-500">
-                Cálculos financeiros e tarifação efetuados exclusivamente via backend Node.js com auditoria.
-              </p>
-            </div>
+          {/* Col 3 Compliance & Legal */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">
+              Políticas & Transparência
+            </h4>
+            <ul className="text-xs space-y-2 text-gray-400">
+              <li>
+                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                  <FileText className="w-3.5 h-3.5 text-purple-400" />
+                  Termos de Uso
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                  <Scale className="w-3.5 h-3.5 text-purple-400" />
+                  Política de Privacidade
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                  <Lock className="w-3.5 h-3.5 text-purple-400" />
+                  Política de Pagamentos & Reembolsos
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                  <Eye className="w-3.5 h-3.5 text-purple-400" />
+                  Aviso sobre Atendentes Virtuais (IA)
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                  <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
+                  Canal do Titular LGPD & DPO
+                </button>
+              </li>
+            </ul>
           </div>
 
-          {/* Col 4 Mobile App readiness */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">Multiplataforma PWA</h4>
+          {/* Col 4 Segurança & Pagamento */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-widest font-serif gold-accent">
+              Pagamentos Seguros
+            </h4>
             <p className="text-xs text-gray-400">
-              Preparado para versão Web, PWA responsivo e aplicativo Android via Android Studio.
+              Processamento seguro e criptografado com o ecossistema Mercado Pago. Tarifação de minutos controlada estritamente pelo servidor.
             </p>
-            <div className="pt-2">
-              <span className="px-3 py-1 bg-white/5 border border-white/10 text-[10px] font-mono text-gray-300 rounded-full">
-                v2.4.0 • Enterprise Release
-              </span>
+            <div className="space-y-2 text-xs pt-1">
+              <div className="flex items-center gap-2 text-emerald-400 font-medium">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Pix Instantâneo & Cartão</span>
+              </div>
+              <div className="flex items-center gap-2 text-amber-300 font-medium">
+                <Lock className="w-4 h-4" />
+                <span>Auditoria e Ledger de Minutos</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/5 text-center text-[11px] text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© {new Date().getFullYear()} ORACULOS.TS. Todos os direitos reservados. Conexão espiritual segura e criptografada.</p>
+        {/* Disclaimer Ético e Legal Obrigatório */}
+        <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-900/30 text-center text-[11px] text-gray-400 leading-relaxed">
+          <p>
+            <strong className="text-amber-200">Aviso Legal & Ético:</strong> As orientações e leituras oraculares oferecidas na plataforma ORACULOS.TS destinam-se exclusivamente ao autoconhecimento, reflexão e entretenimento espiritual. Nossos serviços não garantem resultados milagrosos, infalibilidade ou destino imutável, e não substituem sob nenhuma hipótese consultas, diagnósticos ou tratamentos médicos, psicológicos, psiquiátricos, jurídicos ou financeiros profissionais.
+          </p>
+        </div>
+
+        <div className="pt-6 border-t border-white/5 text-center text-[11px] text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>© {new Date().getFullYear()} ORACULOS.TS. Todos os direitos reservados.</p>
           <p className="flex items-center justify-center gap-1">
-            Desenvolvido com <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> para Consultas Espirituais Online
+            Desenvolvido com integridade para Orientação Espiritual e Oracular
           </p>
         </div>
       </div>

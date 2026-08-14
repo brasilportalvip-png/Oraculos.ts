@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConsultationProvider, useConsultation } from './context/ConsultationContext';
 import { Header } from './components/Header';
@@ -21,9 +21,50 @@ function MainAppContent() {
   const { user } = useAuth();
   const { isRechargeModalOpen, setIsRechargeModalOpen, startConsultation } = useConsultation();
 
-  const [currentTab, setCurrentTab] = useState<string>('showcase');
+  const getInitialTab = (): string => {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase().replace('#', '');
+    if (path.includes('especialistas') || hash.includes('especialistas') || hash.includes('oracles')) return 'oracles';
+    if (path.includes('blog') || hash.includes('blog')) return 'blog';
+    if (path.includes('como-funciona') || hash.includes('howitworks')) return 'howItWorks';
+    if (path.includes('ajuda') || path.includes('privacidade') || path.includes('termos') || path.includes('lgpd') || hash.includes('helpandprivacy') || hash.includes('privacidade')) return 'helpAndPrivacy';
+    if (path.includes('painel/consultor') || hash.includes('consultantdashboard')) return 'consultantDashboard';
+    if (path.includes('painel') || path.includes('carteira') || hash.includes('clientdashboard')) return 'clientDashboard';
+    if (path.includes('admin') || hash.includes('admindashboard')) return 'adminDashboard';
+    return 'showcase';
+  };
+
+  const [currentTab, setCurrentTabState] = useState<string>(getInitialTab);
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
   const [selectedOracle, setSelectedOracle] = useState<OracleType | null>(null);
+
+  const setCurrentTab = (tab: string) => {
+    setCurrentTabState(tab);
+    try {
+      const urlMap: Record<string, string> = {
+        showcase: '/',
+        oracles: '/especialistas',
+        blog: '/blog',
+        howItWorks: '/como-funciona',
+        helpAndPrivacy: '/ajuda-e-privacidade',
+        clientDashboard: '/painel',
+        consultantDashboard: '/painel/consultor',
+        adminDashboard: '/admin',
+      };
+      const newPath = urlMap[tab] || `/${tab}`;
+      window.history.pushState({ tab }, '', newPath);
+    } catch {
+      // Fallback
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentTabState(getInitialTab());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleStartConsultation = (
     consultant: Consultant,
@@ -77,7 +118,7 @@ function MainAppContent() {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer onNavigate={setCurrentTab} />
 
       {/* Consultant Profile Detail Modal */}
       {selectedConsultant && (

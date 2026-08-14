@@ -1,0 +1,41 @@
+# ==============================================================================
+# ORACULOS.TS — Robots Exclusion Protocol
+# Domínio Oficial: https://oraculos-ts.vercel.app/
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Allow: /especialistas
+Allow: /especialistas/*
+Allow: /oraculos
+Allow: /oraculos/*
+Allow: /blog
+Allow: /blog/*
+Allow: /como-funciona
+Allow: /suporte
+Allow: /termos
+Allow: /privacidade
+Allow: /cookies
+Allow: /brand/*
+Allow: /image/*
+
+# Áreas privadas, autenticadas e sensíveis (Protegidas por RBAC/Auth)
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /painel
+Disallow: /painel/*
+Disallow: /api/
+Disallow: /api/*
+Disallow: /entrar
+Disallow: /cadastro
+Disallow: /recuperar-senha
+Disallow: /pagamento/
+Disallow: /pagamento/*
+Disallow: /conta/excluir
+Disallow: /checkout
+Disallow: /*?*token=*
+Disallow: /*?*session=*
+Disallow: /*?*preference_id=*
+
+# Índice Oficial de Sitemaps XML
+Sitemap: https://oraculos-ts.vercel.app/sitemap.xml

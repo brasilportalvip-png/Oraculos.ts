@@ -517,57 +517,14 @@ return;
 }
 
 
-} catch (err) {
-  isAutoReplyInProgressRef.current =
-    false;
-
-  console.warn(
-    'Erro na resposta do atendente virtual IA, usando resposta de segurança:',
-    err,
-  );
-}
-}
-
-// Default fallback reply
-
-
-    setTimeout(() => {
-      let replyText = 'As energias indicam que você está no caminho de transformação. O que mais sente no coração neste momento?';
-      const lower = userMsg.toLowerCase();
-
-      if (lower.includes('amor') || lower.includes('namoro') || lower.includes('ex')) {
-        replyText = 'Sinto uma forte vibração na área afetiva. As cartas pedem que você confie mais na sua intuição e perdoe o passado.';
-      } else if (lower.includes('trabalho') || lower.includes('dinheiro') || lower.includes('emprego')) {
-        replyText = 'No âmbito financeiro e profissional, vejo portas de oportunidades se abrindo nos próximos dias. Mantenha o foco e a fé!';
-      } else if (lower.includes('saúde') || lower.includes('paz') || lower.includes('ansiedade')) {
-        replyText = 'Sua aura necessita de um momento de desaceleração. Sugiro um banho de ervas e alinhamento de chakras hoje à noite.';
-      }
-
-      const consultantReply: ChatMessage = {
-        id: `msg_${Date.now()}`,
-        senderId: activeSession.consultantId,
-        senderName: activeSession.consultantName,
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setActiveSession((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: [...prev.messages, consultantReply],
-        };
-      });
-        }, 1500);
-
-    /*
-     * Libera rapidamente no atendimento
-     * humano ou na resposta de segurança.
-     */
-    window.setTimeout(() => {
-      isAutoReplyInProgressRef.current =
-        false;
-    }, 1700);
+    } catch (err) {
+      isAutoReplyInProgressRef.current = false;
+      console.warn('Erro na resposta do atendente virtual IA:', err);
+    }
+  } else {
+    // For Human Specialists: Record user message and wait for human operator in real-time
+    isAutoReplyInProgressRef.current = false;
+  }
   };
 
   const startConsultation = (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => {

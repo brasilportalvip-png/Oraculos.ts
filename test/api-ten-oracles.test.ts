@@ -267,7 +267,7 @@ describe('BATERIA PARAMETRIZADA: 10 TESTES REAIS DA API (POST /api/ai/oracle-int
   });
 
   // CASO 9: Cristais (Humano: c4 - Aura Celeste)
-  it('9. [CRISTAIS] Deve processar consulta real com consultora humana c4 (Aura Celeste) e builder de Litoterapia / Cristais', async () => {
+  it('9. [CRISTAIS] Deve processar consulta real com consultora humana c4 (Clarice Mendonça) e builder de Litoterapia / Cristais', async () => {
     const res = await request(app)
       .post('/api/ai/oracle-interpretation')
       .set('x-user-id', 'usr-client-1')
@@ -284,7 +284,7 @@ describe('BATERIA PARAMETRIZADA: 10 TESTES REAIS DA API (POST /api/ai/oracle-int
     expect(res.body.data.normalizedOracleId).toBe('cristais');
     expect(res.body.data.consultant).toEqual({
       id: 'c4',
-      name: 'Aura Celeste',
+      name: 'Clarice Mendonça',
       kind: 'human',
     });
 

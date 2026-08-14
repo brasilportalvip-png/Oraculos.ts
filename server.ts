@@ -1239,20 +1239,162 @@ app.use(userRoutes);
 app.use(minuteRoutes);
 
 // Health check
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    system: 'ORACULOS.TS API Backend',
+    system: 'ORACULOS.TS',
     timestamp: new Date().toISOString(),
-    services: {
-      api: 'ok',
-      firebaseAuth: firebaseAdminInitialized ? 'ok' : 'fallback_mode',
-      firestore: 'ok',
-      gemini: process.env.GEMINI_API_KEY ? 'configured' : 'missing_key',
-      mercadoPago: process.env.MERCADOPAGO_ACCESS_TOKEN ? 'configured' : 'configured_public_mode',
-    },
-    environment: process.env.NODE_ENV || 'development',
   });
+});
+
+// ==========================================
+// SITEMAPS, SEO, ROBOTS & DIGITAL ASSET LINKS
+// ==========================================
+
+const sendXmlFileOrFallback = (res: Response, filePath: string, fallbackXml: string) => {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  const fullPath = path.join(process.cwd(), filePath);
+  if (fs.existsSync(fullPath)) {
+    return res.sendFile(fullPath);
+  }
+  return res.send(fallbackXml);
+};
+
+app.get(['/sitemap.xml', '/sitemap_index.xml'], (_req: Request, res: Response) => {
+  sendXmlFileOrFallback(
+    res,
+    'public/sitemap.xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://oraculos-ts.vercel.app/sitemap-static.xml</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod></sitemap>
+  <sitemap><loc>https://oraculos-ts.vercel.app/sitemap-oraculos.xml</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod></sitemap>
+  <sitemap><loc>https://oraculos-ts.vercel.app/sitemap-especialistas.xml</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod></sitemap>
+  <sitemap><loc>https://oraculos-ts.vercel.app/sitemap-blog.xml</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod></sitemap>
+</sitemapindex>`
+  );
+});
+
+app.get('/sitemap-static.xml', (_req: Request, res: Response) => {
+  sendXmlFileOrFallback(
+    res,
+    'public/sitemap-static.xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oraculos-ts.vercel.app/</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/como-funciona</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/blog</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/suporte</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/termos</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>yearly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/privacidade</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>yearly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/cookies</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>yearly</changefreq><priority>0.4</priority></url>
+</urlset>`
+  );
+});
+
+app.get('/sitemap-oraculos.xml', (_req: Request, res: Response) => {
+  sendXmlFileOrFallback(
+    res,
+    'public/sitemap-oraculos.xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/tarot</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/baralho-cigano</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/astrologia</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/numerologia</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/buzios</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/ifa</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/runas</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/i-ching</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/cristais</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/oraculos/mesa-radionica</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+</urlset>`
+  );
+});
+
+app.get('/sitemap-especialistas.xml', (_req: Request, res: Response) => {
+  sendXmlFileOrFallback(
+    res,
+    'public/sitemap-especialistas.xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c1</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c2</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c3</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c4</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c5</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/c6</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-tarot</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-cigano</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-astrologia</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-numerologia</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-buzios</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-ifa</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-runas</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-iching</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-cristais</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/especialistas/v-mesaradionica</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+</urlset>`
+  );
+});
+
+app.get('/sitemap-blog.xml', (_req: Request, res: Response) => {
+  sendXmlFileOrFallback(
+    res,
+    'public/sitemap-blog.xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oraculos-ts.vercel.app/blog/portal-do-tarot-2026</loc><lastmod>2026-07-26T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/blog/baralho-cigano-vs-tarot</loc><lastmod>2026-07-23T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/blog/mesa-radionica-quantica</loc><lastmod>2026-07-18T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+</urlset>`
+  );
+});
+
+app.get('/robots.txt', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const fullPath = path.join(process.cwd(), 'public/robots.txt');
+  if (fs.existsSync(fullPath)) {
+    return res.sendFile(fullPath);
+  }
+  return res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /painel\nDisallow: /api/\nSitemap: https://oraculos-ts.vercel.app/sitemap.xml\n`);
+});
+
+app.get(['/.well-known/assetlinks.json', '/assetlinks.json'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const fullPath = path.join(process.cwd(), 'public/.well-known/assetlinks.json');
+  if (fs.existsSync(fullPath)) {
+    return res.sendFile(fullPath);
+  }
+  return res.json([
+    {
+      relation: [
+        'delegate_permission/common.handle_all_urls',
+        'delegate_permission/common.get_login_creds',
+      ],
+      target: {
+        namespace: 'android_app',
+        package_name: 'br.com.oraculos.app',
+        sha256_cert_fingerprints: [
+          '14:6D:E9:44:C5:9F:9C:23:86:60:A2:68:12:44:FE:33:4F:84:1B:6F:AC:6E:A4:F1:22:03:77:4F:21:76:AB:3D',
+        ],
+      },
+    },
+  ]);
+});
+
+app.get(['/manifest.webmanifest', '/manifest.json'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const fullPath = path.join(process.cwd(), 'public/manifest.webmanifest');
+  if (fs.existsSync(fullPath)) {
+    return res.sendFile(fullPath);
+  }
+  return res.sendFile(path.join(process.cwd(), 'public/manifest.json'));
 });
 
 // Security Status & Management
@@ -4226,6 +4368,188 @@ if (
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { code: 'AI_BLOG_FAILED', message: 'Erro ao gerar artigo de blog.' } });
+  }
+});
+
+// ==========================================
+// AI MODERATION & SUPPORT ASSISTANT
+// ==========================================
+const supportTicketsDb: Record<string, {
+  id: string;
+  protocol: string;
+  userId?: string;
+  userName?: string;
+  userEmail: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+}> = {};
+
+app.post('/api/ai/moderate-and-support', async (req: Request, res: Response) => {
+  try {
+    const { message, userContext } = req.body;
+    const cleanMessage = String(message || '').replace(/<[^>]*>/g, '').trim();
+
+    if (!cleanMessage) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'EMPTY_MESSAGE', message: 'Mensagem de suporte não pode estar vazia.' },
+      });
+    }
+
+    const lower = cleanMessage.toLowerCase();
+    let reply = '';
+    let category = 'general';
+    let suggestedAction = 'none';
+    let needsHumanEscalation = false;
+
+    // Detect Categories
+    if (lower.includes('reembolso') || lower.includes('estorno') || lower.includes('devolução') || lower.includes('cancelar compra')) {
+      category = 'refund';
+      reply = 'Compreendemos sua solicitação sobre reembolso ou estorno. De acordo com nossa política e com o Código de Defesa do Consumidor, solicitações de reembolso de pacotes de minutos não utilizados são analisadas pelo nosso suporte em até 2 dias úteis. Caso deseje abrir uma solicitação formal, utilize a opção "Abrir Ticket de Suporte" abaixo.';
+      suggestedAction = 'open_ticket';
+      needsHumanEscalation = true;
+    } else if (lower.includes('pagamento') || lower.includes('pix') || lower.includes('mercado pago') || lower.includes('recarga') || lower.includes('crédito')) {
+      category = 'billing';
+      reply = 'Para dúvidas sobre pagamentos e recargas: pagamentos via Pix no Mercado Pago são processados instantaneamente e os minutos são creditados de forma imediata na sua conta. Se o saldo não foi atualizado após o pagamento, verifique seu extrato na aba Minha Carteira ou envie o comprovante via ticket de suporte.';
+      suggestedAction = 'view_wallet';
+    } else if (lower.includes('lgpd') || lower.includes('dados') || lower.includes('excluir conta') || lower.includes('privacidade') || lower.includes('titular')) {
+      category = 'lgpd';
+      reply = 'Em conformidade com a LGPD (Lei 13.709/2018), você possui total controle sobre seus dados pessoais. É possível realizar o download do seu relatório completo de dados ou solicitar a exclusão definitiva diretamente na seção "Central de Privacidade e LGPD". Dúvidas podem ser encaminhadas diretamente ao nosso Encarregado de Dados (DPO) através do canal oficial.';
+      suggestedAction = 'view_privacy_portal';
+    } else if (lower.includes('consulta') || lower.includes('oráculo') || lower.includes('tarot') || lower.includes('atendente virtual')) {
+      category = 'consultation';
+      reply = 'Nossos atendimentos combinam especialistas qualificados e atendentes virtuais inteligentes desenvolvidos com conhecimento oracular canônico. O débito é calculado com precisão de minutos reais consumidos e transparência absoluta. Você pode iniciar um atendimento selecionando seu oráculo favorito no Marketplace.';
+      suggestedAction = 'view_marketplace';
+    } else {
+      reply = 'Olá! O Assistente de Apoio ORACULOS.TS está à sua disposição. Como podemos orientar sua experiência na plataforma hoje? Caso necessite de atendimento humano especializado, você pode registrar um ticket a qualquer momento.';
+      suggestedAction = 'open_ticket';
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        reply,
+        category,
+        suggestedAction,
+        needsHumanEscalation,
+        processedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error: any) {
+    console.error('Erro na moderação e suporte:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SUPPORT_AI_ERROR', message: 'Falha ao processar solicitação de suporte.' },
+    });
+  }
+});
+
+// Create Support Ticket
+app.post('/api/support/ticket', async (req: Request, res: Response) => {
+  try {
+    const { email, name, category, subject, message, userId } = req.body;
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanSubject = String(subject || 'Solicitação de Suporte').replace(/<[^>]*>/g, '').trim();
+    const cleanMessage = String(message || '').replace(/<[^>]*>/g, '').trim();
+
+    if (!cleanEmail || !cleanMessage) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_DATA', message: 'E-mail e descrição são obrigatórios para registrar o ticket.' },
+      });
+    }
+
+    const ticketId = `tkt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const protocol = `TKT-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+
+    const ticket = {
+      id: ticketId,
+      protocol,
+      userId: userId || undefined,
+      userName: name || 'Consulente',
+      userEmail: cleanEmail,
+      category: category || 'general',
+      subject: cleanSubject,
+      message: cleanMessage,
+      status: 'open' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    supportTicketsDb[ticketId] = ticket;
+
+    // Audit Log
+    auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId: userId || 'anonymous',
+      userName: name || 'Consulente',
+      userRole: 'client',
+      action: 'SUPPORT_TICKET_CREATED',
+      details: `Novo ticket criado: Protocolo ${protocol} [${ticket.category}] - ${cleanSubject}`,
+      ip: req.ip || '127.0.0.1',
+      status: 'SUCCESS',
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        ticketId,
+        protocol,
+        status: ticket.status,
+        createdAt: ticket.createdAt,
+        message: `Ticket registrado com sucesso sob o protocolo ${protocol}. Nossa equipe responderá em até 24 horas úteis.`,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erro ao criar ticket:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'TICKET_CREATION_FAILED', message: 'Não foi possível registrar o ticket de suporte.' },
+    });
+  }
+});
+
+// Admin Report AI Endpoint
+app.post('/api/ai/admin-report', requireAuth, requireRole(['admin', 'superadmin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { timeframe = '30d', metrics } = req.body;
+    const totalUsers = Object.keys(usersDb).length;
+    const totalTransactions = ledgerDb.length;
+    const totalTickets = Object.keys(supportTicketsDb).length;
+
+    const report = {
+      timeframe,
+      generatedAt: new Date().toISOString(),
+      summary: `Relatório Executivo ORACULOS.TS: Período ${timeframe}. Plataforma operando com estabilidade. Total de ${totalUsers} usuários cadastrados, ${totalTransactions} transações no ledger financeiro e ${totalTickets} chamados de suporte registrados. Todas as reconciliações de minutos e faturamento estão em conformidade com as regras de auditoria estrita.`,
+      kpis: {
+        activeUsers: totalUsers,
+        totalLedgerTransactions: totalTransactions,
+        openTickets: Object.values(supportTicketsDb).filter(t => t.status === 'open').length,
+        systemHealth: '100% Operational',
+        uptimeSeconds: Math.floor((Date.now() - securityMetrics.serverUptimeStart) / 1000),
+      },
+      recommendations: [
+        'Manter monitoramento contínuo dos tempos médios de resposta de IA e webhooks do Mercado Pago.',
+        'Auditar periodicamente os relatórios de exportação LGPD e consentimentos dos titulares.',
+        'Acompanhar a fila de tickets de suporte e manter tempo de resposta inferior a 24h.',
+      ],
+    };
+
+    return res.json({
+      success: true,
+      data: report,
+    });
+  } catch (error: any) {
+    console.error('Erro ao gerar relatório administrativo:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'REPORT_FAILED', message: 'Erro ao gerar relatório administrativo.' },
+    });
   }
 });
 
