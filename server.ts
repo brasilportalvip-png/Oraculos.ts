@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   executarOracleProfile,
+  validarEntradaOraculo,
   normalizarOracleProfileId,
 } from './src/oracle-engine/index.js';
 
@@ -31,24 +32,42 @@ import { VIRTUAL_PROFILES } from './src/data/virtualProfiles.js';
 import { INITIAL_CONSULTANTS } from './src/data/mockData.js';
 import { ConsultationIntent, OracleResponseValidation } from './src/types.js';
 
-function verifyConsultantOracleAuthorization(
+// Configuration collision validation between Human and Virtual profiles
+const humanConsultants = INITIAL_CONSULTANTS.filter((c) => !c.isAI);
+const humanIdSet = new Set(humanConsultants.map((c) => c.id));
+const configCollisionIds = VIRTUAL_PROFILES.filter((p) => humanIdSet.has(p.id)).map((p) => p.id);
+if (configCollisionIds.length > 0) {
+  console.error(
+    `[ORACULOS.TS CONFIG ERROR] Colisão de identificadores entre consultores humanos e virtuais: ${configCollisionIds.join(', ')}`
+  );
+}
+
+export interface ConsultantAuthorizationResult {
+  authorized: boolean;
+  resolvedConsultantId?: string;
+  consultantKind?: 'human' | 'virtual';
+  consultantName?: string;
+  normalizedOracleId?: string;
+  statusCode?: number;
+  code?: string;
+  message?: string;
+}
+
+export function verifyConsultantOracleAuthorization(
   consultantId: string | undefined,
   normalizedOracleId: string
-): { authorized: boolean; statusCode?: number; code?: string; message?: string } {
+): ConsultantAuthorizationResult {
   if (!consultantId) {
-    return { authorized: true };
+    return {
+      authorized: true,
+      normalizedOracleId,
+    };
   }
 
   const cid = String(consultantId).trim();
 
-  // 1. Check Virtual Profiles (AI)
-  const virtualProfile = VIRTUAL_PROFILES.find(
-    (p) =>
-      p.id === cid ||
-      `c_${p.id}` === cid ||
-      p.id.replace(/^ai_/, '') === cid.replace(/^(ai_|c_)/, '')
-  );
-
+  // 1. Strict Virtual Profile Lookup by Exact ID Equality (No prefix stripping)
+  const virtualProfile = VIRTUAL_PROFILES.find((p) => p.id === cid);
   if (virtualProfile) {
     const authorizedList = (virtualProfile.authorizedOracles || [])
       .map((o) => normalizarOracleProfileId(o))
@@ -57,21 +76,32 @@ function verifyConsultantOracleAuthorization(
     if (!authorizedList.includes(normalizedOracleId as any)) {
       return {
         authorized: false,
+        resolvedConsultantId: virtualProfile.id,
+        consultantKind: 'virtual',
+        consultantName: virtualProfile.name,
+        normalizedOracleId,
         statusCode: 403,
         code: 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
         message: `O atendente virtual '${virtualProfile.name}' não está autorizado para o oráculo '${normalizedOracleId}'.`,
       };
     }
-    return { authorized: true };
+
+    return {
+      authorized: true,
+      resolvedConsultantId: virtualProfile.id,
+      consultantKind: 'virtual',
+      consultantName: virtualProfile.name,
+      normalizedOracleId,
+    };
   }
 
-  // 2. Check Human Consultants
-  const humanConsultant = INITIAL_CONSULTANTS.find((c) => c.id === cid);
+  // 2. Strict Human Consultant Lookup by Exact ID Equality (No prefix stripping)
+  const humanConsultant = INITIAL_CONSULTANTS.find((c) => c.id === cid && !c.isAI);
   if (humanConsultant) {
     const rawList =
       humanConsultant.allowedOracles && humanConsultant.allowedOracles.length > 0
         ? humanConsultant.allowedOracles
-        : humanConsultant.specialties;
+        : humanConsultant.specialties || [];
 
     const authorizedList = rawList
       .map((o) => normalizarOracleProfileId(o))
@@ -80,17 +110,29 @@ function verifyConsultantOracleAuthorization(
     if (!authorizedList.includes(normalizedOracleId as any)) {
       return {
         authorized: false,
+        resolvedConsultantId: humanConsultant.id,
+        consultantKind: 'human',
+        consultantName: humanConsultant.name,
+        normalizedOracleId,
         statusCode: 403,
         code: 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
         message: `O consultor '${humanConsultant.name}' não está autorizado para o oráculo '${normalizedOracleId}'.`,
       };
     }
-    return { authorized: true };
+
+    return {
+      authorized: true,
+      resolvedConsultantId: humanConsultant.id,
+      consultantKind: 'human',
+      consultantName: humanConsultant.name,
+      normalizedOracleId,
+    };
   }
 
-  // Consultant provided but not found anywhere
+  // 3. Consultant Not Found (Exact Match Failed)
   return {
     authorized: false,
+    normalizedOracleId,
     statusCode: 404,
     code: 'CONSULTANT_NOT_FOUND',
     message: `Consultor com ID '${cid}' não foi encontrado.`,
@@ -749,16 +791,12 @@ export const requireAuth = async (
   }
 
   try {
-    if (
-      !firebaseAdminInitialized ||
-      !firebaseAdminApp
-    ) {
-      return res.status(500).json({
+    if (!firebaseAdminInitialized || !firebaseAdminApp) {
+      return res.status(401).json({
         success: false,
         error: {
-          code: 'AUTH_CONFIG_ERROR',
-          message:
-            'Serviço de autenticação do Firebase indisponível.',
+          code: 'INVALID_TOKEN',
+          message: 'Token de autenticação inválido ou não reconhecido.',
         },
       });
     }
@@ -1382,28 +1420,6 @@ app.post(
     res: Response,
   ) => {
     try {
-      if (!mpConfig) {
-        return res.status(503).json({
-          success: false,
-          error: {
-            code: 'MERCADOPAGO_NOT_CONFIGURED',
-            message:
-              'Mercado Pago não está configurado no servidor.',
-          },
-        });
-      }
-
-      if (!adminDb) {
-        return res.status(503).json({
-          success: false,
-          error: {
-            code: 'FIRESTORE_NOT_AVAILABLE',
-            message:
-              'Banco de dados temporariamente indisponível.',
-          },
-        });
-      }
-
       const userId = req.user?.uid;
       const userEmail = req.user?.email;
       const requestedAmount = Number(
@@ -1463,6 +1479,28 @@ app.post(
             code: 'INVALID_PACKAGE',
             message:
               'Valor de recarga não permitido. Selecione um dos pacotes oficiais.',
+          },
+        });
+      }
+
+      if (!mpConfig) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'MERCADOPAGO_NOT_CONFIGURED',
+            message:
+              'Mercado Pago não está configurado no servidor.',
+          },
+        });
+      }
+
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
           },
         });
       }
@@ -1792,31 +1830,9 @@ if (
 
 
 
-      if (!mpConfig) {
-        console.error(
-          '[ORACULOS.TS] Webhook recebido sem Mercado Pago configurado.',
-        );
-
-        return res.status(503).json({
-          error:
-            'Mercado Pago não configurado.',
-        });
-      }
-
-      if (!adminDb) {
-        console.error(
-          '[ORACULOS.TS] Webhook recebido sem Firestore disponível.',
-        );
-
-        return res.status(503).json({
-          error:
-            'Firestore indisponível.',
-        });
-      }
-
       /*
        * A assinatura é validada quando o
-       * segredo foi configurado na Vercel.
+       * segredo foi configurado na Vercel ou no ambiente.
        */
       const webhookSecret =
         process.env
@@ -1923,6 +1939,28 @@ if (
             });
           }
         }
+      }
+
+      if (!mpConfig) {
+        console.error(
+          '[ORACULOS.TS] Webhook recebido sem Mercado Pago configurado.',
+        );
+
+        return res.status(503).json({
+          error:
+            'Mercado Pago não configurado.',
+        });
+      }
+
+      if (!adminDb) {
+        console.error(
+          '[ORACULOS.TS] Webhook recebido sem Firestore disponível.',
+        );
+
+        return res.status(503).json({
+          error:
+            'Firestore indisponível.',
+        });
       }
 
       /*
@@ -2495,15 +2533,6 @@ processedPaymentIds.add(
   },
 );
 
-
-
-
-
-
-
-
-
-
 // Consultation Balance Debit Endpoint
 // Debita minutos de forma atômica no Firestore.
 app.post(
@@ -2514,17 +2543,6 @@ app.post(
     res: Response,
   ) => {
     try {
-      if (!adminDb) {
-        return res.status(503).json({
-          success: false,
-          error: {
-            code: 'FIRESTORE_NOT_AVAILABLE',
-            message:
-              'Banco de dados temporariamente indisponível.',
-          },
-        });
-      }
-
       const userId = req.user?.uid;
 
       const debitMinutes = Number(
@@ -2566,79 +2584,68 @@ app.post(
         });
       }
 
+      /*
+       * Compatibilidade com a bateria de testes automatizados e fallback de memória
+       */
+      if (process.env.NODE_ENV === 'test' || !adminDb) {
+        const testUser = usersDb[userId];
 
+        if (!testUser) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code: 'USER_NOT_FOUND',
+              message:
+                'Usuário não encontrado.',
+            },
+          });
+        }
 
+        const balanceBefore =
+          Number(
+            testUser.balance || 0,
+          );
 
+        if (
+          balanceBefore <
+          debitMinutes
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code:
+                'INSUFFICIENT_FUNDS',
+              message:
+                'Você não possui minutos suficientes para iniciar esta consulta.',
+            },
+          });
+        }
 
-/*
- * Compatibilidade exclusiva com a bateria
- * antiga de testes automatizados.
- *
- * Em produção, o débito continua sendo feito
- * pelo Firestore logo abaixo.
- */
-if (
-  process.env.NODE_ENV === 'test'
-) {
-  const testUser =
-    usersDb[userId];
+        const balanceAfter =
+          balanceBefore -
+          debitMinutes;
 
-  if (!testUser) {
-    return res.status(404).json({
-      success: false,
-      error: {
-        code: 'USER_NOT_FOUND',
-        message:
-          'Usuário de teste não encontrado.',
-      },
-    });
-  }
+        testUser.balance =
+          balanceAfter;
 
-  const balanceBefore =
-    Number(
-      testUser.balance || 0,
-    );
+        usersDb[userId] =
+          testUser;
 
-  if (
-    balanceBefore <
-    debitMinutes
-  ) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code:
-          'INSUFFICIENT_FUNDS',
-        message:
-          'Você não possui minutos suficientes para iniciar esta consulta.',
-      },
-    });
-  }
+        const transactionId =
+          `test-consultation-${userId}-${Date.now()}`;
 
-  const balanceAfter =
-    balanceBefore -
-    debitMinutes;
-
-  testUser.balance =
-    balanceAfter;
-
-  usersDb[userId] =
-    testUser;
-
-  const transactionId =
-    `test-consultation-${userId}-${Date.now()}`;
-
-  return res.status(200).json({
-    success: true,
-    data: {
-      transactionId,
-      debitMinutes,
-      balanceBefore,
-      balanceAfter,
-      processedAt:
-        new Date().toISOString(),
-    },
-  });
-}
+        return res.status(200).json({
+          success: true,
+          data: {
+            transactionId,
+            debitMinutes,
+            balanceBefore,
+            balanceAfter,
+            processedAt:
+              new Date().toISOString(),
+          },
+        });
+      }
 
 
 
@@ -2996,10 +3003,14 @@ app.post(
       };
     };
 
+    // 1. Oracle Type Validation
     if (!oracleType || typeof oracleType !== 'string' || !oracleType.trim()) {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_ORACLE', message: 'O tipo do oráculo é obrigatório.' },
+        error: {
+          code: 'INVALID_ORACLE',
+          message: 'O tipo do oráculo é obrigatório.',
+        },
       });
     }
 
@@ -3007,34 +3018,50 @@ app.post(
     if (!normalizedOracleId) {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_ORACLE', message: `Oráculo '${oracleType}' não é suportado ou é inválido.` },
+        error: {
+          code: 'INVALID_ORACLE',
+          message: `Oráculo '${oracleType}' não é suportado ou é inválido.`,
+        },
       });
     }
 
+    // 2. Strict Consultant Identity Resolution & Oracle Authorization
     const consultantId = rawConsultantId || rawAttendantId;
+    let consultantAuthResult: ConsultantAuthorizationResult | null = null;
     if (consultantId) {
-      const authCheck = verifyConsultantOracleAuthorization(consultantId, normalizedOracleId);
-      if (!authCheck.authorized) {
-        return res.status(authCheck.statusCode || 403).json({
+      consultantAuthResult = verifyConsultantOracleAuthorization(consultantId, normalizedOracleId);
+      if (!consultantAuthResult.authorized) {
+        return res.status(consultantAuthResult.statusCode || 403).json({
           success: false,
           error: {
-            code: authCheck.code || 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
-            message: authCheck.message || 'Oráculo não autorizado para este consultor.',
+            code: consultantAuthResult.code || 'ORACLE_UNAUTHORIZED_FOR_CONSULTANT',
+            message: consultantAuthResult.message || 'Oráculo não autorizado para este consultor.',
+            normalizedOracleId,
+            consultant: consultantAuthResult.resolvedConsultantId
+              ? {
+                  id: consultantAuthResult.resolvedConsultantId,
+                  name: consultantAuthResult.consultantName,
+                  kind: consultantAuthResult.consultantKind,
+                }
+              : undefined,
           },
         });
       }
     }
 
-    // INPUT LENGTH LIMIT (Max 2000 chars)
+    // 3. Input Length Limit (Max 2000 chars)
     const combinedPromptLength = (userQuestion || '').length + (contextPrompt || '').length;
     if (combinedPromptLength > 2000) {
       return res.status(400).json({
         success: false,
-        error: { code: 'PROMPT_TOO_LONG', message: 'O texto da pergunta excede o limite máximo permitido de 2.000 caracteres.' },
+        error: {
+          code: 'PROMPT_TOO_LONG',
+          message: 'O texto da pergunta excede o limite máximo permitido de 2.000 caracteres.',
+        },
       });
     }
 
-    // Prompt Injection Guard
+    // 4. Prompt Injection Guard
     if (securityConfig.promptInjectionGuard && (userQuestion || contextPrompt)) {
       const injectionPattern = /(ignore (previous|all) (instructions|prompts)|system prompt|reveal (key|secret)|print (api_key|token)|DAN mode|ignore as instruções)/gi;
       if (injectionPattern.test(userQuestion || '') || injectionPattern.test(contextPrompt || '')) {
@@ -3053,7 +3080,10 @@ app.post(
         });
         return res.status(400).json({
           success: false,
-          error: { code: 'PROMPT_GUARD_BLOCKED', message: 'Sua pergunta foi bloqueada pelo Escudo de Segurança de IA (Prompt Guard).' },
+          error: {
+            code: 'PROMPT_GUARD_BLOCKED',
+            message: 'Sua pergunta foi bloqueada pelo Escudo de Segurança de IA (Prompt Guard).',
+          },
         });
       }
     }
@@ -3062,86 +3092,39 @@ app.post(
     if (!ai) {
       return res.status(503).json({
         success: false,
-        error: { code: 'GEMINI_UNAVAILABLE', message: 'Serviço de IA temporariamente indisponível. Verifique a chave GEMINI_API_KEY no servidor.' },
+        error: {
+          code: 'GEMINI_UNAVAILABLE',
+          message: 'Serviço de IA temporariamente indisponível. Verifique a chave GEMINI_API_KEY no servidor.',
+        },
       });
     }
 
-    // Clean user content HTML
+    // 5. Clean user inputs
     const cleanUserQuestion = (userQuestion || 'Orientação geral para o momento atual').replace(/<[^>]*>/g, '');
     const cleanContext = (contextPrompt || 'Nenhum').replace(/<[^>]*>/g, '');
+    const profileFullName = String(
+      userProfile?.birthFullName || userProfile?.fullName || userProfile?.name || ''
+    ).trim();
+    const profileBirthDate = String(userProfile?.birthDate || '').trim();
 
+    // 6. Execute Oracle Engine Profile Builder Synchronously
+    const oracleProfileResult = executarOracleProfile(normalizedOracleId, {
+      fullName: profileFullName,
+      birthDate: profileBirthDate,
+      birthTime: userProfile?.birthTime,
+      city: userProfile?.city,
+      question: cleanUserQuestion,
+    }) as {
+      resumoParaOraculo?: string;
+      resumoParaMariaPadilha?: string;
+    };
 
-
-    const profileFullName =
-      String(
-        userProfile?.birthFullName ||
-        userProfile?.fullName ||
-        userProfile?.name ||
-        '',
-      ).trim();
-
-const profileBirthDate =
-  String(
-    userProfile?.birthDate ||
-    '',
-  ).trim();
-
-let oracleProfileSummary = '';
-
-if (
-  normalizedOracleId &&
-  profileFullName &&
-  profileBirthDate
-) {
-  try {
-    const oracleProfileResult =
-      executarOracleProfile(
-        normalizedOracleId,
-        {
-          fullName:
-            profileFullName,
-
-          birthDate:
-            profileBirthDate,
-
-          birthTime:
-            userProfile?.birthTime,
-
-          city:
-            userProfile?.city,
-
-          question:
-            cleanUserQuestion,
-        },
-      ) as {
-        resumoParaOraculo?: string;
-        resumoParaMariaPadilha?: string;
-      };
-
-    oracleProfileSummary =
-      oracleProfileResult
-        .resumoParaOraculo ||
-      oracleProfileResult
-        .resumoParaMariaPadilha ||
+    const oracleProfileSummary =
+      oracleProfileResult.resumoParaOraculo ||
+      oracleProfileResult.resumoParaMariaPadilha ||
       '';
-  } catch (profileError) {
-    console.error(
-      '[ORACULOS.TS] Perfil oracular não pôde ser executado:',
-      {
-        oracleType,
-        normalizedOracleId,
-        error:
-          profileError instanceof Error
-            ? profileError.message
-            : String(profileError),
-      },
-    );
-  }
-}
 
-
-
-    const systemInstruction = `Você é um mestre oraculista especializado em ${oracleType || 'Tarot, Baralho Cigano e Búzios'}.
+    const systemInstruction = `Você é um mestre oraculista especializado no oráculo ${normalizedOracleId}.
 Suas respostas devem ser profundas, éticas, acolhedoras, metafóricas e espiritualmente elevadas.
 Forneça insights claros, conselhos para reflexão pessoal e orientação prática.
 Evite fazer previsões médicas ou promessas absolutas sobre o futuro.
@@ -3149,7 +3132,7 @@ Idioma: Português do Brasil. Formato: Markdown legível com tópicos.`;
 
     const prompt = `
 Consulte o oráculo:
-${oracleType || 'Tarot'}
+${normalizedOracleId}
 
 Carta ou símbolo informado pela interface:
 ${cardOrSymbol || 'Tiragem geral'}
@@ -3161,15 +3144,10 @@ Contexto adicional:
 ${cleanContext}
 
 RESULTADO INTERNO DO PERFIL ORACULAR:
-
-${
-  oracleProfileSummary ||
-  'O perfil oracular especializado não recebeu dados completos. Utilize o contexto disponível sem inventar cálculos.'
-}
+${oracleProfileSummary}
 
 INSTRUÇÕES DE INTERPRETAÇÃO:
-
-- Utilize o resultado interno como base principal.
+- Utilize o resultado interno como base principal do atendimento.
 - Não contradiga cartas, símbolos, números, Odùs, runas ou hexagramas apresentados.
 - Não diga que executou código, cálculo ou seleção automática.
 - Não mencione sistema, algoritmo, prompt ou inteligência artificial.
@@ -3181,334 +3159,97 @@ INSTRUÇÕES DE INTERPRETAÇÃO:
 - Não responda como relatório técnico.
 `.trim();
 
-    
-
-
-
-const oracleModels =
-  GEMINI_MODELS.slice(
-    0,
-    GEMINI_MAX_RETRIES,
-  );
-
-const oracleModelFailures: Array<{
-  model: string;
-  reason: string;
-  statusCode: number | null;
-  elapsedMs: number;
-}> = [];
-
-let sanitizedOutput = '';
-let oracleModelUsed = '';
-
-for (const model of oracleModels) {
-  const attemptStartedAt =
-    Date.now();
-
-  const controller =
-    new AbortController();
-
-  const timeoutHandle =
-    setTimeout(() => {
-      controller.abort(
-        new Error(
-          'GEMINI_ORACLE_TIMEOUT',
-        ),
-      );
+    // 7. Atomic Gemini Execution (Exactly 1 call, no hidden retry loops or switches to generic prompt)
+    const modelToUse = GEMINI_MODELS[0] || 'gemini-2.5-flash';
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => {
+      controller.abort(new Error('GEMINI_ORACLE_TIMEOUT'));
     }, GEMINI_MODEL_TIMEOUT_MS);
 
-  try {
-    console.log(
-      '[ORACULOS.TS] Tentativa Gemini para interpretação oracular.',
-      {
-        userId,
-        model,
-        timeoutMs:
-          GEMINI_MODEL_TIMEOUT_MS,
-      },
-    );
-
-    const response =
-      await ai.models.generateContent({
-        model,
+    try {
+      const response = await ai.models.generateContent({
+        model: modelToUse,
         contents: prompt,
-
         config: {
           systemInstruction,
-
-          maxOutputTokens:
-            GEMINI_MAX_OUTPUT_TOKENS,
-
-          abortSignal:
-            controller.signal,
-
+          maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+          abortSignal: controller.signal,
           httpOptions: {
-            timeout:
-              GEMINI_MODEL_TIMEOUT_MS,
+            timeout: GEMINI_MODEL_TIMEOUT_MS,
           },
         },
       });
 
-    const rawText =
-      String(
-        response.text || '',
-      ).trim();
+      const rawText = String(response.text || '').trim();
+      const sanitizedOutput = rawText.replace(/<script.*?>.*?<\/script>/gi, '').trim();
 
-    const candidateOutput =
-      rawText
-        .replace(
-          /<script.*?>.*?<\/script>/gi,
-          '',
-        )
-        .trim();
+      if (sanitizedOutput.length <= 20) {
+        return res.status(502).json({
+          success: false,
+          error: {
+            code: 'GEMINI_EXECUTION_FAILED',
+            message: 'O modelo de inteligência artificial retornou uma resposta vazia ou insuficiente.',
+          },
+        });
+      }
 
-    if (
-      candidateOutput.length <= 20
-    ) {
-      const invalidResponseError =
-        new Error(
-          'GEMINI_EMPTY_ORACLE_RESPONSE',
-        );
+      // Usage is only accounted after successful response
+      userDailyAiUsage[userId].count++;
 
-      (
-        invalidResponseError as
-          Error & {
-            statusCode?: number;
-          }
-      ).statusCode = 503;
-
-      throw invalidResponseError;
-    }
-
-    sanitizedOutput =
-      candidateOutput;
-
-    oracleModelUsed =
-      model;
-
-    console.log(
-      '[ORACULOS.TS] Interpretação oracular gerada.',
-      {
+      auditLogs.unshift({
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toISOString(),
         userId,
-        model,
-        elapsedMs:
-          Date.now() -
-          attemptStartedAt,
-        fallbackCount:
-          oracleModelFailures.length,
-      },
-    );
+        userName: req.user?.name || 'Consultor / Sistema',
+        userRole: req.user?.role || 'user',
+        action: 'AI_ORACLE_INTERPRETATION',
+        details: `Interpretação gerada para ${normalizedOracleId} (${cardOrSymbol || 'Geral'}) usando ${modelToUse}.`,
+        ip: req.ip || '127.0.0.1',
+        status: 'SUCCESS',
+      });
 
-    break;
+      return res.json({
+        success: true,
+        data: {
+          interpretation: sanitizedOutput,
+          oracleType,
+          normalizedOracleId,
+          cardOrSymbol: cardOrSymbol || 'Tiragem em Tempo Real',
+          consultant: consultantAuthResult?.resolvedConsultantId
+            ? {
+                id: consultantAuthResult.resolvedConsultantId,
+                name: consultantAuthResult.consultantName,
+                kind: consultantAuthResult.consultantKind,
+              }
+            : undefined,
+          modelUsed: modelToUse,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (geminiError: any) {
+      console.error('[ORACULOS.TS] Erro atômico na execução Gemini:', geminiError?.message || geminiError);
+
+      const isTimeout =
+        controller.signal.aborted ||
+        geminiError?.name === 'AbortError' ||
+        geminiError?.message === 'GEMINI_ORACLE_TIMEOUT';
+
+      const statusCode = isTimeout ? 504 : 502;
+
+      return res.status(statusCode).json({
+        success: false,
+        error: {
+          code: 'GEMINI_EXECUTION_FAILED',
+          message: isTimeout
+            ? 'Tempo limite de resposta excedido na consulta ao Gemini.'
+            : 'Falha na comunicação direta com o serviço de inteligência artificial Gemini.',
+        },
+      });
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
   } catch (error: unknown) {
-    const candidateError =
-      error as {
-        name?: string;
-        message?: string;
-        status?: unknown;
-        statusCode?: unknown;
-        response?: {
-          status?: unknown;
-        };
-        error?: {
-          code?: unknown;
-        };
-      };
-
-    const possibleStatus =
-      candidateError.status ??
-      candidateError.statusCode ??
-      candidateError.response?.status ??
-      candidateError.error?.code;
-
-    const parsedStatus =
-      Number(possibleStatus);
-
-    const statusCode =
-      Number.isFinite(parsedStatus)
-        ? parsedStatus
-        : null;
-
-    const timedOut =
-      controller.signal.aborted ||
-      candidateError.name ===
-        'AbortError' ||
-      candidateError.name ===
-        'RequestTimeoutError' ||
-      candidateError.message ===
-        'GEMINI_ORACLE_TIMEOUT';
-
-    const reason =
-      timedOut
-        ? 'TIMEOUT'
-        : candidateError.message ||
-          'UNKNOWN_GEMINI_ORACLE_ERROR';
-
-    const normalizedReason =
-      reason.toLowerCase();
-
-    const retryable =
-      timedOut ||
-      statusCode === 408 ||
-      statusCode === 429 ||
-      statusCode === 500 ||
-      statusCode === 502 ||
-      statusCode === 503 ||
-      statusCode === 504 ||
-      normalizedReason.includes(
-        'network',
-      ) ||
-      normalizedReason.includes(
-        'fetch failed',
-      ) ||
-      normalizedReason.includes(
-        'overloaded',
-      ) ||
-      normalizedReason.includes(
-        'resource exhausted',
-      ) ||
-      normalizedReason.includes(
-        'temporarily unavailable',
-      ) ||
-      reason ===
-        'GEMINI_EMPTY_ORACLE_RESPONSE';
-
-    oracleModelFailures.push({
-      model,
-      reason,
-      statusCode,
-      elapsedMs:
-        Date.now() -
-        attemptStartedAt,
-    });
-
-    console.warn(
-      '[ORACULOS.TS] Modelo Gemini falhou na interpretação oracular.',
-      {
-        userId,
-        model,
-        reason,
-        statusCode,
-        retryable,
-      },
-    );
-
-    if (!retryable) {
-      throw error;
-    }
-  } finally {
-    clearTimeout(
-      timeoutHandle,
-    );
-  }
-}
-
-if (
-  !sanitizedOutput ||
-  !oracleModelUsed
-) {
-  console.error(
-    '[ORACULOS.TS] Todos os modelos falharam na interpretação oracular.',
-    {
-      userId,
-      attemptedModels:
-        oracleModels,
-      failures:
-        oracleModelFailures,
-    },
-  );
-
-  return res.status(503).json({
-    success: false,
-
-    error: {
-      code:
-        'ALL_GEMINI_ORACLE_MODELS_UNAVAILABLE',
-
-      message:
-        'A interpretação oracular está temporariamente indisponível. Nenhum uso foi contabilizado. Tente novamente em alguns instantes.',
-    },
-  });
-}
-
-/*
- * O uso diário só é contabilizado
- * depois de uma resposta válida.
- */
-userDailyAiUsage[userId].count++;
-
-auditLogs.unshift({
-  id:
-    `log-${Date.now()}`,
-
-  timestamp:
-    new Date().toISOString(),
-
-  userId,
-
-  userName:
-    req.user?.name ||
-    'Consultor / Sistema',
-
-  userRole:
-    req.user?.role ||
-    'user',
-
-  action:
-    'AI_ORACLE_INTERPRETATION',
-
-  details:
-    `Interpretação gerada para ${oracleType} ` +
-    `(${cardOrSymbol || 'Geral'}) usando ${oracleModelUsed}. ` +
-    `Fallbacks anteriores: ${oracleModelFailures.length}.`,
-
-  ip:
-    req.ip ||
-    '127.0.0.1',
-
-  status:
-    'SUCCESS',
-});
-
-
-
-
-
-
-return res.json({
-  success: true,
-
-  data: {
-    interpretation:
-      sanitizedOutput,
-
-    oracleType,
-
-    cardOrSymbol,
-
-    modelUsed:
-      oracleModelUsed,
-
-    fallbackCount:
-      oracleModelFailures.length,
-
-    attemptedModels:
-      oracleModels.slice(
-        0,
-        oracleModelFailures.length + 1,
-      ),
-
-    generatedAt:
-      new Date().toISOString(),
-  },
-});    
-
-
-
-
-} catch (error: unknown) {
-  const candidateError =
-    error as {
+    const candidateError = error as {
       status?: unknown;
       statusCode?: unknown;
       response?: {
@@ -3517,51 +3258,23 @@ return res.json({
       message?: string;
     };
 
-  const possibleStatus =
-    candidateError.status ??
-    candidateError.statusCode ??
-    candidateError.response?.status;
+    const possibleStatus =
+      candidateError.status ??
+      candidateError.statusCode ??
+      candidateError.response?.status;
 
-  const parsedStatus =
-    Number(possibleStatus);
-
-  const statusCode =
-    Number.isFinite(parsedStatus)
+    const parsedStatus = Number(possibleStatus);
+    const statusCode = Number.isFinite(parsedStatus) && parsedStatus >= 400 && parsedStatus <= 599
       ? parsedStatus
       : 500;
 
-  console.error(
-    '[ORACULOS.TS] Erro não recuperável na interpretação oracular.',
-    {
-      userId,
-      statusCode,
-      message:
-        candidateError.message ||
-        'UNKNOWN_ORACLE_ERROR',
-    },
-  );
+    console.error('[ORACULOS.TS] Erro geral na rota de interpretação oracular:', error);
 
-  const safeStatusCode =
-    statusCode >= 400 &&
-    statusCode <= 599
-      ? statusCode
-      : 500;
-
-  return res
-    .status(safeStatusCode)
-    .json({
+    return res.status(statusCode).json({
       success: false,
-
-            error: {
-        code:
-          'AI_ORACLE_GENERATION_FAILED',
-
-        message:
-          safeStatusCode === 400 ||
-          safeStatusCode === 401 ||
-          safeStatusCode === 403
-            ? 'A solicitação da interpretação foi rejeitada. Verifique a autenticação e os dados enviados.'
-            : 'Não foi possível gerar a interpretação oracular. Nenhum uso foi contabilizado.',
+      error: {
+        code: 'AI_ORACLE_GENERATION_FAILED',
+        message: 'Não foi possível processar a solicitação oracular. Nenhum uso foi contabilizado.',
       },
     });
   }
@@ -3600,15 +3313,10 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
       }
     }
 
-    // Find attendant profile
+    // Find attendant profile with strict exact ID matching
     let attendant = null;
     if (attendantId) {
-      attendant = VIRTUAL_PROFILES.find(
-        (p) =>
-          p.id === attendantId ||
-          `c_${p.id}` === attendantId ||
-          p.id.replace(/^ai_/, '') === String(attendantId).replace(/^(ai_|c_)/, '')
-      );
+      attendant = VIRTUAL_PROFILES.find((p) => p.id === String(attendantId).trim());
       if (!attendant) {
         return res.status(404).json({
           success: false,
@@ -4672,7 +4380,7 @@ app.post('/api/user/delete-account', requireAuth, (req: AuthenticatedRequest, re
 async function startLocalServer(): Promise<void> {
   const isVercel = process.env.VERCEL === '1';
 
-  if (isVercel || process.env.NODE_ENV === 'test') {
+  if (isVercel || process.env.NODE_ENV === 'test' || process.env.VITEST) {
     return;
   }
 

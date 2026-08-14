@@ -1,6 +1,7 @@
 export {
   ORACLE_PROFILES,
   executarOracleProfile,
+  validarEntradaOraculo,
   listarOracleProfiles,
   normalizarOracleProfileId,
   obterOracleProfile,
@@ -21,7 +22,8 @@ export {
 export type {
   OracleProfileId,
   OracleProfileInput,
-  OracleProfileDefinition
+  OracleProfileDefinition,
+  OracleValidationResult
 } from './profiles/index.js';
 
 export {

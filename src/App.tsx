@@ -83,6 +83,7 @@ function MainAppContent() {
       {selectedConsultant && (
         <ConsultantProfileModal
           consultant={selectedConsultant}
+          initialOracle={selectedOracle}
           onClose={() => setSelectedConsultant(null)}
           onStartConsultation={handleStartConsultation}
         />

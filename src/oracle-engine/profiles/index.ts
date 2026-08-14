@@ -176,6 +176,79 @@ export const ORACLE_PROFILES: Record<
   }
 };
 
+export interface OracleValidationResult {
+  valid: boolean;
+  normalizedOracleId: OracleProfileId | null;
+  missingFields: string[];
+  message?: string;
+}
+
+export function validarEntradaOraculo(
+  oracleType: unknown,
+  input: {
+    fullName?: string;
+    birthFullName?: string;
+    name?: string;
+    birthDate?: string;
+    birthTime?: string;
+    city?: string;
+    question?: string;
+  }
+): OracleValidationResult {
+  if (!oracleType || typeof oracleType !== 'string' || !oracleType.trim()) {
+    return {
+      valid: false,
+      normalizedOracleId: null,
+      missingFields: [],
+      message: 'O tipo do oráculo é obrigatório.'
+    };
+  }
+
+  const normalizedOracleId = normalizarOracleProfileId(oracleType);
+  if (!normalizedOracleId) {
+    return {
+      valid: false,
+      normalizedOracleId: null,
+      missingFields: [],
+      message: `Oráculo '${oracleType}' não é suportado ou é inválido.`
+    };
+  }
+
+  const missingFields: string[] = [];
+  const fullName = String(
+    input.fullName || input.birthFullName || input.name || ''
+  ).trim();
+  const birthDate = String(input.birthDate || '').trim();
+
+  if (!fullName) {
+    missingFields.push('fullName');
+  }
+  if (!birthDate) {
+    missingFields.push('birthDate');
+  }
+
+  if (missingFields.length > 0) {
+    const fieldDescriptions = missingFields.map((f) => {
+      if (f === 'fullName') return 'Nome completo (fullName)';
+      if (f === 'birthDate') return 'Data de nascimento (birthDate)';
+      return f;
+    });
+
+    return {
+      valid: false,
+      normalizedOracleId,
+      missingFields,
+      message: `Dados obrigatórios ausentes para o oráculo '${normalizedOracleId}': ${fieldDescriptions.join(', ')}.`
+    };
+  }
+
+  return {
+    valid: true,
+    normalizedOracleId,
+    missingFields: []
+  };
+}
+
 export function normalizarOracleProfileId(
   valor: string
 ): OracleProfileId | null {

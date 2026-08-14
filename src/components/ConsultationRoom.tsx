@@ -42,15 +42,35 @@ export const ConsultationRoom: React.FC = () => {
     e.preventDefault();
     setAiLoading(true);
     setAiInterpretation(null);
-    try {
-      const firebaseUser = auth.currentUser;
-      const idToken = firebaseUser ? await firebaseUser.getIdToken(true) : '';
 
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      setAiLoading(false);
+      setAiInterpretation('Sua sessão expirou ou você não está autenticado. Por favor, faça login novamente para consultar a IA.');
+      return;
+    }
+
+    let idToken = '';
+    try {
+      idToken = await firebaseUser.getIdToken();
+    } catch {
+      setAiLoading(false);
+      setAiInterpretation('Não foi possível obter o token de sessão. Por favor, entre novamente na sua conta.');
+      return;
+    }
+
+    if (!idToken) {
+      setAiLoading(false);
+      setAiInterpretation('Token de autenticação ausente. Faça login novamente.');
+      return;
+    }
+
+    try {
       const res = await fetch('/api/ai/oracle-interpretation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           oracleType: activeSession?.oracleType || 'tarot',
@@ -59,42 +79,32 @@ export const ConsultationRoom: React.FC = () => {
           contextPrompt: 'Atendimento ao vivo na sala do ORACULOS.TS',
           consultantId: activeSession?.consultantId,
           userProfile: {
-            fullName: user.birthFullName || user.name,
-            birthFullName: user.birthFullName || user.name,
-            name: user.name,
-            birthDate: user.birthDate,
-            birthTime: user.doesNotKnowBirthTime ? undefined : user.birthTime || undefined,
+            fullName: user?.birthFullName || user?.name || '',
+            birthFullName: user?.birthFullName || user?.name || '',
+            name: user?.name || '',
+            birthDate: user?.birthDate || '',
+            birthTime: user?.doesNotKnowBirthTime ? undefined : user?.birthTime || undefined,
           },
         }),
       });
 
       const data = await res.json();
+      const interpretation = data?.data?.interpretation || data?.interpretation;
 
-const interpretation =
-  data?.data?.interpretation ||
-  data?.interpretation;
-
-if (res.ok && interpretation) {
-  setAiInterpretation(interpretation);
-} else {
-  setAiInterpretation(
-    data?.error?.message ||
-      'Não foi possível obter resposta no momento.',
-  );
-}
-} catch (err) {
-  console.error(
-    'Erro ao consultar o copiloto oracular:',
-    err,
-  );
-
-  setAiInterpretation(
-    'Erro de conexão com a Inteligência Artificial Gemini.',
-  );
-} finally {
-  setAiLoading(false);
-}
-};
+      if (res.ok && interpretation) {
+        setAiInterpretation(interpretation);
+      } else {
+        setAiInterpretation(
+          data?.error?.message || 'Não foi possível obter resposta no momento.'
+        );
+      }
+    } catch (err) {
+      console.error('Erro ao consultar o copiloto oracular:', err);
+      setAiInterpretation('Erro de conexão com a Inteligência Artificial Gemini.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
      
 
 
