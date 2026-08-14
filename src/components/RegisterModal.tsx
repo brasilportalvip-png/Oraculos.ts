@@ -222,12 +222,15 @@ const [resetMessage, setResetMessage] =
         </button>
 
         <div className="text-center mb-5">
-          <div className="inline-flex p-3 rounded-full bg-purple-950/60 border border-purple-500/40 text-purple-400 mb-3">
-            {mode === 'login' ? (
-              <LogIn className="w-8 h-8" />
-            ) : (
-              <ShieldCheck className="w-8 h-8" />
-            )}
+          <div className="flex justify-center mb-3">
+            <img
+              src="/brand/logo-oraculos.png"
+              alt="ORACULOS.TS Logo"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
+              }}
+              className="w-14 h-14 object-contain rounded-xl border border-[#d4af37]/40 shadow-lg bg-[#06060c] p-1"
+            />
           </div>
 
           <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-amber-200 to-amber-400">

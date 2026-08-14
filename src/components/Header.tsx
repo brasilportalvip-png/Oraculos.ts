@@ -49,13 +49,18 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
             onClick={() => navigateTab('showcase')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <img
-              src="/brand/logo-oraculos.png"
-              alt="ORACULOS.TS Logo"
-              width="44"
-              height="44"
-              className="w-11 h-11 object-contain rounded-xl border border-[#d4af37]/30 shadow-lg shadow-amber-500/10 group-hover:scale-105 transition-transform"
-            />
+            <div className="relative">
+              <img
+                src="/brand/logo-oraculos.png"
+                alt="ORACULOS.TS Logo"
+                width="48"
+                height="48"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
+                }}
+                className="w-12 h-12 object-contain rounded-xl border border-[#d4af37]/40 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform bg-[#0a0a12]/80 p-0.5"
+              />
+            </div>
             <div>
               <div className="flex items-center gap-1">
                 <span className="text-xl font-semibold tracking-tighter text-white">ORACULOS</span>

@@ -94,6 +94,20 @@ export const ConsultantShowcase: React.FC<Props> = ({
     <div className="space-y-8 pb-12">
       {/* Hero Section - Mystical Gradient */}
       <section className="mystical-gradient flex flex-col items-center justify-center py-12 sm:py-16 px-6 sm:px-10 text-center rounded-3xl glass-card border border-white/10 relative overflow-hidden shadow-2xl">
+        <div className="relative mb-6 group">
+          <div className="absolute -inset-2 bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-amber-500/20 rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition-opacity"></div>
+          <img
+            src="/brand/logo-oraculos.png"
+            alt="ORACULOS.TS Logo Oficial"
+            width="96"
+            height="96"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
+            }}
+            className="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-2xl border border-[#d4af37]/40 shadow-2xl bg-[#06060c]/90 p-1.5"
+          />
+        </div>
+
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-4">
           <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
           Marketplace de Oraculistas Credenciados

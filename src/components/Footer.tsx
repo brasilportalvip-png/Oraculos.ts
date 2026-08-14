@@ -24,7 +24,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <img
                 src="/brand/logo-oraculos.png"
                 alt="ORACULOS.TS Logo"
-                className="w-8 h-8 rounded-lg object-contain border border-[#d4af37]/30 shadow-md"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
+                }}
+                className="w-10 h-10 rounded-xl object-contain border border-[#d4af37]/30 shadow-md bg-[#0a0a12]/80 p-0.5"
               />
               <span className="text-lg font-bold text-white tracking-tight">
                 ORACULOS<span className="gold-accent">.TS</span>
