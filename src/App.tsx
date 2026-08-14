@@ -23,7 +23,7 @@ function MainAppContent() {
 
   const [currentTab, setCurrentTab] = useState<string>('showcase');
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
-  const [selectedOracle, setSelectedOracle] = useState<string | null>(null);
+  const [selectedOracle, setSelectedOracle] = useState<OracleType | null>(null);
 
   const handleStartConsultation = (
     consultant: Consultant,
@@ -43,7 +43,7 @@ function MainAppContent() {
         {currentTab === 'showcase' && (
           <ConsultantShowcase
             selectedOracleCategory={selectedOracle}
-            onSelectOracleCategory={(oracle) => setSelectedOracle(oracle)}
+            onSelectOracleCategory={(oracle) => setSelectedOracle(oracle as OracleType | null)}
             onSelectConsultant={(c) => setSelectedConsultant(c)}
             onStartConsultation={handleStartConsultation}
           />
@@ -52,7 +52,7 @@ function MainAppContent() {
         {currentTab === 'oracles' && (
           <OraclesDirectory
             onSelectOracleCategory={(oracle) => {
-              setSelectedOracle(oracle);
+              setSelectedOracle(oracle as OracleType);
               setCurrentTab('showcase');
             }}
           />

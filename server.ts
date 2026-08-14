@@ -728,79 +728,56 @@ export const requireAuth = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const authHeader =
-    req.headers.authorization;
-
-  const isProduction =
-    process.env.NODE_ENV === 'production' ||
-    process.env.VERCEL === '1' ||
-    process.env.STRICT_AUTH === 'true';
-
-  if (
-    !authHeader ||
-    !authHeader.startsWith('Bearer ')
-  ) {
-    if (!isProduction) {
-      const devUserId =
-        req.headers['x-user-id'] as
-          | string
-          | undefined;
-
-      if (
-        devUserId &&
-        usersDb[devUserId]
-      ) {
-        const demoUser =
-          usersDb[devUserId];
-
-        req.user = {
-          uid: demoUser.id,
-          email: demoUser.email,
-          role: demoUser.role,
-          name: demoUser.name,
-        };
-
-        return next();
-      }
+  // x-user-id is exclusively allowed for automated test environment (NODE_ENV === "test")
+  if (process.env.NODE_ENV === 'test') {
+    const testUserId = req.headers['x-user-id'] as string | undefined;
+    if (testUserId && usersDb[testUserId]) {
+      const demoUser = usersDb[testUserId];
+      req.user = {
+        uid: demoUser.id,
+        email: demoUser.email,
+        role: demoUser.role,
+        name: demoUser.name,
+      };
+      return next();
     }
-
-    return res.status(401).json({
-  success: false,
-  error: {
-    code: 'UNAUTHORIZED',
-    message: isProduction
-      ? 'Acesso negado: Em produção, token Bearer válido é obrigatório.'
-      : 'Token de autenticação não fornecido.',
-  },
-});
   }
 
-  const token = authHeader
-    .slice('Bearer '.length)
-    .trim();
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Token de autenticação não fornecido.',
+      },
+    });
+  }
+
+  const token = authHeader.slice('Bearer '.length).trim();
 
   if (!token) {
     return res.status(401).json({
       success: false,
       error: {
         code: 'INVALID_TOKEN',
-        message:
-          'Token de autenticação inválido.',
+        message: 'Token de autenticação inválido.',
+      },
+    });
+  }
+
+  if (!firebaseAdminInitialized || !firebaseAdminApp) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'AUTH_SERVICE_UNAVAILABLE',
+        message: 'Serviço de autenticação temporariamente indisponível.',
       },
     });
   }
 
   try {
-    if (!firebaseAdminInitialized || !firebaseAdminApp) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: 'Token de autenticação inválido ou não reconhecido.',
-        },
-      });
-    }
-
     const decodedToken =
       await getAdminAuth(
         firebaseAdminApp,
@@ -3088,6 +3065,29 @@ app.post(
       }
     }
 
+    // 5. Mandatory Oracle Input Validation
+    const validation = validarEntradaOraculo(normalizedOracleId, {
+      fullName: userProfile?.fullName,
+      birthFullName: userProfile?.birthFullName,
+      name: userProfile?.name,
+      birthDate: userProfile?.birthDate,
+      birthTime: userProfile?.birthTime,
+      city: userProfile?.city,
+      question: userQuestion,
+    });
+
+    if (!validation.valid) {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'ORACLE_INPUT_INCOMPLETE',
+          message: validation.message || 'Dados obrigatórios ausentes para o oráculo.',
+          normalizedOracleId: validation.normalizedOracleId || normalizedOracleId,
+          missingFields: validation.missingFields,
+        },
+      });
+    }
+
     const ai = getGeminiClient();
     if (!ai) {
       return res.status(503).json({
@@ -3099,7 +3099,7 @@ app.post(
       });
     }
 
-    // 5. Clean user inputs
+    // 6. Clean user inputs
     const cleanUserQuestion = (userQuestion || 'Orientação geral para o momento atual').replace(/<[^>]*>/g, '');
     const cleanContext = (contextPrompt || 'Nenhum').replace(/<[^>]*>/g, '');
     const profileFullName = String(
@@ -3107,7 +3107,7 @@ app.post(
     ).trim();
     const profileBirthDate = String(userProfile?.birthDate || '').trim();
 
-    // 6. Execute Oracle Engine Profile Builder Synchronously
+    // 7. Execute Oracle Engine Profile Builder Synchronously
     const oracleProfileResult = executarOracleProfile(normalizedOracleId, {
       fullName: profileFullName,
       birthDate: profileBirthDate,
@@ -3150,7 +3150,6 @@ INSTRUÇÕES DE INTERPRETAÇÃO:
 - Utilize o resultado interno como base principal do atendimento.
 - Não contradiga cartas, símbolos, números, Odùs, runas ou hexagramas apresentados.
 - Não diga que executou código, cálculo ou seleção automática.
-- Não mencione sistema, algoritmo, prompt ou inteligência artificial.
 - Responda diretamente à pergunta.
 - Explique forças favoráveis, obstáculos e tendência.
 - Apresente orientação prática.
@@ -3159,7 +3158,7 @@ INSTRUÇÕES DE INTERPRETAÇÃO:
 - Não responda como relatório técnico.
 `.trim();
 
-    // 7. Atomic Gemini Execution (Exactly 1 call, no hidden retry loops or switches to generic prompt)
+    // 8. Atomic Gemini Execution (Exactly 1 call, no hidden retry loops or switches to generic prompt)
     const modelToUse = GEMINI_MODELS[0] || 'gemini-2.5-flash';
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => {

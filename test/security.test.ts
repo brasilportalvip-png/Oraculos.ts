@@ -22,14 +22,20 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
     }
   });
 
-  // TEST 1: Token Inválido
-  it('1. Deve rejeitar requisição com token Bearer inválido com HTTP 401', async () => {
-    const res = await request(app)
-      .get('/api/admin/users')
-      .set('authorization', 'Bearer token_invalido_malicioso_123');
+  // TEST 1: Token Ausente / Inválido (401) ou Firebase Admin Indisponível (503)
+  it('1. Deve retornar HTTP 401 se token não for fornecido e HTTP 503 se Firebase Admin estiver indisponível', async () => {
+    const resNoToken = await request(app)
+      .get('/api/admin/users');
 
-    expect(res.status).toBe(401);
-    expect(res.body.success).toBe(false);
+    expect(resNoToken.status).toBe(401);
+    expect(resNoToken.body.error.code).toBe('UNAUTHORIZED');
+
+    const resWithToken = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', 'Bearer token_qualquer');
+
+    expect(resWithToken.status).toBe(503);
+    expect(resWithToken.body.error.code).toBe('AUTH_SERVICE_UNAVAILABLE');
   });
 
   // TEST 2: Usuário Comum Acessando Área Admin (RBAC)
@@ -51,7 +57,7 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
       .set('x-user-id', 'usr-admin-1');
 
     expect(res.status).toBe(401);
-    expect(res.body.error.message).toContain('produção');
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
   // TEST 4: Rejeição de Valor Adulterado no Checkout Mercado Pago

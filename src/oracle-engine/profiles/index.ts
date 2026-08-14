@@ -33,6 +33,7 @@ export interface OracleProfileDefinition {
   id: OracleProfileId;
   nome: string;
   descricao: string;
+  requiredFields: (keyof OracleProfileInput)[];
   builder: (
     input: OracleProfileInput
   ) => unknown;
@@ -47,6 +48,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Tarot',
     descricao:
       'Leitura simbólica completa com passado, presente, tendência, obstáculos, conselho e energia oculta.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildTarotSupremo({
         fullName: input.fullName,
@@ -60,6 +62,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Baralho Cigano',
     descricao:
       'Mandala dos Sete Caminhos com as 36 cartas do Lenormand.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildBaralhoCiganoSupremo({
         fullName: input.fullName,
@@ -73,6 +76,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Astrologia',
     descricao:
       'Análise simbólica do signo solar, elementos, ciclos e forças planetárias.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildAstrologiaSuprema({
         fullName: input.fullName,
@@ -88,6 +92,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Numerologia',
     descricao:
       'Mapa numerológico com caminho de vida, expressão, alma, personalidade, ciclos, desafios e potenciais.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildNumerologiaSuprema({
         fullName: input.fullName,
@@ -102,6 +107,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Búzios',
     descricao:
       'Leitura simbólica com queda principal, complementar e alerta espiritual.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildBuziosSupremo({
         fullName: input.fullName,
@@ -115,6 +121,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Ifá',
     descricao:
       'Leitura dos Odùs com força principal, influência complementar e sombra.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildOduSupremo({
         fullName: input.fullName,
@@ -128,6 +135,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Runas',
     descricao:
       'Círculo das Sete Runas com o Futhark Antigo, posições normais e invertidas.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildRunasSupremas({
         fullName: input.fullName,
@@ -141,6 +149,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'I Ching',
     descricao:
       'Leitura dos 64 hexagramas, seis linhas, mutações e hexagrama transformado.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildIChingSupremo({
         fullName: input.fullName,
@@ -154,6 +163,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Cristais',
     descricao:
       'Mandala simbólica dos campos emocional, mental, material e espiritual.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildCristaisSupremos({
         fullName: input.fullName,
@@ -167,6 +177,7 @@ export const ORACLE_PROFILES: Record<
     nome: 'Mesa Radiônica',
     descricao:
       'Mapa simbólico dos sete campos com indicadores, prioridades e direcionamento.',
+    requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildMesaRadionicaSuprema({
         fullName: input.fullName,
@@ -182,6 +193,14 @@ export interface OracleValidationResult {
   missingFields: string[];
   message?: string;
 }
+
+const FIELD_LABELS: Record<string, string> = {
+  fullName: 'Nome completo (fullName)',
+  birthDate: 'Data de nascimento (birthDate)',
+  birthTime: 'Hora de nascimento (birthTime)',
+  city: 'Cidade de nascimento (city)',
+  question: 'Pergunta da consulta (question)',
+};
 
 export function validarEntradaOraculo(
   oracleType: unknown,
@@ -214,25 +233,33 @@ export function validarEntradaOraculo(
     };
   }
 
+  const profile = ORACLE_PROFILES[normalizedOracleId];
+  const requiredFields = profile?.requiredFields || ['fullName', 'birthDate'];
   const missingFields: string[] = [];
-  const fullName = String(
-    input.fullName || input.birthFullName || input.name || ''
-  ).trim();
-  const birthDate = String(input.birthDate || '').trim();
 
-  if (!fullName) {
-    missingFields.push('fullName');
-  }
-  if (!birthDate) {
-    missingFields.push('birthDate');
+  for (const field of requiredFields) {
+    if (field === 'fullName') {
+      const fullName = String(
+        input.fullName || input.birthFullName || input.name || ''
+      ).trim();
+      if (!fullName) missingFields.push('fullName');
+    } else if (field === 'birthDate') {
+      const birthDate = String(input.birthDate || '').trim();
+      if (!birthDate) missingFields.push('birthDate');
+    } else if (field === 'birthTime') {
+      const birthTime = String(input.birthTime || '').trim();
+      if (!birthTime) missingFields.push('birthTime');
+    } else if (field === 'city') {
+      const city = String(input.city || '').trim();
+      if (!city) missingFields.push('city');
+    } else if (field === 'question') {
+      const question = String(input.question || '').trim();
+      if (!question) missingFields.push('question');
+    }
   }
 
   if (missingFields.length > 0) {
-    const fieldDescriptions = missingFields.map((f) => {
-      if (f === 'fullName') return 'Nome completo (fullName)';
-      if (f === 'birthDate') return 'Data de nascimento (birthDate)';
-      return f;
-    });
+    const fieldDescriptions = missingFields.map((f) => FIELD_LABELS[f] || f);
 
     return {
       valid: false,

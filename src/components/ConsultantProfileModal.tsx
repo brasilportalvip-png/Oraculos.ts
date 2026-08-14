@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, MessageSquare, Video, Shield, Clock, Calendar, Sparkles } from 'lucide-react';
 import { Consultant, OracleType } from '../types';
@@ -6,18 +6,35 @@ import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 
 interface Props {
   consultant: Consultant | null;
+  initialOracle?: OracleType | null;
   onClose: () => void;
   onStartConsultation: (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => void;
 }
 
 export const ConsultantProfileModal: React.FC<Props> = ({
   consultant,
+  initialOracle,
   onClose,
   onStartConsultation,
 }) => {
-  const [selectedOracle, setSelectedOracle] = useState<OracleType>(
-    consultant?.specialties[0] || 'tarot'
+  const computeInitialOracle = (
+    cons: Consultant | null,
+    initOracle?: OracleType | null
+  ): OracleType => {
+    const specs = cons?.specialties || [];
+    if (initOracle && specs.includes(initOracle)) {
+      return initOracle;
+    }
+    return specs[0] || 'tarot';
+  };
+
+  const [selectedOracle, setSelectedOracle] = useState<OracleType>(() =>
+    computeInitialOracle(consultant, initialOracle)
   );
+
+  useEffect(() => {
+    setSelectedOracle(computeInitialOracle(consultant, initialOracle));
+  }, [consultant?.id, initialOracle]);
 
   if (!consultant) return null;
 
