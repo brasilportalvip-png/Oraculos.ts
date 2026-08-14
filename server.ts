@@ -205,7 +205,20 @@ try {
         process.env.FIREBASE_PROJECT_ID ||
         serviceAccount.project_id,
     });
-  } else if (process.env.FIREBASE_PROJECT_ID) {
+  } else if (
+    process.env.FIREBASE_PROJECT_ID &&
+    process.env.FIREBASE_CLIENT_EMAIL &&
+    process.env.FIREBASE_PRIVATE_KEY
+  ) {
+    firebaseAdminApp = initAdminApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  } else if (process.env.FIREBASE_PROJECT_ID && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     firebaseAdminApp = initAdminApp({
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
@@ -1374,7 +1387,6 @@ app.get(['/.well-known/assetlinks.json', '/assetlinks.json'], (_req: Request, re
     {
       relation: [
         'delegate_permission/common.handle_all_urls',
-        'delegate_permission/common.get_login_creds',
       ],
       target: {
         namespace: 'android_app',
