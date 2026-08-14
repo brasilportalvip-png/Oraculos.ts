@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies (clean)
         run: npm ci
 
+      - name: Validate Official Binary Assets
+        run: npm run validate:assets
+
       - name: Run lint
         run: npm run lint
 
