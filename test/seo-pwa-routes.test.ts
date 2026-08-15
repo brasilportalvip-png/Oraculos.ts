@@ -85,7 +85,7 @@ describe('SEO, Sitemaps XML, Robots, PWA & Android TWA Validation', () => {
     const res = await request(app).get('/sitemap-especialistas.xml');
     expect(res.status).toBe(200);
     expect(res.text).toContain('https://oraculos-ts.vercel.app/especialistas/c1');
-    expect(res.text).toContain('https://oraculos-ts.vercel.app/especialistas/v-tarot');
+    expect(res.text).toContain('https://oraculos-ts.vercel.app/especialistas/ai_c1');
   });
 
   it('GET /sitemap-blog.xml deve conter artigos publicados', async () => {

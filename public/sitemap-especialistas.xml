@@ -38,63 +38,123 @@
     <priority>0.8</priority>
   </url>
 
-  <!-- Atendentes Virtuais Oficiais de Inteligência Oracular -->
+  <!-- Atendentes Virtuais Oficiais (ai_c1 a ai_c20) -->
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-tarot</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c1</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-cigano</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c2</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-astrologia</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c3</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-numerologia</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c4</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-buzios</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c5</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-ifa</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c6</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-runas</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c7</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-iching</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c8</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-cristais</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c9</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/v-mesaradionica</loc>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c10</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c11</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c12</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c13</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c14</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c15</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c16</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c17</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c18</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c19</loc>
+    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/ai_c20</loc>
     <lastmod>2026-08-14T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

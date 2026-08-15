@@ -34,24 +34,6 @@ import { useConsultation } from '../../context/ConsultationContext';
 import { auth } from '../../firebase';
 import { SecurityProtectionCenter } from './SecurityProtectionCenter';
 
-const REVENUE_DATA = [
-  { day: 'Seg', receita: 3400, comissao: 1020 },
-  { day: 'Ter', receita: 4200, comissao: 1260 },
-  { day: 'Qua', receita: 5100, comissao: 1530 },
-  { day: 'Qui', receita: 4800, comissao: 1440 },
-  { day: 'Sex', receita: 6900, comissao: 2070 },
-  { day: 'Sáb', receita: 8500, comissao: 2550 },
-  { day: 'Dom', receita: 9200, comissao: 2760 },
-];
-
-const ORACLE_SHARE_DATA = [
-  { name: 'Tarot', value: 42, color: '#D4AF37' },
-  { name: 'Baralho Cigano', value: 28, color: '#E11D48' },
-  { name: 'Astrologia', value: 15, color: '#8B5CF6' },
-  { name: 'Búzios/Ifá', value: 10, color: '#F59E0B' },
-  { name: 'Outros', value: 5, color: '#10B981' },
-];
-
 interface AuditLog {
   id: string;
   timestamp: string;
@@ -89,12 +71,57 @@ export const AdminDashboard: React.FC = () => {
 
   // Coupon Creation State
   const [coupons, setCoupons] = useState([
-    { code: 'ORACULO10', bonus: 10, uses: 142, active: true },
-    { code: 'BEMVINDO20', bonus: 20, uses: 89, active: true },
-    { code: 'LUZ2026', bonus: 15, uses: 45, active: true },
+    { code: 'ORACULO10', bonus: 10, uses: 0, active: true },
   ]);
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponBonus, setNewCouponBonus] = useState('10');
+
+  // Dynamic Revenue Calculation by Day of Week
+  const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const revenueData = daysOfWeek.map((day, dayIndex) => {
+    const dayTx = transactions.filter((t) => {
+      if (t.type !== 'recharge' || t.status !== 'completed') return false;
+      const d = new Date(t.date);
+      return !isNaN(d.getTime()) && d.getDay() === dayIndex;
+    });
+    const receita = dayTx.reduce((sum, t) => sum + t.amount, 0);
+    const comissao = Number((receita * (parseFloat(platformFee) / 100)).toFixed(2));
+    return { day, receita, comissao };
+  });
+
+  // Dynamic Oracle Share Calculation from Real Sessions
+  const oracleColorMap: Record<string, string> = {
+    tarot: '#D4AF37',
+    cigano: '#E11D48',
+    'baralho-cigano': '#E11D48',
+    astrologia: '#8B5CF6',
+    numerologia: '#3B82F6',
+    buzios: '#F59E0B',
+    ifa: '#D97706',
+    runas: '#10B981',
+    'i-ching': '#6366F1',
+    cristais: '#EC4899',
+    'mesa-radionica': '#14B8A6',
+  };
+
+  const oracleCounts: Record<string, number> = {};
+  pastSessions.forEach((s) => {
+    const oracleKey = s.oracle || 'tarot';
+    oracleCounts[oracleKey] = (oracleCounts[oracleKey] || 0) + 1;
+  });
+
+  const totalOracleSessions = Object.values(oracleCounts).reduce((a, b) => a + b, 0);
+  const oracleShareData = totalOracleSessions > 0
+    ? Object.entries(oracleCounts).map(([name, count]) => ({
+        name: name.toUpperCase(),
+        value: Math.round((count / totalOracleSessions) * 100),
+        color: oracleColorMap[name.toLowerCase()] || '#D4AF37',
+      }))
+    : [
+        { name: 'TAROT', value: 40, color: '#D4AF37' },
+        { name: 'CIGANO', value: 30, color: '#E11D48' },
+        { name: 'ASTROLOGIA', value: 30, color: '#8B5CF6' },
+      ];
 
   // Fetch Audit Logs
   const fetchAuditLogs = async () => {
@@ -166,9 +193,9 @@ export const AdminDashboard: React.FC = () => {
           stats: {
             totalRevenue: totalGrossRevenue,
             adminCommissionTotal: totalAdminCommission,
-            completedSessionsTotal: pastSessions.length + 8030,
+            completedSessionsTotal: pastSessions.length,
             totalConsultants: consultants.length,
-            totalClients: 1240,
+            totalClients: new Set(pastSessions.map(s => s.clientId).concat(transactions.map(t => t.userId))).size || 1,
           },
           period: 'Julho 2026',
         }),
@@ -368,7 +395,7 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={REVENUE_DATA}>
+                  <AreaChart data={revenueData}>
                     <defs>
                       <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.8} />
@@ -393,7 +420,7 @@ export const AdminDashboard: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={ORACLE_SHARE_DATA}
+                      data={oracleShareData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
@@ -402,7 +429,7 @@ export const AdminDashboard: React.FC = () => {
                       outerRadius={70}
                       paddingAngle={4}
                     >
-                      {ORACLE_SHARE_DATA.map((entry, index) => (
+                      {oracleShareData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -414,7 +441,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-1.5 pt-2 border-t border-white/10 text-xs">
-                {ORACLE_SHARE_DATA.map((item) => (
+                {oracleShareData.map((item) => (
                   <div key={item.name} className="flex items-center justify-between text-gray-300">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />

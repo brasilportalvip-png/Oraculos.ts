@@ -1981,10 +1981,18 @@ if (
       /*
        * A assinatura é validada quando o
        * segredo foi configurado na Vercel ou no ambiente.
+       * Em produção, o segredo é estritamente obrigatório.
        */
       const webhookSecret =
         process.env
           .MERCADOPAGO_WEBHOOK_SECRET;
+
+      if (process.env.NODE_ENV === 'production' && !webhookSecret) {
+        console.error('[ORACULOS.TS] Webhook rejeitado: MERCADOPAGO_WEBHOOK_SECRET é obrigatório em produção.');
+        return res.status(500).json({
+          error: 'Configuração de segurança do webhook ausente no servidor de produção.',
+        });
+      }
 
       const xSignature =
         String(
@@ -2051,6 +2059,18 @@ if (
           return res.status(401).json({
             error: 'Assinatura do webhook inválida.',
           });
+        }
+
+        // Validação anti-replay com tolerância de 5 minutos (300s) em produção
+        if (process.env.NODE_ENV === 'production') {
+          const tsNumber = Number(timestamp);
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (isNaN(tsNumber) || Math.abs(nowSec - tsNumber) > 300) {
+            console.error('[ORACULOS.TS] Webhook rejeitado: timestamp expirado ou fora da janela de tolerância de 5 minutos.');
+            return res.status(401).json({
+              error: 'Timestamp do webhook expirado ou fora da janela permitida.',
+            });
+          }
         }
       }
 
