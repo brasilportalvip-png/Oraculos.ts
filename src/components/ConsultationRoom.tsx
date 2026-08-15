@@ -19,6 +19,7 @@ import {
   Scroll,
   Info,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useConsultation } from '../context/ConsultationContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,8 +32,8 @@ export const ConsultationRoom: React.FC = () => {
 
   const [mode, setMode] = useState<'chat' | 'video'>('chat');
   const [inputText, setInputText] = useState('');
-  const [isMicOn, setIsMicOn] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(true);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [rating, setRating] = useState<number>(5);
   const [reviewText, setReviewText] = useState('');
@@ -41,6 +42,12 @@ export const ConsultationRoom: React.FC = () => {
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiInterpretation, setAiInterpretation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Video/Media Stream state
+  const [videoStatus, setVideoStatus] = useState<'idle' | 'requesting' | 'connected' | 'error'>('idle');
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +60,97 @@ export const ConsultationRoom: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages]);
+
+  // Handle Video Media Setup
+  useEffect(() => {
+    let isCancelled = false;
+
+    const startMedia = async () => {
+      if (mode !== 'video') {
+        stopMedia();
+        return;
+      }
+
+      setVideoStatus('requesting');
+      setVideoError(null);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setVideoStatus('error');
+        setVideoError('Seu navegador não possui suporte à transmissão de vídeo WebRTC.');
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true,
+        });
+
+        if (isCancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        setIsVideoOn(true);
+        setIsMicOn(true);
+        setVideoStatus('connected');
+      } catch (err: any) {
+        if (isCancelled) return;
+        setVideoStatus('error');
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setVideoError('Permissão de câmera ou microfone não concedida no navegador. Você pode habilitar nas permissões ou continuar pelo Chat Seguro.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setVideoError('Nenhuma câmera ou microfone foi detectado neste dispositivo.');
+        } else {
+          setVideoError('Não foi possível inicializar a transmissão de mídia. Prossiga via Chat Seguro.');
+        }
+      }
+    };
+
+    const stopMedia = () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      setVideoStatus('idle');
+      setVideoError(null);
+    };
+
+    startMedia();
+
+    return () => {
+      isCancelled = true;
+      stopMedia();
+    };
+  }, [mode]);
+
+  const toggleMic = () => {
+    if (localStreamRef.current) {
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      audioTracks.forEach((t) => {
+        t.enabled = !isMicOn;
+      });
+      setIsMicOn(!isMicOn);
+    }
+  };
+
+  const toggleVideoTrack = () => {
+    if (localStreamRef.current) {
+      const videoTracks = localStreamRef.current.getVideoTracks();
+      videoTracks.forEach((t) => {
+        t.enabled = !isVideoOn;
+      });
+      setIsVideoOn(!isVideoOn);
+    }
+  };
 
   if (!activeSession) return null;
 
@@ -76,10 +174,6 @@ export const ConsultationRoom: React.FC = () => {
     user.minuteBalance - consumedWalletMinutes,
   );
 
-  const estimatedConsultationMinutes = Math.floor(
-    remainingWalletMinutes / activeSession.pricePerMinute,
-  );
-
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -93,6 +187,10 @@ export const ConsultationRoom: React.FC = () => {
   };
 
   const submitReviewAndExit = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
     endConsultation(rating, reviewText);
     setShowReviewModal(false);
   };
@@ -123,7 +221,7 @@ export const ConsultationRoom: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           oracleType: activeSession?.oracleType || 'tarot',
@@ -232,7 +330,7 @@ export const ConsultationRoom: React.FC = () => {
           <div className="flex items-center p-1 bg-[#1F1638] rounded-xl border border-purple-900/60">
             <button
               onClick={() => setMode('chat')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 mode === 'chat'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -243,7 +341,7 @@ export const ConsultationRoom: React.FC = () => {
             </button>
             <button
               onClick={() => setMode('video')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -256,7 +354,7 @@ export const ConsultationRoom: React.FC = () => {
 
           <button
             onClick={() => setShowEndConfirm(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all cursor-pointer"
           >
             <PhoneOff className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Encerrar</span>
@@ -281,24 +379,66 @@ export const ConsultationRoom: React.FC = () => {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Video Mode Container */}
         {mode === 'video' && (
-          <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-4 text-center">
-            <div className="max-w-md p-6 bg-[#150F26] border border-purple-800/40 rounded-2xl shadow-2xl space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Video className="w-8 h-8" />
+          <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-4">
+            {videoStatus === 'requesting' && (
+              <div className="text-center space-y-3 p-6 glass-card border border-white/10 rounded-2xl max-w-sm">
+                <RefreshCw className="w-8 h-8 animate-spin text-amber-400 mx-auto" />
+                <p className="text-sm font-semibold text-white">Solicitando acesso à câmera e microfone...</p>
+                <p className="text-xs text-gray-400">Por favor, permita o acesso na caixa de diálogo do seu navegador.</p>
               </div>
-              <h3 className="text-base font-bold text-white">Transmissão em Vídeo P2P</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                O atendimento prioritário com leitura oracular completa ocorre via <strong>Chat em Tempo Real</strong> com registro criptografado. A transmissão de vídeo WebRTC requer permissão de câmera do seu dispositivo e disponibilidade de vídeo do consultor.
-              </p>
-              <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
-                <button
-                  onClick={() => setMode('chat')}
-                  className="px-4 py-2 bg-amber-500 text-black font-bold text-xs rounded-xl shadow hover:bg-amber-400 transition"
-                >
-                  Continuar no Chat Interativo
-                </button>
+            )}
+
+            {videoStatus === 'error' && (
+              <div className="max-w-md p-6 bg-[#150F26] border border-rose-800/40 rounded-2xl shadow-2xl space-y-4 text-center">
+                <div className="w-14 h-14 mx-auto rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                  <AlertCircle className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-white">Dispositivo de Vídeo Indisponível</h3>
+                <p className="text-xs text-slate-300 leading-relaxed font-light">{videoError}</p>
+                <div className="pt-2 flex justify-center">
+                  <button
+                    onClick={() => setMode('chat')}
+                    className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider rounded-xl shadow cursor-pointer transition"
+                  >
+                    Continuar via Chat Interativo
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {videoStatus === 'connected' && (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="max-h-full max-w-full rounded-2xl object-cover border border-purple-800/50 shadow-2xl"
+                />
+
+                {/* In-Call Media Controls Overlay */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10">
+                  <button
+                    onClick={toggleMic}
+                    className={`p-3 rounded-xl transition-colors cursor-pointer ${
+                      isMicOn ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-rose-600 text-white'
+                    }`}
+                    title={isMicOn ? 'Mutar microfone' : 'Ativar microfone'}
+                  >
+                    {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={toggleVideoTrack}
+                    className={`p-3 rounded-xl transition-colors cursor-pointer ${
+                      isVideoOn ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-rose-600 text-white'
+                    }`}
+                    title={isVideoOn ? 'Desativar câmera' : 'Ativar câmera'}
+                  >
+                    {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -372,27 +512,18 @@ export const ConsultationRoom: React.FC = () => {
           <div className="p-2 border-t border-purple-900/30 bg-[#150F26]/60 flex items-center gap-2 overflow-x-auto text-xs">
             <button
               onClick={drawOracleCard}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-semibold transition-colors"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-semibold transition-colors cursor-pointer"
             >
               <Gem className="w-3.5 h-3.5 text-amber-400" />
               {getOracleButtonLabel()}
             </button>
             <button
               onClick={() => setShowAiCopilot(!showAiCopilot)}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 rounded-full font-bold transition-colors"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-full font-semibold transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 gold-accent" />
-              Copiloto IA Gemini
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              Copiloto Oracular IA
             </button>
-            {['Qual o recado do amor?', 'Caminhos financeiros', 'Conselho para hoje'].map((chip) => (
-              <button
-                key={chip}
-                onClick={() => sendMessage(chip)}
-                className="flex-shrink-0 px-3 py-1.5 bg-[#1F1638] hover:bg-purple-900/40 border border-purple-800/40 text-purple-200 rounded-full transition-colors"
-              >
-                {chip}
-              </button>
-            ))}
           </div>
 
           {/* AI Copilot Drawer */}
@@ -402,42 +533,38 @@ export const ConsultationRoom: React.FC = () => {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="border-t border-purple-800/50 bg-[#150F26] p-4 space-y-3 overflow-hidden"
+                className="bg-[#150F26] border-t border-purple-800/60 p-4 space-y-3 overflow-hidden text-xs"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 font-bold text-amber-300">
                     <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs font-bold text-amber-200">
-                      Interpretação Oracular Assistida por IA Gemini
-                    </span>
+                    <span>Copiloto de Interpretação Profunda</span>
                   </div>
                   <button
                     onClick={() => setShowAiCopilot(false)}
-                    className="text-xs text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
-                    Fechar
+                    ✕
                   </button>
                 </div>
-
                 <form onSubmit={handleAskAiCopilot} className="flex gap-2">
                   <input
                     type="text"
                     value={aiQuestion}
                     onChange={(e) => setAiQuestion(e.target.value)}
-                    placeholder="Faça uma pergunta específica para aprofundar a tiragem..."
-                    className="flex-1 bg-[#0B0813] border border-purple-800/60 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+                    placeholder="Faça uma pergunta específica para aprofundar a leitura..."
+                    className="flex-1 bg-[#0B0813] border border-purple-900 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                   />
                   <button
                     type="submit"
                     disabled={aiLoading}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-amber-500 text-white rounded-xl text-xs font-bold shadow-md hover:opacity-90 disabled:opacity-50"
+                    className="px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-xl cursor-pointer disabled:opacity-50"
                   >
-                    {aiLoading ? 'Analisando...' : 'Consultar'}
+                    {aiLoading ? 'Lendo...' : 'Interpretar'}
                   </button>
                 </form>
-
                 {aiInterpretation && (
-                  <div className="p-3 bg-purple-950/40 border border-purple-700/40 rounded-xl text-xs text-purple-100 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
+                  <div className="p-3 bg-[#0B0813] rounded-xl border border-purple-900 text-slate-200 leading-relaxed font-light whitespace-pre-wrap max-h-40 overflow-y-auto">
                     {aiInterpretation}
                   </div>
                 )}
@@ -445,8 +572,8 @@ export const ConsultationRoom: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* Text Input Footer */}
-          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/40 flex items-center gap-2">
+          {/* Input Box */}
+          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2">
             <input
               type="text"
               value={inputText}
@@ -457,7 +584,7 @@ export const ConsultationRoom: React.FC = () => {
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 rounded-xl font-bold transition-all shadow-md"
+              className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 rounded-xl font-bold transition-all shadow-md cursor-pointer"
               aria-label="Enviar mensagem"
             >
               <Send className="w-4 h-4" />
@@ -474,19 +601,19 @@ export const ConsultationRoom: React.FC = () => {
               <AlertCircle className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-white">Deseja encerrar o atendimento?</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed font-light">
               O tempo de consulta decorrido foi de <strong>{formattedTime}</strong>. A tarifação será finalizada e você poderá avaliar o especialista.
             </p>
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowEndConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-purple-800 text-slate-300 hover:bg-purple-900/40 text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl border border-purple-800 text-slate-300 hover:bg-purple-900/40 text-xs font-semibold cursor-pointer"
               >
                 Continuar Consulta
               </button>
               <button
                 onClick={handleFinishConsultation}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg cursor-pointer"
               >
                 Encerrar Agora
               </button>
@@ -502,7 +629,7 @@ export const ConsultationRoom: React.FC = () => {
             <div className="text-center space-y-1">
               <span className="text-xs uppercase font-bold text-amber-400 tracking-wider">Atendimento Finalizado</span>
               <h3 className="text-lg font-bold text-white">Como foi sua experiência?</h3>
-              <p className="text-xs text-slate-400">Sua avaliação ajuda a manter a excelência da plataforma.</p>
+              <p className="text-xs text-slate-400 font-light">Sua avaliação ajuda a manter a excelência da plataforma.</p>
             </div>
 
             {/* Star Rating */}
@@ -511,7 +638,7 @@ export const ConsultationRoom: React.FC = () => {
                 <button
                   key={star}
                   onClick={() => setRating(star)}
-                  className="p-1 text-2xl transition-transform hover:scale-125 focus:outline-none"
+                  className="p-1 text-2xl transition-transform hover:scale-125 focus:outline-none cursor-pointer"
                 >
                   <Star
                     className={`w-7 h-7 ${
@@ -527,12 +654,12 @@ export const ConsultationRoom: React.FC = () => {
               onChange={(e) => setReviewText(e.target.value)}
               placeholder="Deixe um comentário sobre a clareza e acolhimento da consulta (opcional)..."
               rows={3}
-              className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+              className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-light"
             />
 
             <button
               onClick={submitReviewAndExit}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-colors"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-colors cursor-pointer uppercase tracking-wider"
             >
               Enviar Avaliação e Voltar ao Início
             </button>

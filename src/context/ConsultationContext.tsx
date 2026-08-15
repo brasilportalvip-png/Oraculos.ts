@@ -9,6 +9,7 @@ import { Consultant, ConsultationSession, ChatMessage, OracleType, FinancialTran
 import { useAuth } from './AuthContext';
 import { INITIAL_CONSULTANTS, INITIAL_TRANSACTIONS } from '../data/mockData';
 import { auth } from '../firebase';
+import { drawSymbolForOracle } from '../data/oracleDrawData';
 
 interface ConsultationContextType {
   activeSession: ConsultationSession | null;
@@ -671,16 +672,21 @@ const sendMessage = (text: string) => {
   const drawOracleCard = () => {
     if (!activeSession) return;
 
-    const randomCard = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+    const drawnItem = drawSymbolForOracle(activeSession.oracleType);
+    const cardData = {
+      name: drawnItem.name,
+      meaning: drawnItem.meaning,
+      imageUrl: drawnItem.imageUrl || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=200',
+    };
 
     const systemMsg: ChatMessage = {
       id: `msg_card_${Date.now()}`,
       senderId: 'system',
       senderName: 'ORACULOS.TS',
-      text: `Uma lâmina sagrada foi tirada do Oráculo para a consulta de ${user.name}!`,
+      text: `Um símbolo sagrado (${drawnItem.name} — ${drawnItem.category}) foi revelado pelo Oráculo para a consulta de ${user.name}!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: true,
-      cardDrawn: randomCard,
+      cardDrawn: cardData,
     };
 
     setActiveSession((prev) => {

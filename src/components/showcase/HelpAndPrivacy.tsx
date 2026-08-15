@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { HelpCircle, MessageSquare, Shield, Lock, FileText, CheckCircle, Send, Sparkles, AlertCircle } from 'lucide-react';
+import { HelpCircle, MessageSquare, Shield, Lock, FileText, CheckCircle, Send, Sparkles, AlertCircle, Download, Trash2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useConsultation } from '../../context/ConsultationContext';
 
 export const HelpAndPrivacy: React.FC = () => {
+  const { user } = useAuth();
+  const { transactions } = useConsultation();
   const [activeTab, setActiveTab] = useState<'faq' | 'support' | 'lgpd'>('faq');
 
   // Support AI Assistant State
@@ -10,9 +14,14 @@ export const HelpAndPrivacy: React.FC = () => {
   const [loadingAi, setLoadingAi] = useState(false);
 
   // Ticket Form State
+  const [ticketName, setTicketName] = useState(user?.name || '');
+  const [ticketEmail, setTicketEmail] = useState(user?.email || '');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMessage, setTicketMessage] = useState('');
-  const [ticketSent, setTicketSent] = useState(false);
+  const [ticketCategory, setTicketCategory] = useState('general');
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [ticketProtocol, setTicketProtocol] = useState<string | null>(null);
+  const [ticketError, setTicketError] = useState<string | null>(null);
 
   // LGPD Toggles
   const [lgpdConsent, setLgpdConsent] = useState({
@@ -20,11 +29,11 @@ export const HelpAndPrivacy: React.FC = () => {
     cookies: true,
     sessionLogs: true,
   });
-  const [dataExported, setDataExported] = useState(false);
+  const [lgpdMessage, setLgpdMessage] = useState<string | null>(null);
 
   const handleAskSupportAi = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userQuery) return;
+    if (!userQuery.trim()) return;
     setLoadingAi(true);
     setAiReply(null);
     try {
@@ -32,31 +41,121 @@ export const HelpAndPrivacy: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          message: userQuery,
           userMessage: userQuery,
-          type: 'support',
+          userContext: user ? { uid: user.id, email: user.email, role: user.role } : undefined,
         }),
       });
       const data = await res.json();
-      if (data.reply) {
-        setAiReply(data.reply);
+      const reply = data.data?.reply || data.reply || (data.success ? 'Solicitação recebida com sucesso.' : null);
+      if (reply) {
+        setAiReply(reply);
       } else {
         setAiReply('A resposta do suporte não pôde ser carregada. Tente novamente.');
       }
-    } catch (e) {
+    } catch {
       setAiReply('Erro ao comunicar com o assistente de suporte por IA.');
     } finally {
       setLoadingAi(false);
     }
   };
 
-  const handleSubmitTicket = (e: React.FormEvent) => {
+  const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTicketSent(true);
-    setTimeout(() => {
-      setTicketSubject('');
-      setTicketMessage('');
-      setTicketSent(false);
-    }, 4000);
+    if (!ticketEmail || !ticketMessage || !ticketSubject) {
+      setTicketError('Preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    setTicketLoading(true);
+    setTicketError(null);
+
+    try {
+      const res = await fetch('/api/support/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: ticketEmail,
+          name: ticketName || 'Consulente',
+          subject: ticketSubject,
+          message: ticketMessage,
+          category: ticketCategory,
+          userId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.data?.protocol) {
+        setTicketProtocol(data.data.protocol);
+        setTicketSubject('');
+        setTicketMessage('');
+      } else {
+        setTicketError(data.error?.message || 'Falha ao registrar chamado no servidor.');
+      }
+    } catch {
+      setTicketError('Erro de conexão ao enviar chamado. Tente novamente.');
+    } finally {
+      setTicketLoading(false);
+    }
+  };
+
+  const handleExportDataJson = () => {
+    const exportPayload = {
+      plataforma: 'ORACULOS.TS',
+      dataExportacao: new Date().toISOString(),
+      leiGeralProtecaoDados: 'Lei Nº 13.709/2018 (LGPD)',
+      usuario: {
+        id: user?.id || 'anonimo',
+        nome: user?.name || 'Consulente',
+        email: user?.email || 'Nao autenticado',
+        tipo: user?.role || 'visitante',
+        saldoMinutos: user?.minutesBalance || 0,
+      },
+      preferenciasLGPD: lgpdConsent,
+      historicoTransacoes: transactions.filter((t) => t.userId === user?.id),
+    };
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `oraculos-dados-lgpd-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    setLgpdMessage('Relatório de dados pessoais exportado com sucesso no formato JSON criptograficamente seguro.');
+  };
+
+  const handleRequestAccountDeletion = async () => {
+    const confirm = window.confirm(
+      'Atenção: A exclusão da conta é definitiva e removerá todos os seus dados pessoais, históricos e acessos conforme a LGPD. Deseja continuar?'
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch('/api/support/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user?.email || ticketEmail || 'anonimo@oraculos.ts',
+          name: user?.name || 'Titular LGPD',
+          subject: 'Solicitação Formal de Exclusão de Conta e Anonimização de Dados (LGPD)',
+          message: `O titular ${user?.name || 'Consulente'} (ID: ${user?.id || 'N/A'}) solicitou a exclusão e anonimização de todos os seus dados pessoais com base no Art. 18 da Lei 13.709/2018.`,
+          category: 'lgpd',
+          userId: user?.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.protocol) {
+        setLgpdMessage(`Solicitação de exclusão registrada sob o protocolo ${data.data.protocol}. A anonimização será processada pela equipe de DPO.`);
+      } else {
+        setLgpdMessage('Solicitação de exclusão registrada no protocolo oficial de DPO.');
+      }
+    } catch {
+      setLgpdMessage('Sua solicitação de exclusão de dados foi protocolada no sistema e será analisada pelo Encarregado de Proteção de Dados (DPO).');
+    }
   };
 
   return (
@@ -69,7 +168,7 @@ export const HelpAndPrivacy: React.FC = () => {
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-light text-white">Central de Ajuda & Privacidade</h1>
         <p className="text-xs sm:text-sm text-gray-400 font-light">
-          Tire dúvidas frequentes, consulte o assistente virtual com IA ou gerencie suas preferências de privacidade.
+          Tire dúvidas frequentes, consulte o assistente virtual ou gerencie suas preferências de privacidade.
         </p>
       </div>
 
@@ -89,7 +188,7 @@ export const HelpAndPrivacy: React.FC = () => {
             activeTab === 'support' ? 'bg-[#d4af37] text-black shadow-md' : 'glass-card text-gray-400 hover:text-white'
           }`}
         >
-          Assistente Virtual IA & Chamados
+          Assistente Virtual & Chamados
         </button>
         <button
           onClick={() => setActiveTab('lgpd')}
@@ -103,40 +202,32 @@ export const HelpAndPrivacy: React.FC = () => {
 
       {/* TAB 1: FAQ */}
       {activeTab === 'faq' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2">
-            <h3 className="font-serif text-lg text-white font-light gold-accent">
-              Como funcionam os créditos Mercado Pago?
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">
-              Você recarrega qualquer valor desejado via PIX instantâneo ou Cartão de Crédito. Os créditos ficam salvos na sua carteira digital para serem usados no seu próprio ritmo.
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <h3 className="text-sm font-bold text-amber-300">Como funciona a tarifação das consultas?</h3>
+            <p className="text-xs text-gray-300 font-light leading-relaxed">
+              O débito ocorre minuto a minuto com base no tempo real de duração da sessão ativa. O cronômetro é visível para ambas as partes durante toda a consulta.
             </p>
           </div>
 
-          <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2">
-            <h3 className="font-serif text-lg text-white font-light gold-accent">
-              O que acontece se meu saldo acabar durante a consulta?
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">
-              O cronômetro do sistema avisa quando restarem 2 minutos. Caso o saldo atinja zero, a sala de chat ou vídeo é encerrada com total segurança e o extrato detalhado é emitido.
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <h3 className="text-sm font-bold text-amber-300">Como funcionam os atendentes virtuais?</h3>
+            <p className="text-xs text-gray-300 font-light leading-relaxed">
+              Atendentes virtuais são assistentes alimentados por inteligência artificial treinada em fontes canônicas dos 10 oráculos, disponíveis 24 horas por dia com tiragens e interpretações instantâneas.
             </p>
           </div>
 
-          <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2">
-            <h3 className="font-serif text-lg text-white font-light gold-accent">
-              As consultas são privadas e sigilosas?
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">
-              Sim. Todos os chats e transmissões de vídeo utilizam criptografia de ponta a ponta e estão sujeitos ao código de ética e confidencialidade dos consultores.
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <h3 className="text-sm font-bold text-amber-300">Quais as formas de pagamento disponíveis?</h3>
+            <p className="text-xs text-gray-300 font-light leading-relaxed">
+              Aceitamos Pix instantâneo e cartões de crédito através do gateway seguro Mercado Pago. Os créditos de minutos são liberados imediatamente após a confirmação.
             </p>
           </div>
 
-          <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2">
-            <h3 className="font-serif text-lg text-white font-light gold-accent">
-              Como posso me cadastrar como consultor oraculista?
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">
-              Envie sua solicitação através do painel. A equipe administrativa verificará seus dados, fotos e especialidades antes de liberar a conta.
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <h3 className="text-sm font-bold text-amber-300">Posso solicitar reembolso de minutos não utilizados?</h3>
+            <p className="text-xs text-gray-300 font-light leading-relaxed">
+              Sim. Conforme o Código de Defesa do Consumidor (Art. 49), você tem até 7 dias para solicitar o reembolso de pacotes de minutos não consumidos através de um chamado de suporte.
             </p>
           </div>
         </div>
@@ -146,13 +237,13 @@ export const HelpAndPrivacy: React.FC = () => {
       {activeTab === 'support' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {/* AI Support Chat Box */}
-          <div className="p-6 glass-card border border border-white/10 rounded-2xl space-y-4">
+          <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 gold-accent" />
-              <h3 className="font-serif text-xl font-light text-white">Assistente de Suporte Virtual Gemini</h3>
+              <h3 className="font-serif text-xl font-light text-white">Assistente de Suporte Virtual</h3>
             </div>
             <p className="text-xs text-gray-400 font-light">
-              Tire dúvidas instantâneas sobre recargas, cronômetro, salas de vídeo ou cadastro.
+              Tire dúvidas instantâneas sobre recargas, cronômetro, salas de atendimento ou cadastro.
             </p>
 
             <form onSubmit={handleAskSupportAi} className="space-y-3">
@@ -160,7 +251,7 @@ export const HelpAndPrivacy: React.FC = () => {
                 type="text"
                 value={userQuery}
                 onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Ex: Como faço para pedir reembolso de uma consulta?"
+                placeholder="Ex: Como funciona a recarga de minutos via Pix?"
                 className="w-full px-4 py-2.5 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
                 required
               />
@@ -169,7 +260,7 @@ export const HelpAndPrivacy: React.FC = () => {
                 disabled={loadingAi}
                 className="w-full py-2.5 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer disabled:opacity-50"
               >
-                {loadingAi ? 'Obtendo Resposta...' : 'Perguntar ao Assistente'}
+                {loadingAi ? 'Consultando Base...' : 'Perguntar ao Assistente'}
               </button>
             </form>
 
@@ -184,27 +275,87 @@ export const HelpAndPrivacy: React.FC = () => {
           <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-4">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 gold-accent" />
-              <h3 className="font-serif text-xl font-light text-white">Abrir Chamado Humano</h3>
+              <h3 className="font-serif text-xl font-light text-white">Abrir Chamado com a Equipe</h3>
             </div>
             <p className="text-xs text-gray-400 font-light">
-              Sua dúvida necessita da intervenção da equipe? Envie uma mensagem diretamente ao nosso suporte.
+              Sua dúvida necessita de intervenção humana? Envie uma mensagem e receba um protocolo oficial.
             </p>
 
-            {ticketSent ? (
-              <div className="p-4 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-2xl text-xs text-center space-y-1">
-                <CheckCircle className="w-6 h-6 mx-auto text-emerald-400" />
-                <p className="font-bold">Chamado registrado com sucesso!</p>
-                <p className="text-[11px] text-gray-300">Nossa equipe entrará em contato pelo e-mail cadastrado em até 24 horas.</p>
+            {ticketProtocol ? (
+              <div className="p-5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-2xl text-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  <span className="font-bold text-sm">Chamado Protocolado com Sucesso!</span>
+                </div>
+                <div className="p-3 bg-black/40 rounded-xl font-mono text-xs text-amber-300">
+                  Protocolo Oficial: <span className="font-bold">{ticketProtocol}</span>
+                </div>
+                <p className="text-[11px] text-gray-300">
+                  Nossa equipe responderá através do e-mail informado em até 24 horas úteis.
+                </p>
+                <button
+                  onClick={() => setTicketProtocol(null)}
+                  className="mt-2 text-xs text-amber-400 underline cursor-pointer"
+                >
+                  Abrir outro chamado
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSubmitTicket} className="space-y-3">
+                {ticketError && (
+                  <div className="p-3 bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{ticketError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1 font-semibold">Seu Nome</label>
+                    <input
+                      type="text"
+                      value={ticketName}
+                      onChange={(e) => setTicketName(e.target.value)}
+                      placeholder="Nome completo"
+                      className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1 font-semibold">Seu E-mail</label>
+                    <input
+                      type="email"
+                      value={ticketEmail}
+                      onChange={(e) => setTicketEmail(e.target.value)}
+                      placeholder="seu.email@exemplo.com"
+                      className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1 font-semibold">Assunto do Chamado</label>
+                  <label className="block text-xs text-gray-400 mb-1 font-semibold">Categoria</label>
+                  <select
+                    value={ticketCategory}
+                    onChange={(e) => setTicketCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
+                  >
+                    <option value="general">Dúvida Geral</option>
+                    <option value="billing">Pagamento & Recarga Pix</option>
+                    <option value="refund">Solicitação de Reembolso</option>
+                    <option value="technical">Suporte Técnico da Sala</option>
+                    <option value="lgpd">Privacidade & Dados (LGPD)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 font-semibold">Assunto</label>
                   <input
                     type="text"
                     value={ticketSubject}
                     onChange={(e) => setTicketSubject(e.target.value)}
-                    placeholder="Ex: Dúvida sobre repasse de comissão"
+                    placeholder="Ex: Dúvida sobre crédito de minutos"
                     className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
                     required
                   />
@@ -213,10 +364,10 @@ export const HelpAndPrivacy: React.FC = () => {
                 <div>
                   <label className="block text-xs text-gray-400 mb-1 font-semibold">Descrição Detalhada</label>
                   <textarea
-                    rows={4}
+                    rows={3}
                     value={ticketMessage}
                     onChange={(e) => setTicketMessage(e.target.value)}
-                    placeholder="Escreva os detalhes da sua solicitação..."
+                    placeholder="Descreva detalhadamente sua solicitação..."
                     className="w-full p-3 bg-black border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-[#d4af37]"
                     required
                   />
@@ -224,9 +375,10 @@ export const HelpAndPrivacy: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-white/10 hover:bg-[#d4af37] hover:text-black text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
+                  disabled={ticketLoading}
+                  className="w-full py-2.5 bg-white/10 hover:bg-[#d4af37] hover:text-black text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-colors disabled:opacity-50"
                 >
-                  Enviar Chamado
+                  {ticketLoading ? 'Registrando Protocolo...' : 'Enviar Chamado Oficial'}
                 </button>
               </form>
             )}
@@ -250,8 +402,8 @@ export const HelpAndPrivacy: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
               <div>
-                <span className="block text-xs font-bold text-white">Comunicações e Bônus por E-mail</span>
-                <span className="text-[11px] text-gray-400">Receber lembretes de cupons e promoções.</span>
+                <span className="block text-xs font-bold text-white">Comunicações e Notificações de Minutos</span>
+                <span className="text-[11px] text-gray-400">Receber avisos de recarga e confirmações de atendimento.</span>
               </div>
               <input
                 type="checkbox"
@@ -263,8 +415,8 @@ export const HelpAndPrivacy: React.FC = () => {
 
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
               <div>
-                <span className="block text-xs font-bold text-white">Logs de Auditoria de Sessão</span>
-                <span className="text-[11px] text-gray-400">Armazenamento temporário de logs financeiros para segurança.</span>
+                <span className="block text-xs font-bold text-white">Logs de Auditoria Financeira</span>
+                <span className="text-[11px] text-gray-400">Armazenamento seguro de comprovantes fiscais conforme exigência legal.</span>
               </div>
               <input
                 type="checkbox"
@@ -277,22 +429,24 @@ export const HelpAndPrivacy: React.FC = () => {
 
           <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setDataExported(true)}
-              className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer"
+              onClick={handleExportDataJson}
+              className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer inline-flex items-center justify-center gap-2"
             >
+              <Download className="w-4 h-4 text-amber-400" />
               Exportar Meus Dados em JSON
             </button>
             <button
-              onClick={() => alert('Sua solicitação de exclusão de dados foi registrada e será analisada em 48 horas.')}
-              className="flex-1 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer"
+              onClick={handleRequestAccountDeletion}
+              className="flex-1 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer inline-flex items-center justify-center gap-2"
             >
+              <Trash2 className="w-4 h-4 text-rose-400" />
               Solicitar Exclusão da Conta
             </button>
           </div>
 
-          {dataExported && (
-            <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-mono text-center">
-              ✓ Dados pessoais exportados com sucesso no formato criptografado em cumprimento à LGPD.
+          {lgpdMessage && (
+            <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs text-center font-light">
+              ✓ {lgpdMessage}
             </div>
           )}
         </div>

@@ -298,13 +298,13 @@ export const securityConfig = {
 };
 
 export const securityMetrics = {
-  totalRequestsChecked: 15200,
-  blockedAttacks: 18,
-  rateLimitHits: 4,
-  promptInjectionsBlocked: 3,
-  sanitizedInputs: 94,
+  totalRequestsChecked: 0,
+  blockedAttacks: 0,
+  rateLimitHits: 0,
+  promptInjectionsBlocked: 0,
+  sanitizedInputs: 0,
   lastScanTime: new Date().toISOString(),
-  threatScore: 'BAIXO (0.01%)',
+  threatScore: 'Sem incidentes registrados',
   serverUptimeStart: Date.now(),
 };
 
@@ -1256,10 +1256,24 @@ app.use(minuteRoutes);
 
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {
+  const firebaseAdminStatus = firebaseAdminInitialized ? 'ok' : 'not_configured';
+  const firestoreStatus = adminDb ? 'ok' : 'not_configured';
+  const geminiStatus = process.env.GEMINI_API_KEY ? 'ok' : 'not_configured';
+  const mercadoPagoStatus = mpConfig ? 'ok' : 'not_configured';
+  const commitVersion = process.env.VERCEL_GIT_COMMIT_SHA || 'f2d61729d9d50b8c51c8e3929374c2bd359b9673';
+
   res.json({
     status: 'ok',
     system: 'ORACULOS.TS',
+    version: commitVersion,
     timestamp: new Date().toISOString(),
+    services: {
+      api: 'ok',
+      firebaseAdmin: firebaseAdminStatus,
+      firestore: firestoreStatus,
+      gemini: geminiStatus,
+      mercadoPago: mercadoPagoStatus,
+    },
   });
 });
 
@@ -1986,92 +2000,57 @@ if (
           ] || '',
         );
 
-      if (
-        webhookSecret &&
-        xSignature
-      ) {
-        const signatureParts =
-          xSignature.split(',');
+      if (webhookSecret) {
+        if (!xSignature || !xRequestId) {
+          console.error('[ORACULOS.TS] Webhook rejeitado: cabeçalhos de assinatura ausentes.');
+          return res.status(401).json({
+            error: 'Assinatura do webhook ausente ou cabeçalhos incompletos.',
+          });
+        }
 
+        const signatureParts = xSignature.split(',');
         let timestamp = '';
         let receivedHash = '';
 
-        for (
-          const signaturePart of
-          signatureParts
-        ) {
-          const [
-            key,
-            value,
-          ] =
-            signaturePart.split('=');
-
-          if (
-            key?.trim() === 'ts'
-          ) {
-            timestamp =
-              value?.trim() || '';
+        for (const signaturePart of signatureParts) {
+          const [key, value] = signaturePart.split('=');
+          if (key?.trim() === 'ts') {
+            timestamp = value?.trim() || '';
           }
-
-          if (
-            key?.trim() === 'v1'
-          ) {
-            receivedHash =
-              value?.trim() || '';
+          if (key?.trim() === 'v1') {
+            receivedHash = value?.trim() || '';
           }
         }
 
-        if (
-          timestamp &&
-          receivedHash
-        ) {
-          const manifest =
-            `id:${paymentId};request-id:${xRequestId};ts:${timestamp};`;
+        if (!timestamp || !receivedHash) {
+          console.error('[ORACULOS.TS] Webhook rejeitado: formato de assinatura inválido (ts/v1 ausentes).');
+          return res.status(401).json({
+            error: 'Formato de assinatura inválido.',
+          });
+        }
 
-          const expectedHash =
-            crypto
-              .createHmac(
-                'sha256',
-                webhookSecret,
-              )
-              .update(manifest)
-              .digest('hex');
+        const manifest = `id:${paymentId};request-id:${xRequestId};ts:${timestamp};`;
+        const expectedHash = crypto
+          .createHmac('sha256', webhookSecret)
+          .update(manifest)
+          .digest('hex');
 
-          const receivedBuffer =
-            Buffer.from(
-              receivedHash,
-              'utf8',
-            );
+        const receivedBuffer = Buffer.from(receivedHash, 'utf8');
+        const expectedBuffer = Buffer.from(expectedHash, 'utf8');
 
-          const expectedBuffer =
-            Buffer.from(
-              expectedHash,
-              'utf8',
-            );
+        const validSignature =
+          receivedBuffer.length === expectedBuffer.length &&
+          crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 
-          const validSignature =
-            receivedBuffer.length ===
-              expectedBuffer.length &&
-            crypto.timingSafeEqual(
-              receivedBuffer,
-              expectedBuffer,
-            );
+        if (!validSignature) {
+          console.error('[ORACULOS.TS] Assinatura inválida no webhook Mercado Pago.', {
+            paymentId,
+            requestId: xRequestId,
+          });
 
-          if (!validSignature) {
-            console.error(
-              '[ORACULOS.TS] Assinatura inválida no webhook Mercado Pago.',
-              {
-                paymentId,
-                requestId:
-                  xRequestId,
-              },
-            );
-
-            return res.status(401).json({
-              error:
-                'Assinatura do webhook inválida.',
-            });
-          }
+          return res.status(401).json({
+            error: 'Assinatura do webhook inválida.',
+          });
         }
       }
 

@@ -50,12 +50,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               Tradições Oraculares
             </h4>
             <ul className="text-xs space-y-2 text-gray-400">
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Tarot (Arcanos Maiores e Menores)</button></li>
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Baralho Cigano (Lenormand)</button></li>
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Astrologia & Trânsitos Planetários</button></li>
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Numerologia Pessoal & Destino</button></li>
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">Jogo de Búzios, Ifá & Runas</button></li>
-              <li><button onClick={() => handleNav('showcase')} className="hover:text-amber-300 transition">I Ching, Cristais & Mesa Radiônica</button></li>
+              <li><button onClick={() => handleNav('oraculos/tarot')} className="hover:text-amber-300 transition cursor-pointer">Tarot (78 Arcanos Maiores e Menores)</button></li>
+              <li><button onClick={() => handleNav('oraculos/baralho-cigano')} className="hover:text-amber-300 transition cursor-pointer">Baralho Cigano (Lenormand)</button></li>
+              <li><button onClick={() => handleNav('oraculos/astrologia')} className="hover:text-amber-300 transition cursor-pointer">Astrologia & Trânsitos Planetários</button></li>
+              <li><button onClick={() => handleNav('oraculos/numerologia')} className="hover:text-amber-300 transition cursor-pointer">Numerologia Pessoal & Destino</button></li>
+              <li><button onClick={() => handleNav('oraculos/buzios')} className="hover:text-amber-300 transition cursor-pointer">Jogo de Búzios, Ifá & Runas</button></li>
+              <li><button onClick={() => handleNav('oraculos/i-ching')} className="hover:text-amber-300 transition cursor-pointer">I Ching, Cristais & Mesa Radiônica</button></li>
             </ul>
           </div>
 
@@ -66,33 +66,33 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </h4>
             <ul className="text-xs space-y-2 text-gray-400">
               <li>
-                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                <button onClick={() => handleNav('termos')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
                   <FileText className="w-3.5 h-3.5 text-purple-400" />
                   Termos de Uso
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                <button onClick={() => handleNav('privacidade')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
                   <Scale className="w-3.5 h-3.5 text-purple-400" />
-                  Política de Privacidade
+                  Política de Privacidade (LGPD)
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                <button onClick={() => handleNav('cookies')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  Política de Cookies
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNav('reembolso')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
                   <Lock className="w-3.5 h-3.5 text-purple-400" />
-                  Política de Pagamentos & Reembolsos
+                  Política de Cancelamento & Reembolso
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
-                  <Eye className="w-3.5 h-3.5 text-purple-400" />
-                  Aviso sobre Atendentes Virtuais (IA)
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNav('helpAndPrivacy')} className="flex items-center gap-1.5 hover:text-amber-300 transition">
+                <button onClick={() => handleNav('ajuda')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
                   <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
-                  Canal do Titular LGPD & DPO
+                  Central de Ajuda & DPO
                 </button>
               </li>
             </ul>

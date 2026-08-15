@@ -215,14 +215,15 @@ export const AdminDashboard: React.FC = () => {
     setNewCouponCode('');
   };
 
-  const totalGrossRevenue =
-    transactions
-      .filter((t) => t.type === 'recharge' && t.status === 'completed')
-      .reduce((acc, curr) => acc + curr.amount, 0) + 42100;
+  const totalGrossRevenue = transactions
+    .filter((t) => t.type === 'recharge' && t.status === 'completed')
+    .reduce((acc, curr) => acc + curr.amount, 0);
 
   const totalAdminCommission = Number(
     (totalGrossRevenue * (parseFloat(platformFee) / 100)).toFixed(2)
   );
+
+  const totalCompletedSessions = pastSessions.length;
 
   const filteredLogs = auditLogs.filter((log) => {
     if (logFilter === 'ALL') return true;
@@ -329,9 +330,8 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-3xl font-black text-white font-mono">
                 R$ {totalGrossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
-              <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>+18.4% este mês</span>
+              <div className="flex items-center gap-1 text-[11px] text-gray-400 font-semibold">
+                <span>{transactions.length > 0 ? `${transactions.length} transações registradas` : 'Sem transações no período'}</span>
               </div>
             </div>
 
@@ -342,19 +342,19 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-3xl font-black gold-accent font-mono">
                 R$ {totalAdminCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-[11px] text-gray-500">Calculado automaticamente no backend</p>
+              <p className="text-[11px] text-gray-500">Calculado sobre transações confirmadas</p>
             </div>
 
             <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2 shadow-xl">
               <span className="text-xs uppercase font-bold text-gray-400 tracking-wider">Consultores Cadastrados</span>
               <p className="text-3xl font-black text-white font-mono">{consultants.length}</p>
-              <p className="text-[11px] text-gray-400">3 online no momento</p>
+              <p className="text-[11px] text-gray-400">{consultants.filter(c => c.status === 'online').length} ativos agora</p>
             </div>
 
             <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-2 shadow-xl">
-              <span className="text-xs uppercase font-bold text-gray-400 tracking-wider">Consultas Atendidas</span>
-              <p className="text-3xl font-black text-white font-mono">{pastSessions.length + 8030}</p>
-              <p className="text-[11px] text-gray-400">Média de 4.9 estrelas</p>
+              <span className="text-xs uppercase font-bold text-gray-400 tracking-wider">Consultas Realizadas</span>
+              <p className="text-3xl font-black text-white font-mono">{totalCompletedSessions}</p>
+              <p className="text-[11px] text-gray-400">{totalCompletedSessions > 0 ? 'Sessões registradas' : 'Sem histórico registrado'}</p>
             </div>
           </div>
 
