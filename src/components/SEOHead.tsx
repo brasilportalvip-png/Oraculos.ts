@@ -75,8 +75,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
     setMetaName('twitter:image', ogImage);
 
     // 6. JSON-LD Structured Data
+    let scriptTag = document.querySelector('#dynamic-jsonld') as HTMLScriptElement | null;
     if (jsonLd) {
-      let scriptTag = document.querySelector('#dynamic-jsonld') as HTMLScriptElement | null;
       if (!scriptTag) {
         scriptTag = document.createElement('script');
         scriptTag.id = 'dynamic-jsonld';
@@ -84,7 +84,16 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
         document.head.appendChild(scriptTag);
       }
       scriptTag.textContent = JSON.stringify(jsonLd);
+    } else if (scriptTag) {
+      scriptTag.remove();
     }
+
+    return () => {
+      const existingScript = document.querySelector('#dynamic-jsonld');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
   }, [title, description, fullCanonicalUrl, ogType, ogImage, jsonLd]);
 
   return null;

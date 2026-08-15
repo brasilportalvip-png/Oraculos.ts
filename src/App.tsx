@@ -22,6 +22,8 @@ const HowItWorks = lazy(() => import('./components/HowItWorks').then((m) => ({ d
 const HelpAndPrivacy = lazy(() => import('./components/showcase/HelpAndPrivacy').then((m) => ({ default: m.HelpAndPrivacy })));
 const LegalPage = lazy(() => import('./components/LegalPage').then((m) => ({ default: m.LegalPage })));
 const OracleDetailPage = lazy(() => import('./components/OracleDetailPage').then((m) => ({ default: m.OracleDetailPage })));
+const SpecialistDetailPage = lazy(() => import('./components/SpecialistDetailPage').then((m) => ({ default: m.SpecialistDetailPage })));
+const ArticleDetailPage = lazy(() => import('./components/blog/ArticleDetailPage').then((m) => ({ default: m.ArticleDetailPage })));
 const NotFoundPage = lazy(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 interface ParsedRoute {
@@ -30,53 +32,70 @@ interface ParsedRoute {
 }
 
 function parseLocation(): ParsedRoute {
-  const path = window.location.pathname.toLowerCase();
+  const rawPath = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
   const hash = window.location.hash.toLowerCase().replace('#', '');
 
-  if (path.startsWith('/oraculos/')) {
-    const oracleId = path.replace('/oraculos/', '').replace(/\/$/, '');
+  if (rawPath.startsWith('/oraculos/')) {
+    const oracleId = rawPath.replace('/oraculos/', '');
     return { view: 'oracleDetail', param: oracleId };
   }
+  if (rawPath === '/oraculos') {
+    return { view: 'oracles' };
+  }
 
-  if (path.includes('termos') || hash.includes('termos')) {
+  if (rawPath.startsWith('/especialistas/')) {
+    const consultantId = rawPath.replace('/especialistas/', '');
+    return { view: 'specialistDetail', param: consultantId };
+  }
+  if (rawPath === '/especialistas') {
+    return { view: 'oracles' };
+  }
+
+  if (rawPath.startsWith('/blog/')) {
+    const slug = rawPath.replace('/blog/', '');
+    return { view: 'articleDetail', param: slug };
+  }
+  if (rawPath.startsWith('/artigos/')) {
+    const slug = rawPath.replace('/artigos/', '');
+    return { view: 'articleDetail', param: slug };
+  }
+  if (rawPath === '/blog' || rawPath === '/artigos') {
+    return { view: 'blog' };
+  }
+
+  if (rawPath === '/termos' || hash === 'termos') {
     return { view: 'legal', param: 'termos' };
   }
-  if (path.includes('privacidade') || hash.includes('privacidade') || path.includes('lgpd')) {
+  if (rawPath === '/privacidade' || rawPath === '/lgpd' || hash === 'privacidade' || hash === 'lgpd') {
     return { view: 'legal', param: 'privacidade' };
   }
-  if (path.includes('cookies') || hash.includes('cookies')) {
+  if (rawPath === '/cookies' || hash === 'cookies') {
     return { view: 'legal', param: 'cookies' };
   }
-  if (path.includes('reembolso') || hash.includes('reembolso') || path.includes('estorno')) {
+  if (rawPath === '/reembolso' || rawPath === '/estorno' || hash === 'reembolso' || hash === 'estorno') {
     return { view: 'legal', param: 'reembolso' };
   }
 
-  if (path.includes('especialistas') || hash.includes('especialistas') || hash.includes('oracles')) {
-    return { view: 'oracles' };
-  }
-  if (path.includes('blog') || hash.includes('blog')) {
-    return { view: 'blog' };
-  }
-  if (path.includes('como-funciona') || hash.includes('howitworks')) {
+  if (rawPath === '/como-funciona' || hash === 'como-funciona' || hash === 'howitworks') {
     return { view: 'howItWorks' };
   }
-  if (path.includes('ajuda') || hash.includes('helpandprivacy')) {
+  if (rawPath === '/ajuda' || rawPath === '/suporte' || rawPath === '/ajuda-e-privacidade' || hash === 'ajuda' || hash === 'suporte') {
     return { view: 'helpAndPrivacy' };
   }
-  if (path.includes('painel/consultor') || hash.includes('consultantdashboard')) {
+  if (rawPath === '/painel/consultor' || hash === 'consultantdashboard') {
     return { view: 'consultantDashboard' };
   }
-  if (path.includes('painel') || path.includes('carteira') || hash.includes('clientdashboard')) {
+  if (rawPath === '/painel' || rawPath === '/carteira' || hash === 'clientdashboard') {
     return { view: 'clientDashboard' };
   }
-  if (path.includes('admin') || hash.includes('admindashboard')) {
+  if (rawPath === '/admin' || hash === 'admindashboard') {
     return { view: 'adminDashboard' };
   }
-  if (path === '/' || path === '' || hash === '' || hash === 'showcase') {
+  if (rawPath === '/' || hash === '' || hash === 'showcase') {
     return { view: 'showcase' };
   }
 
-  return { view: 'showcase' };
+  return { view: 'notFound' };
 }
 
 function MainAppContent() {
@@ -95,6 +114,18 @@ function MainAppContent() {
       const oracleId = tabOrPath.replace('oraculos/', '');
       targetPath = `/oraculos/${oracleId}`;
       newRoute = { view: 'oracleDetail', param: oracleId };
+    } else if (tabOrPath.startsWith('especialistas/')) {
+      const specId = tabOrPath.replace('especialistas/', '');
+      targetPath = `/especialistas/${specId}`;
+      newRoute = { view: 'specialistDetail', param: specId };
+    } else if (tabOrPath.startsWith('blog/')) {
+      const slug = tabOrPath.replace('blog/', '');
+      targetPath = `/blog/${slug}`;
+      newRoute = { view: 'articleDetail', param: slug };
+    } else if (tabOrPath.startsWith('artigos/')) {
+      const slug = tabOrPath.replace('artigos/', '');
+      targetPath = `/blog/${slug}`;
+      newRoute = { view: 'articleDetail', param: slug };
     } else if (['termos', 'privacidade', 'cookies', 'reembolso'].includes(tabOrPath)) {
       targetPath = `/${tabOrPath}`;
       newRoute = { view: 'legal', param: tabOrPath };
@@ -102,10 +133,12 @@ function MainAppContent() {
       const map: Record<string, { path: string; route: ParsedRoute }> = {
         showcase: { path: '/', route: { view: 'showcase' } },
         oracles: { path: '/especialistas', route: { view: 'oracles' } },
+        especialistas: { path: '/especialistas', route: { view: 'oracles' } },
         blog: { path: '/blog', route: { view: 'blog' } },
         howItWorks: { path: '/como-funciona', route: { view: 'howItWorks' } },
         helpAndPrivacy: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
         ajuda: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
+        suporte: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
         clientDashboard: { path: '/painel', route: { view: 'clientDashboard' } },
         consultantDashboard: { path: '/painel/consultor', route: { view: 'consultantDashboard' } },
         adminDashboard: { path: '/admin', route: { view: 'adminDashboard' } },
@@ -171,7 +204,9 @@ function MainAppContent() {
                     setSelectedOracle(null);
                   }
                 }}
-                onSelectConsultant={(c) => setSelectedConsultant(c)}
+                onSelectConsultant={(c) => {
+                  navigateTo(`especialistas/${c.id}`);
+                }}
                 onStartConsultation={handleStartConsultation}
               />
             </>
@@ -182,8 +217,25 @@ function MainAppContent() {
               oracleId={currentRoute.param || 'tarot'}
               consultants={consultants}
               onBack={() => navigateTo('showcase')}
-              onSelectConsultant={(c) => setSelectedConsultant(c)}
+              onSelectConsultant={(c) => navigateTo(`especialistas/${c.id}`)}
               onStartConsultation={handleStartConsultation}
+            />
+          )}
+
+          {currentRoute.view === 'specialistDetail' && (
+            <SpecialistDetailPage
+              consultantId={currentRoute.param || ''}
+              consultants={consultants}
+              onBack={() => navigateTo('oracles')}
+              onStartConsultation={handleStartConsultation}
+            />
+          )}
+
+          {currentRoute.view === 'articleDetail' && (
+            <ArticleDetailPage
+              slug={currentRoute.param || ''}
+              onBack={() => navigateTo('blog')}
+              onSelectArticle={(slug) => navigateTo(`blog/${slug}`)}
             />
           )}
 
@@ -219,6 +271,10 @@ function MainAppContent() {
           {currentRoute.view === 'consultantDashboard' && <ConsultantDashboard />}
 
           {currentRoute.view === 'adminDashboard' && <AdminDashboard />}
+
+          {currentRoute.view === 'notFound' && (
+            <NotFoundPage onGoHome={() => navigateTo('showcase')} />
+          )}
         </Suspense>
       </main>
 

@@ -6,6 +6,8 @@ import { Consultant, OracleType } from '../types';
 import { SEOHead } from './SEOHead';
 import { ConsultantCard } from './ConsultantCard';
 
+import { NotFoundPage } from './NotFoundPage';
+
 interface OracleDetailPageProps {
   oracleId: string;
   consultants: Consultant[];
@@ -164,7 +166,12 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
   onStartConsultation,
 }) => {
   const normalizedKey = oracleId.toLowerCase().replace(/\s+/g, '-');
-  const details = ORACLE_DESCRIPTIONS[normalizedKey] || ORACLE_DESCRIPTIONS.tarot;
+  const details = ORACLE_DESCRIPTIONS[normalizedKey];
+
+  if (!details) {
+    return <NotFoundPage onGoHome={onBack} />;
+  }
+
   const oracleConfig = ORACLE_CATEGORIES[normalizedKey as OracleType] || ORACLE_CATEGORIES.tarot;
 
   // Filter consultants specialized in this oracle
