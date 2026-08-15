@@ -1,44 +1,40 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { SITE_ORIGIN } from '../routing/routes';
 
-export interface SEOHeadProps {
+interface SEOHeadProps {
   title: string;
   description: string;
   canonicalPath: string;
-  ogType?: string;
+  ogType?: 'website' | 'article' | 'profile' | string;
   ogImage?: string;
   ogImageAlt?: string;
   noIndex?: boolean;
-  jsonLd?: Record<string, unknown>;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-function resolveAbsoluteUrl(pathOrUrl: string): string {
-  if (!pathOrUrl) return SITE_ORIGIN;
-  if (/^https?:\/\//i.test(pathOrUrl)) {
-    return pathOrUrl;
-  }
-  const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
-  return `${SITE_ORIGIN}${cleanPath}`;
-}
-
-function sanitizeCanonicalUrl(pathOrUrl: string): string {
-  const full = resolveAbsoluteUrl(pathOrUrl);
+function absoluteUrl(value: string): string {
   try {
-    const parsed = new URL(full);
-    return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '') || '/'}`;
+    return new URL(value, SITE_ORIGIN).toString();
   } catch {
-    return full.split('?')[0].split('#')[0];
+    return `${SITE_ORIGIN}/`;
   }
 }
 
-function setOrCreateMeta(selector: string, attrName: string, attrValue: string, content: string) {
-  let el = document.head.querySelector(selector);
-  if (!el) {
-    el = document.createElement('meta');
-    el.setAttribute(attrName, attrValue);
-    document.head.appendChild(el);
+function canonicalUrlFromPath(path: string): string {
+  const url = new URL(path || '/', SITE_ORIGIN);
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+}
+
+function setMeta(selector: string, attribute: 'name' | 'property', key: string, content: string): void {
+  let element = document.head.querySelector<HTMLMetaElement>(selector);
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute(attribute, key);
+    document.head.appendChild(element);
   }
-  el.setAttribute('content', content);
+  element.content = content;
 }
 
 export const SEOHead: React.FC<SEOHeadProps> = ({
@@ -46,77 +42,65 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   description,
   canonicalPath,
   ogType = 'website',
-  ogImage = '/brand/logo-oraculos.png',
-  ogImageAlt = 'ORACULOS.TS — Portal Sagrado de Consultas Oraculares',
+  ogImage = `${SITE_ORIGIN}/brand/logo-oraculos.png`,
+  ogImageAlt = 'ORACULOS.TS — consultas oraculares online',
   noIndex = false,
   jsonLd,
 }) => {
-  const fullCanonicalUrl = sanitizeCanonicalUrl(canonicalPath);
-  const fullImageUrl = resolveAbsoluteUrl(ogImage);
-  const fullTitle = `${title} | ORACULOS.TS`;
+  const fullCanonicalUrl = useMemo(() => canonicalUrlFromPath(canonicalPath), [canonicalPath]);
+  const fullImageUrl = useMemo(() => absoluteUrl(ogImage), [ogImage]);
+  const fullTitle = title.toUpperCase().includes('ORACULOS.TS') ? title : `${title} | ORACULOS.TS`;
+  const robots = noIndex
+    ? 'noindex, nofollow, noarchive, nosnippet'
+    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 
   useEffect(() => {
-    // 1. Title
     document.title = fullTitle;
+    document.documentElement.lang = 'pt-BR';
 
-    // 2. Meta description
-    setOrCreateMeta('meta[name="description"]', 'name', 'description', description);
+    setMeta('meta[name="description"]', 'name', 'description', description);
+    setMeta('meta[name="robots"]', 'name', 'robots', robots);
+    setMeta('meta[name="googlebot"]', 'name', 'googlebot', robots);
 
-    // 3. Robots / indexing
-    const robotsContent = noIndex ? 'noindex, nofollow' : 'index, follow';
-    setOrCreateMeta('meta[name="robots"]', 'name', 'robots', robotsContent);
-    setOrCreateMeta('meta[name="googlebot"]', 'name', 'googlebot', robotsContent);
-
-    // 4. Canonical link
-    let canonicalLink = document.head.querySelector('link[rel="canonical"]');
+    let canonicalLink = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!canonicalLink) {
       canonicalLink = document.createElement('link');
-      canonicalLink.setAttribute('rel', 'canonical');
+      canonicalLink.rel = 'canonical';
       document.head.appendChild(canonicalLink);
     }
-    canonicalLink.setAttribute('href', fullCanonicalUrl);
+    canonicalLink.href = fullCanonicalUrl;
 
-    // 5. OpenGraph
-    setOrCreateMeta('meta[property="og:title"]', 'property', 'og:title', fullTitle);
-    setOrCreateMeta('meta[property="og:description"]', 'property', 'og:description', description);
-    setOrCreateMeta('meta[property="og:url"]', 'property', 'og:url', fullCanonicalUrl);
-    setOrCreateMeta('meta[property="og:type"]', 'property', 'og:type', ogType);
-    setOrCreateMeta('meta[property="og:image"]', 'property', 'og:image', fullImageUrl);
-    if (ogImageAlt) {
-      setOrCreateMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', ogImageAlt);
-    }
+    setMeta('meta[property="og:locale"]', 'property', 'og:locale', 'pt_BR');
+    setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'ORACULOS.TS');
+    setMeta('meta[property="og:title"]', 'property', 'og:title', fullTitle);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', description);
+    setMeta('meta[property="og:url"]', 'property', 'og:url', fullCanonicalUrl);
+    setMeta('meta[property="og:type"]', 'property', 'og:type', ogType);
+    setMeta('meta[property="og:image"]', 'property', 'og:image', fullImageUrl);
+    setMeta('meta[property="og:image:secure_url"]', 'property', 'og:image:secure_url', fullImageUrl);
+    setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', ogImageAlt);
 
-    // 6. Twitter
-    setOrCreateMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
-    setOrCreateMeta('meta[name="twitter:title"]', 'name', 'twitter:title', fullTitle);
-    setOrCreateMeta('meta[name="twitter:description"]', 'name', 'twitter:description', description);
-    setOrCreateMeta('meta[name="twitter:image"]', 'name', 'twitter:image', fullImageUrl);
-    if (ogImageAlt) {
-      setOrCreateMeta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', ogImageAlt);
-    }
+    setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', fullTitle);
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', description);
+    setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', fullImageUrl);
+    setMeta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', ogImageAlt);
 
-    // 7. JSON-LD structured data (secure against script breakout)
-    let scriptTag = document.head.querySelector('#dynamic-jsonld') as HTMLScriptElement | null;
+    const previousJsonLd = document.head.querySelector<HTMLScriptElement>('#dynamic-jsonld');
     if (jsonLd) {
-      if (!scriptTag) {
-        scriptTag = document.createElement('script');
-        scriptTag.id = 'dynamic-jsonld';
-        scriptTag.type = 'application/ld+json';
-        document.head.appendChild(scriptTag);
-      }
-      const safeJson = JSON.stringify(jsonLd).replace(/</g, '\\u003c');
-      scriptTag.textContent = safeJson;
-    } else if (scriptTag) {
-      scriptTag.remove();
+      const script = previousJsonLd ?? document.createElement('script');
+      script.id = 'dynamic-jsonld';
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify(jsonLd).replace(/</g, '\\u003c');
+      if (!previousJsonLd) document.head.appendChild(script);
+    } else {
+      previousJsonLd?.remove();
     }
 
     return () => {
-      const existingScript = document.head.querySelector('#dynamic-jsonld');
-      if (existingScript) {
-        existingScript.remove();
-      }
+      document.head.querySelector<HTMLScriptElement>('#dynamic-jsonld')?.remove();
     };
-  }, [fullTitle, description, fullCanonicalUrl, ogType, fullImageUrl, ogImageAlt, noIndex, jsonLd]);
+  }, [description, fullCanonicalUrl, fullImageUrl, fullTitle, jsonLd, ogImageAlt, ogType, robots]);
 
   return null;
 };

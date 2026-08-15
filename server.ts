@@ -152,12 +152,48 @@ const __dirname_val = __filename_val ? path.dirname(__filename_val) : process.cw
 
 export const app = express();
 const PORT = 3000;
+const isProductionRuntime =
+  process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
 // Initialize Helmet Security Headers
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Required for Vite dev inline scripts
+    contentSecurityPolicy: isProductionRuntime
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            baseUri: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            formAction: ["'self'", 'https://www.mercadopago.com.br'],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+            imgSrc: [
+              "'self'",
+              'data:',
+              'blob:',
+              'https://images.unsplash.com',
+              'https://portalvipbrasil.com.br',
+            ],
+            mediaSrc: ["'self'", 'blob:'],
+            workerSrc: ["'self'", 'blob:'],
+            frameSrc: ["'self'", 'https://www.mercadopago.com.br'],
+            connectSrc: [
+              "'self'",
+              'https://*.googleapis.com',
+              'https://*.firebaseio.com',
+              'wss://*.firebaseio.com',
+              'https://securetoken.googleapis.com',
+              'https://identitytoolkit.googleapis.com',
+              'https://api.mercadopago.com',
+            ],
+            upgradeInsecureRequests: [],
+          },
+        }
+      : false,
     crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   })
 );
 
