@@ -1,4 +1,7 @@
-import { VirtualConsultantProfile, Consultant } from '../types';
+import type {
+  VirtualConsultantProfile,
+  Consultant,
+} from '../types.js';
 
 export const VIRTUAL_PROFILES: VirtualConsultantProfile[] = [
   {

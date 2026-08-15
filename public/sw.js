@@ -12,6 +12,12 @@ const PRECACHE_ASSETS = [
   '/brand/logo-oraculos.png',
   '/image/logo-oraculo.ts.png',
   '/favicon.ico',
+  '/favicon.png',
+  '/favicon-32x32.png',
+  '/apple-touch-icon.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/icon-maskable-512x512.png',
 ];
 
 // URLs que NUNCA devem ser cacheadas (dados privados, sessões, finanças, tokens e APIs de IA)

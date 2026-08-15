@@ -12,22 +12,28 @@
   "categories": ["lifestyle", "utilities"],
   "icons": [
     {
-      "src": "/brand/logo-oraculos.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/logo-oraculos.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/logo-oraculos.png",
+      "src": "/icons/icon-maskable-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/brand/logo-oraculos.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/image/logo-oraculo.ts.png",
@@ -44,7 +50,7 @@
       "url": "/oraculos",
       "icons": [
         {
-          "src": "/brand/logo-oraculos.png",
+          "src": "/icons/icon-192x192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -57,7 +63,7 @@
       "url": "/especialistas",
       "icons": [
         {
-          "src": "/brand/logo-oraculos.png",
+          "src": "/icons/icon-192x192.png",
           "sizes": "192x192",
           "type": "image/png"
         }

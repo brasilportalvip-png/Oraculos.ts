@@ -1,4 +1,4 @@
-import { OracleType } from '../types';
+import type { OracleType } from '../types.js';
 
 export interface OracleCategoryInfo {
   type: OracleType;

@@ -3,14 +3,21 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+const ICO_MAGIC = Buffer.from([0x00, 0x00, 0x01, 0x00]);
 const UTF8_REPLACEMENT_HEX = 'efbfbd';
 
 const BRAND_LOGO_PATH = path.resolve(__dirname, '../public/brand/logo-oraculos.png');
 const IMAGE_LOGO_PATH = path.resolve(__dirname, '../public/image/logo-oraculo.ts.png');
+const FAVICON_ICO_PATH = path.resolve(__dirname, '../public/favicon.ico');
+const FAVICON_PNG_PATH = path.resolve(__dirname, '../public/favicon.png');
+const APPLE_TOUCH_PATH = path.resolve(__dirname, '../public/apple-touch-icon.png');
+const ICON_192_PATH = path.resolve(__dirname, '../public/icons/icon-192x192.png');
+const ICON_512_PATH = path.resolve(__dirname, '../public/icons/icon-512x512.png');
+const ICON_MASKABLE_PATH = path.resolve(__dirname, '../public/icons/icon-maskable-512x512.png');
 
 console.log('===> VALIDANDO ATIVOS BINÁRIOS OFICIAIS (ORACULOS.TS) <===');
 
-function validateSinglePng(filePath) {
+function validateSinglePng(filePath, expectedWidth, expectedHeight) {
   if (!fs.existsSync(filePath)) {
     console.error(`[ERRO FATAL] Arquivo não encontrado: ${filePath}`);
     process.exit(1);
@@ -50,15 +57,48 @@ function validateSinglePng(filePath) {
     process.exit(1);
   }
 
-  const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+  if (expectedWidth && width !== expectedWidth) {
+    console.error(`[ERRO FATAL] Largura incorreta em ${filePath}: esperado ${expectedWidth}, recebido ${width}`);
+    process.exit(1);
+  }
 
+  if (expectedHeight && height !== expectedHeight) {
+    console.error(`[ERRO FATAL] Altura incorreta em ${filePath}: esperado ${expectedHeight}, recebido ${height}`);
+    process.exit(1);
+  }
+
+  const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
   console.log(`✓ ${path.relative(process.cwd(), filePath)} válido: ${width}x${height} (${buf.length} bytes) | SHA-256: ${sha256}`);
 
   return { buf, width, height, sha256 };
 }
 
+function validateIco(filePath) {
+  if (!fs.existsSync(filePath)) {
+    console.error(`[ERRO FATAL] Arquivo ICO não encontrado: ${filePath}`);
+    process.exit(1);
+  }
+
+  const buf = fs.readFileSync(filePath);
+  const header = buf.subarray(0, 4);
+
+  if (!header.equals(ICO_MAGIC)) {
+    console.error(`[ERRO FATAL] Assinatura ICO inválida em ${filePath}`);
+    process.exit(1);
+  }
+
+  const count = buf.readUInt16LE(4);
+  console.log(`✓ ${path.relative(process.cwd(), filePath)} válido: Formato ICO Windows (${count} sub-ícones, ${buf.length} bytes)`);
+}
+
 const brandLogo = validateSinglePng(BRAND_LOGO_PATH);
 const imageLogo = validateSinglePng(IMAGE_LOGO_PATH);
+validateSinglePng(ICON_192_PATH, 192, 192);
+validateSinglePng(ICON_512_PATH, 512, 512);
+validateSinglePng(ICON_MASKABLE_PATH, 512, 512);
+validateSinglePng(APPLE_TOUCH_PATH, 180, 180);
+validateSinglePng(FAVICON_PNG_PATH, 48, 48);
+validateIco(FAVICON_ICO_PATH);
 
 if (!brandLogo.buf.equals(imageLogo.buf)) {
   console.error('[ERRO FATAL] Os arquivos public/brand/logo-oraculos.png e public/image/logo-oraculo.ts.png NÃO são idênticos byte a byte.');
@@ -70,6 +110,6 @@ if (brandLogo.sha256 !== imageLogo.sha256) {
   process.exit(1);
 }
 
-console.log('✓ Ambos os arquivos são rigorosamente IDÊNTICOS byte a byte.');
+console.log('✓ Ambos os logotipos principais são rigorosamente IDÊNTICOS byte a byte.');
 console.log('===> VALIDAÇÃO DE ATIVOS CONCLUÍDA COM SUCESSO! <===');
 process.exit(0);

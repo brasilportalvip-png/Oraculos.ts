@@ -4756,7 +4756,7 @@ async function startLocalServer(): Promise<void> {
   });
 }
 
-if (process.env.VERCEL !== '1') {
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'test') {
   startLocalServer().catch((error: unknown) => {
     console.error(
       '[ORACULOS.TS] Erro ao iniciar servidor local:',

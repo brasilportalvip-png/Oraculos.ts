@@ -1,5 +1,13 @@
-import { Consultant, BlogPost, FinancialTransaction, User } from '../types';
-import { VIRTUAL_CONSULTANTS_MAPPED } from './virtualProfiles';
+import type {
+  Consultant,
+  BlogPost,
+  FinancialTransaction,
+  User,
+} from '../types.js';
+
+import {
+  VIRTUAL_CONSULTANTS_MAPPED,
+} from './virtualProfiles.js';
 
 export const INITIAL_CONSULTANTS: Consultant[] = [
   ...VIRTUAL_CONSULTANTS_MAPPED,
