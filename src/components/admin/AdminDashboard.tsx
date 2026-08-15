@@ -117,11 +117,7 @@ export const AdminDashboard: React.FC = () => {
         value: Math.round((count / totalOracleSessions) * 100),
         color: oracleColorMap[name.toLowerCase()] || '#D4AF37',
       }))
-    : [
-        { name: 'TAROT', value: 40, color: '#D4AF37' },
-        { name: 'CIGANO', value: 30, color: '#E11D48' },
-        { name: 'ASTROLOGIA', value: 30, color: '#8B5CF6' },
-      ];
+    : [];
 
   // Fetch Audit Logs
   const fetchAuditLogs = async () => {
@@ -195,7 +191,7 @@ export const AdminDashboard: React.FC = () => {
             adminCommissionTotal: totalAdminCommission,
             completedSessionsTotal: pastSessions.length,
             totalConsultants: consultants.length,
-            totalClients: new Set(pastSessions.map(s => s.clientId).concat(transactions.map(t => t.userId))).size || 1,
+            totalClients: new Set(pastSessions.map(s => s.clientId).concat(transactions.map(t => t.userId))).size || 0,
           },
           period: 'Julho 2026',
         }),
@@ -416,41 +412,50 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-4 shadow-xl flex flex-col justify-between">
               <h2 className="font-serif text-xl font-light text-white">Distribuição por Oráculo</h2>
 
-              <div className="h-48 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={oracleShareData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={4}
-                    >
-                      {oracleShareData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#050508', borderColor: '#8B5CF6', borderRadius: '12px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="space-y-1.5 pt-2 border-t border-white/10 text-xs">
-                {oracleShareData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-gray-300">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span>{item.name}</span>
-                    </div>
-                    <span className="font-bold text-white">{item.value}%</span>
+              {oracleShareData.length > 0 ? (
+                <>
+                  <div className="h-48 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={oracleShareData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={70}
+                          paddingAngle={4}
+                        >
+                          {oracleShareData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#050508', borderColor: '#8B5CF6', borderRadius: '12px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-white/10 text-xs">
+                    {oracleShareData.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span>{item.name}</span>
+                        </div>
+                        <span className="font-bold text-white">{item.value}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-48 w-full flex flex-col items-center justify-center text-center p-4">
+                  <p className="text-xs text-gray-400 font-light">Sem atendimentos oraculares registrados no período.</p>
+                  <p className="text-[10px] text-gray-500 mt-1">Os percentuais serão gerados automaticamente conforme as consultas forem concluídas.</p>
+                </div>
+              )}
             </div>
           </div>
 

@@ -47,7 +47,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [activeSession, setActiveSession] = useState<ConsultationSession | null>(null);
   const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
   const [pastSessions, setPastSessions] = useState<ConsultationSession[]>([]);
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
 
 

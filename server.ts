@@ -184,10 +184,20 @@ export let adminDb: Firestore | null = null;
 try {
   if (getAdminApps().length > 0) {
     firebaseAdminApp = getExistingAdminApp();
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT,
-    );
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const rawSa = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT || '';
+    let serviceAccount: any;
+    try {
+      if (rawSa.trim().startsWith('{')) {
+        serviceAccount = JSON.parse(rawSa);
+      } else {
+        // Tentativa de decodificação Base64 se não for JSON puro
+        const decoded = Buffer.from(rawSa, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+      }
+    } catch {
+      serviceAccount = JSON.parse(rawSa);
+    }
 
     if (
       !serviceAccount.project_id ||
@@ -195,7 +205,7 @@ try {
       !serviceAccount.private_key
     ) {
       throw new Error(
-        'FIREBASE_SERVICE_ACCOUNT está incompleto.',
+        'FIREBASE_SERVICE_ACCOUNT_KEY está incompleto.',
       );
     }
 
