@@ -200,149 +200,6 @@ app.use(
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// Serve static assets (logos, icons, manifests, sitemaps)
-app.get('/sw.js', (_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Service-Worker-Allowed', '/');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  next();
-});
-
-app.get('/robots.txt', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.send(`User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /painel
-Disallow: /api/
-
-Sitemap: https://oraculos-ts.vercel.app/sitemap.xml
-`);
-});
-
-app.get('/sitemap.xml', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap>
-    <loc>https://oraculos-ts.vercel.app/sitemap-static.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>https://oraculos-ts.vercel.app/sitemap-oraculos.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>https://oraculos-ts.vercel.app/sitemap-especialistas.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>https://oraculos-ts.vercel.app/sitemap-blog.xml</loc>
-  </sitemap>
-</sitemapindex>`;
-  res.send(xml);
-});
-
-app.get('/sitemap-static.xml', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  const staticRoutes = [
-    { loc: 'https://oraculos-ts.vercel.app/', changefreq: 'daily', priority: '1.0' },
-    { loc: 'https://oraculos-ts.vercel.app/especialistas', changefreq: 'daily', priority: '0.9' },
-    { loc: 'https://oraculos-ts.vercel.app/oraculos', changefreq: 'daily', priority: '0.9' },
-    { loc: 'https://oraculos-ts.vercel.app/como-funciona', changefreq: 'monthly', priority: '0.6' },
-    { loc: 'https://oraculos-ts.vercel.app/ajuda-e-privacidade', changefreq: 'monthly', priority: '0.6' },
-    { loc: 'https://oraculos-ts.vercel.app/termos', changefreq: 'monthly', priority: '0.5' },
-    { loc: 'https://oraculos-ts.vercel.app/privacidade', changefreq: 'monthly', priority: '0.5' },
-    { loc: 'https://oraculos-ts.vercel.app/cookies', changefreq: 'monthly', priority: '0.5' },
-    { loc: 'https://oraculos-ts.vercel.app/reembolso', changefreq: 'monthly', priority: '0.5' },
-  ];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${staticRoutes
-  .map(
-    (r) => `  <url>
-    <loc>${r.loc}</loc>
-    <changefreq>${r.changefreq}</changefreq>
-    <priority>${r.priority}</priority>
-  </url>`
-  )
-  .join('\n')}
-</urlset>`;
-  res.send(xml);
-});
-
-app.get('/sitemap-oraculos.xml', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  const oracles = [
-    'tarot',
-    'baralho-cigano',
-    'astrologia',
-    'numerologia',
-    'buzios',
-    'ifa',
-    'runas',
-    'i-ching',
-    'cristais',
-    'mesa-radionica',
-  ];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${oracles
-  .map(
-    (oracle) => `  <url>
-    <loc>https://oraculos-ts.vercel.app/oraculos/${oracle}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`
-  )
-  .join('\n')}
-</urlset>`;
-  res.send(xml);
-});
-
-app.get('/sitemap-especialistas.xml', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  const specialists = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'ai_c1', 'ai_c2', 'ai_c3', 'ai_c4'];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${specialists
-  .map(
-    (id) => `  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/${id}</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`
-  )
-  .join('\n')}
-</urlset>`;
-  res.send(xml);
-});
-
-app.get('/sitemap-blog.xml', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  const articles = [
-    'portal-do-tarot-2026',
-    'astrologia-transitos-2026',
-    'mesa-radionica-quantica-guia',
-  ];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://oraculos-ts.vercel.app/blog</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-${articles
-  .map(
-    (slug) => `  <url>
-    <loc>https://oraculos-ts.vercel.app/blog/${slug}</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`
-  )
-  .join('\n')}
-</urlset>`;
-  res.send(xml);
-});
-
-app.use(express.static(path.join(process.cwd(), 'public')));
-
 // ==========================================
 // FIREBASE ADMIN SDK INITIALIZATION
 // ==========================================
@@ -1610,6 +1467,17 @@ app.get(['/manifest.webmanifest', '/manifest.json'], (_req: Request, res: Respon
     return res.sendFile(fullPath);
   }
   return res.sendFile(path.join(process.cwd(), 'public/manifest.json'));
+});
+
+app.get('/sw.js', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  const fullPath = path.join(process.cwd(), 'public/sw.js');
+  if (fs.existsSync(fullPath)) {
+    return res.sendFile(fullPath);
+  }
+  return res.status(404).send('// Service worker not found');
 });
 
 // Security Status & Management
