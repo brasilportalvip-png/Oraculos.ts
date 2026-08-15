@@ -1,9 +1,10 @@
 // ==============================================================================
 // ORACULOS.TS — Service Worker PWA de Produção
-// Versão: 2.4.0
+// Versão: 2.5.0
 // ==============================================================================
 
-const CACHE_NAME = 'oraculos-ts-v2.4.0';
+const CACHE_NAME = 'oraculos-ts-v2.5.0';
+const OFFLINE_URL = '/index.html';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -72,12 +73,22 @@ self.addEventListener('fetch', (event) => {
   // Verifica se a URL é proibida de cachear
   const isPrivateOrApi = NEVER_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname + url.search));
   if (isPrivateOrApi) {
-    // Busca sempre direto da rede
+    // Busca sempre direto da rede e nunca devolve dados privados armazenados.
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Estratégia Stale-While-Revalidate para páginas e assets estáticos
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        return (await caches.match(event.request)) || (await caches.match(OFFLINE_URL)) || Response.error();
+      })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate somente para assets públicos. Um asset inexistente
+  // nunca pode receber index.html, pois isso mascara 404 e quebra MIME types.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
@@ -90,13 +101,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => {
-          // Se falhar a rede e não houver cache, se for navegação, retorna o cache da home
-          if (event.request.mode === 'navigate' && cachedResponse) {
-            return cachedResponse;
-          }
-          return caches.match('/index.html');
-        });
+        .catch(() => cachedResponse || Response.error());
 
       return cachedResponse || fetchPromise;
     })

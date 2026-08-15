@@ -1,17 +1,39 @@
 import React from 'react';
-import { ShieldCheck, Lock, Heart, FileText, Scale, Eye, HelpCircle } from 'lucide-react';
+import { FileText, HelpCircle, Lock, Scale, ShieldCheck } from 'lucide-react';
+import { resolveNavigationTarget } from '../routing/routes';
 
 interface FooterProps {
   onNavigate?: (tab: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const handleNav = (tab: string) => {
-    if (onNavigate) {
-      onNavigate(tab);
-    } else {
-      window.location.hash = tab;
+  const handleNav = (targetKey: string, e?: React.MouseEvent) => {
+    if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
+      return;
     }
+    if (e) {
+      e.preventDefault();
+    }
+    if (onNavigate) {
+      onNavigate(targetKey);
+    } else {
+      const { path } = resolveNavigationTarget(targetKey);
+      window.location.pathname = path;
+    }
+  };
+
+  const renderFooterLink = (targetKey: string, label: string, Icon?: React.ElementType) => {
+    const { path } = resolveNavigationTarget(targetKey);
+    return (
+      <a
+        href={path}
+        onClick={(e) => handleNav(targetKey, e)}
+        className="inline-flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer text-gray-400"
+      >
+        {Icon && <Icon className="w-3.5 h-3.5 text-purple-400" aria-hidden="true" />}
+        <span>{label}</span>
+      </a>
+    );
   };
 
   return (
@@ -20,25 +42,30 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Col 1 Brand & Ethics */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <a
+              href="/"
+              onClick={(e) => handleNav('showcase', e)}
+              className="flex items-center gap-3 cursor-pointer group"
+            >
               <img
                 src="/brand/logo-oraculos.png"
                 alt="ORACULOS.TS Logo"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
+                  (e.currentTarget as HTMLImageElement).src =
+                    'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
                 }}
                 className="w-10 h-10 rounded-xl object-contain border border-[#d4af37]/30 shadow-md bg-[#0a0a12]/80 p-0.5"
               />
               <span className="text-lg font-bold text-white tracking-tight">
                 ORACULOS<span className="gold-accent">.TS</span>
               </span>
-            </div>
+            </a>
             <p className="text-xs text-gray-400 leading-relaxed">
               Plataforma tecnológica de consultas oraculares e orientação pessoal online em tempo real. Conectando consulentes a especialistas e atendentes virtuais com rigor ético, transparência e segurança.
             </p>
             <div className="pt-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 text-[11px] font-mono text-amber-300 rounded-full">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                 Conformidade LGPD & Zero-Trust
               </span>
             </div>
@@ -50,12 +77,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               Tradições Oraculares
             </h4>
             <ul className="text-xs space-y-2 text-gray-400">
-              <li><button onClick={() => handleNav('oraculos/tarot')} className="hover:text-amber-300 transition cursor-pointer">Tarot (78 Arcanos Maiores e Menores)</button></li>
-              <li><button onClick={() => handleNav('oraculos/baralho-cigano')} className="hover:text-amber-300 transition cursor-pointer">Baralho Cigano (Lenormand)</button></li>
-              <li><button onClick={() => handleNav('oraculos/astrologia')} className="hover:text-amber-300 transition cursor-pointer">Astrologia & Trânsitos Planetários</button></li>
-              <li><button onClick={() => handleNav('oraculos/numerologia')} className="hover:text-amber-300 transition cursor-pointer">Numerologia Pessoal & Destino</button></li>
-              <li><button onClick={() => handleNav('oraculos/buzios')} className="hover:text-amber-300 transition cursor-pointer">Jogo de Búzios, Ifá & Runas</button></li>
-              <li><button onClick={() => handleNav('oraculos/i-ching')} className="hover:text-amber-300 transition cursor-pointer">I Ching, Cristais & Mesa Radiônica</button></li>
+              <li>{renderFooterLink('oraculos/tarot', 'Tarot (78 Arcanos)')}</li>
+              <li>{renderFooterLink('oraculos/baralho-cigano', 'Baralho Cigano (Lenormand)')}</li>
+              <li>{renderFooterLink('oraculos/astrologia', 'Astrologia & Trânsitos Planetários')}</li>
+              <li>{renderFooterLink('oraculos/numerologia', 'Numerologia Pessoal & Destino')}</li>
+              <li>{renderFooterLink('oraculos/buzios', 'Jogo de Búzios, Ifá & Runas')}</li>
+              <li>{renderFooterLink('oraculos/i-ching', 'I Ching, Cristais & Mesa Radiônica')}</li>
             </ul>
           </div>
 
@@ -65,36 +92,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               Políticas & Transparência
             </h4>
             <ul className="text-xs space-y-2 text-gray-400">
-              <li>
-                <button onClick={() => handleNav('termos')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
-                  <FileText className="w-3.5 h-3.5 text-purple-400" />
-                  Termos de Uso
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNav('privacidade')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
-                  <Scale className="w-3.5 h-3.5 text-purple-400" />
-                  Política de Privacidade (LGPD)
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNav('cookies')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                  Política de Cookies
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNav('reembolso')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
-                  <Lock className="w-3.5 h-3.5 text-purple-400" />
-                  Política de Cancelamento & Reembolso
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNav('ajuda')} className="flex items-center gap-1.5 hover:text-amber-300 transition cursor-pointer">
-                  <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
-                  Central de Ajuda & DPO
-                </button>
-              </li>
+              <li>{renderFooterLink('termos', 'Termos de Uso', FileText)}</li>
+              <li>{renderFooterLink('privacidade', 'Política de Privacidade (LGPD)', Scale)}</li>
+              <li>{renderFooterLink('cookies', 'Política de Cookies', ShieldCheck)}</li>
+              <li>{renderFooterLink('reembolso', 'Política de Cancelamento & Reembolso', Lock)}</li>
+              <li>{renderFooterLink('ajuda', 'Central de Ajuda & DPO', HelpCircle)}</li>
             </ul>
           </div>
 
@@ -108,11 +110,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </p>
             <div className="space-y-2 text-xs pt-1">
               <div className="flex items-center gap-2 text-emerald-400 font-medium">
-                <ShieldCheck className="w-4 h-4" />
+                <ShieldCheck className="w-4 h-4" aria-hidden="true" />
                 <span>Pix Instantâneo & Cartão</span>
               </div>
               <div className="flex items-center gap-2 text-amber-300 font-medium">
-                <Lock className="w-4 h-4" />
+                <Lock className="w-4 h-4" aria-hidden="true" />
                 <span>Auditoria e Ledger de Minutos</span>
               </div>
             </div>

@@ -1,11 +1,10 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { Sparkles, ArrowLeft, ShieldCheck, Clock, Star, MessageSquare, Video } from 'lucide-react';
+import { ArrowLeft, Clock, ShieldCheck, Sparkles } from 'lucide-react';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 import { Consultant, OracleType } from '../types';
+import { canonicalOracleSlug, oracleTypeFromSlug } from '../routing/routes';
 import { SEOHead } from './SEOHead';
 import { ConsultantCard } from './ConsultantCard';
-
 import { NotFoundPage } from './NotFoundPage';
 
 interface OracleDetailPageProps {
@@ -165,18 +164,19 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
   onSelectConsultant,
   onStartConsultation,
 }) => {
-  const normalizedKey = oracleId.toLowerCase().replace(/\s+/g, '-');
-  const details = ORACLE_DESCRIPTIONS[normalizedKey];
+  const canonicalSlug = canonicalOracleSlug(oracleId) || oracleId.toLowerCase().replace(/\s+/g, '-');
+  const details = ORACLE_DESCRIPTIONS[canonicalSlug] || ORACLE_DESCRIPTIONS[oracleId.toLowerCase()];
 
   if (!details) {
     return <NotFoundPage onGoHome={onBack} />;
   }
 
-  const oracleConfig = ORACLE_CATEGORIES[normalizedKey as OracleType] || ORACLE_CATEGORIES.tarot;
+  const oracleType = oracleTypeFromSlug(canonicalSlug) || 'tarot';
+  const oracleConfig = ORACLE_CATEGORIES[oracleType] || ORACLE_CATEGORIES.tarot;
 
   // Filter consultants specialized in this oracle
   const matchingConsultants = consultants.filter(
-    (c) => c.specialties.some((s) => s.toLowerCase().includes(normalizedKey) || s.toLowerCase().includes(oracleConfig.name.toLowerCase()))
+    (c) => c.specialties.some((s) => s.toLowerCase().includes(oracleType) || s.toLowerCase().includes(oracleConfig.name.toLowerCase()))
   );
 
   const displayConsultants = matchingConsultants.length > 0 ? matchingConsultants : consultants.slice(0, 4);
@@ -204,10 +204,11 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
       {/* Navigation breadcrumb */}
       <div>
         <button
+          type="button"
           onClick={onBack}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-wider text-[#d4af37] border border-white/10 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Voltar a Todos os Oráculos
         </button>
       </div>
@@ -216,7 +217,7 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1F1638]/80 to-[#0B0813] border border-purple-800/40 p-6 sm:p-10 shadow-2xl">
         <div className="relative z-10 space-y-4 max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             Motor Oracular Oficial ORACULOS.TS
           </div>
           <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-light text-white leading-tight">
@@ -257,8 +258,8 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
             {details.howItWorks}
           </p>
           <div className="pt-2 flex items-center gap-4 text-xs text-purple-300">
-            <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-400" /> Tarifação por Minuto Real</span>
-            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-amber-400" /> Chat ou Vídeo P2P</span>
+            <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" /> Tarifação por Minuto Real</span>
+            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-amber-400" aria-hidden="true" /> Chat ou Vídeo P2P</span>
           </div>
         </div>
       </div>
@@ -285,8 +286,8 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
               key={c.id}
               consultant={c}
               onSelect={() => onSelectConsultant(c)}
-              onStartChat={() => onStartConsultation(c, normalizedKey as OracleType, 'chat')}
-              onStartVideo={() => onStartConsultation(c, normalizedKey as OracleType, 'video')}
+              onStartChat={() => onStartConsultation(c, oracleType, 'chat')}
+              onStartVideo={() => onStartConsultation(c, oracleType, 'video')}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'client' | 'employee' | 'support' | 'admin' | 'superadmin';
+export type UserRole = 'user' | 'client' | 'employee' | 'consultant' | 'support' | 'admin' | 'superadmin';
 
 export type AccountStatus = 'active' | 'blocked' | 'pending';
 
@@ -352,3 +352,5 @@ export interface PlatformStats {
   totalClients: number;
   completedSessionsTotal: number;
 }
+
+export type { PublicView, ParsedRoute, NavigationTarget } from './routing/routes.js';
