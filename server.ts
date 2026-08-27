@@ -26,8 +26,6 @@ import {
   type Firestore,
 } from 'firebase-admin/firestore';
 
-import firebaseAppletConfig from './firebase-applet-config.json';
-
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import crypto from 'crypto';
 import {
@@ -278,8 +276,8 @@ try {
 
    if (firebaseAdminApp) {
     const firestoreDatabaseId =
-      process.env.FIRESTORE_DATABASE_ID ||
-      firebaseAppletConfig.firestoreDatabaseId;
+  process.env.FIRESTORE_DATABASE_ID ||
+  'ai-studio-oraculosts-7043dc96-4272-413a-b356-e453554afa06';
 
     adminDb =
       firestoreDatabaseId && firestoreDatabaseId !== '(default)'
