@@ -26,6 +26,8 @@ import {
   type Firestore,
 } from 'firebase-admin/firestore';
 
+import firebaseAppletConfig from './firebase-applet-config.json';
+
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import crypto from 'crypto';
 import {
@@ -274,8 +276,16 @@ try {
     });
   }
 
-  if (firebaseAdminApp) {
-    adminDb = getFirestore(firebaseAdminApp);
+   if (firebaseAdminApp) {
+    const firestoreDatabaseId =
+      process.env.FIRESTORE_DATABASE_ID ||
+      firebaseAppletConfig.firestoreDatabaseId;
+
+    adminDb =
+      firestoreDatabaseId && firestoreDatabaseId !== '(default)'
+        ? getFirestore(firebaseAdminApp, firestoreDatabaseId)
+        : getFirestore(firebaseAdminApp);
+
     adminDb.settings({
       ignoreUndefinedProperties: true,
     });
