@@ -16,9 +16,9 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      return request.auth.token.role != null
-        ? request.auth.token.role
-        : 'user';
+      return 'role' in request.auth.token
+  ? request.auth.token.role
+  : 'user';
     }
 
     function isSupport() {
@@ -35,7 +35,10 @@ service cloud.firestore {
         && (
           getUserRole() == 'admin'
           || getUserRole() == 'superadmin'
-          || request.auth.token.admin == true
+          || (
+  'admin' in request.auth.token
+  && request.auth.token.admin == true
+)
         );
     }
 

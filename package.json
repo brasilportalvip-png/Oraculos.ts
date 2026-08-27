@@ -10,8 +10,10 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:assets": "node scripts/validate-assets.cjs",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
-  },
+    "test": "vitest run --exclude test/firestore-rules.test.ts",
+"test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\""
+
+},
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
@@ -30,6 +32,7 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/react": "^16.3.2",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
