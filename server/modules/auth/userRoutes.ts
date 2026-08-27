@@ -9,10 +9,15 @@ import {
 } from '../../middleware/auth.js';
 
 import {
+  buildSafeRecoveredProfile,
   createUserProfile,
   updateUserProfile,
   validateRegistrationInput,
 } from './authService.js';
+
+import type {
+  UserProfile,
+} from '../../types/index.js';
 
 export const userRoutes = Router();
 
@@ -235,46 +240,12 @@ userRoutes.get(
           const oldProfile =
             oldDocument.data();
 
-         const now = new Date().toISOString();
-
-const repairedProfile = {
-  id: userId,
-  name: oldProfile.name,
-  birthFullName: oldProfile.birthFullName,
-  email: userEmail,
-  birthDate: oldProfile.birthDate,
-  birthTime: oldProfile.birthTime ?? null,
-  doesNotKnowBirthTime: Boolean(
-    oldProfile.doesNotKnowBirthTime,
-  ),
-  role: 'user',
-  status: 'active',
-  minuteBalance: 0,
-  balance: 0,
-  termsAccepted: Boolean(
-    oldProfile.termsAccepted,
-  ),
-  privacyAccepted: Boolean(
-    oldProfile.privacyAccepted,
-  ),
-  birthDataConsent: Boolean(
-    oldProfile.birthDataConsent,
-  ),
-  favorites: Array.isArray(
-    oldProfile.favorites,
-  )
-    ? oldProfile.favorites
-    : [],
-  ...(typeof oldProfile.avatar === 'string'
-    ? { avatar: oldProfile.avatar }
-    : {}),
-  ...(typeof oldProfile.pixKey === 'string'
-    ? { pixKey: oldProfile.pixKey }
-    : {}),
-  createdAt:
-    oldProfile.createdAt || now,
-  updatedAt: now,
-};
+         const repairedProfile =
+  buildSafeRecoveredProfile(
+    userId,
+    userEmail,
+    oldProfile as UserProfile,
+  );
 
           await userReference.set(
             repairedProfile,

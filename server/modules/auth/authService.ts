@@ -153,6 +153,53 @@ export function buildUserProfile(
   };
 }
 
+
+export function buildSafeRecoveredProfile(
+  userId: string,
+  email: string,
+  oldData: UserProfile,
+  now: string = new Date().toISOString(),
+): UserProfile {
+  return {
+    id: userId,
+    name: oldData.name,
+    birthFullName: oldData.birthFullName,
+    email,
+    birthDate: oldData.birthDate,
+    birthTime: oldData.birthTime ?? null,
+    doesNotKnowBirthTime: Boolean(
+      oldData.doesNotKnowBirthTime,
+    ),
+    role: 'user',
+    status: 'active',
+    minuteBalance: 0,
+    balance: 0,
+    termsAccepted: Boolean(
+      oldData.termsAccepted,
+    ),
+    privacyAccepted: Boolean(
+      oldData.privacyAccepted,
+    ),
+    birthDataConsent: Boolean(
+      oldData.birthDataConsent,
+    ),
+    favorites: Array.isArray(
+      oldData.favorites,
+    )
+      ? oldData.favorites
+      : [],
+    ...(typeof oldData.avatar === 'string'
+      ? { avatar: oldData.avatar }
+      : {}),
+    createdAt:
+      oldData.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+
+
+
 export function sanitizeProfileUpdate(
   existingUser: UserProfile,
   updates: Partial<UserProfile>,
@@ -340,44 +387,17 @@ export async function getUserProfile(
   const now =
     new Date().toISOString();
 
-  const repairedProfile: UserProfile = {
-  id: normalizedUserId,
-  name: oldData.name,
-  birthFullName: oldData.birthFullName,
-  email: normalizedEmail,
-  birthDate: oldData.birthDate,
-  birthTime: oldData.birthTime ?? null,
-  doesNotKnowBirthTime: Boolean(
-    oldData.doesNotKnowBirthTime,
-  ),
-  role: 'user',
-  status: 'active',
-  minuteBalance: 0,
-  balance: 0,
-  termsAccepted: Boolean(
-    oldData.termsAccepted,
-  ),
-  privacyAccepted: Boolean(
-    oldData.privacyAccepted,
-  ),
-  birthDataConsent: Boolean(
-    oldData.birthDataConsent,
-  ),
-  favorites: Array.isArray(
-    oldData.favorites,
-  )
-    ? oldData.favorites
-    : [],
-  ...(typeof oldData.avatar === 'string'
-    ? { avatar: oldData.avatar }
-    : {}),
-  ...(typeof oldData.pixKey === 'string'
-    ? { pixKey: oldData.pixKey }
-    : {}),
-  createdAt:
-    oldData.createdAt || now,
-  updatedAt: now,
-};
+
+const repairedProfile =
+  buildSafeRecoveredProfile(
+    normalizedUserId,
+    normalizedEmail,
+    oldData,
+    now,
+  );
+
+
+
 
   await db.runTransaction(
     async (transaction) => {

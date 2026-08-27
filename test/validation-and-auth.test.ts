@@ -9,6 +9,9 @@ import {
 import { INITIAL_CONSULTANTS } from '../src/data/mockData';
 import { VIRTUAL_PROFILES } from '../src/data/virtualProfiles';
 import { verifyConsultantOracleAuthorization } from '../server';
+import {
+  buildSafeRecoveredProfile,
+} from '../server/modules/auth/authService';
 
 describe('TESTES DE VALIDAÇÃO, AUTENTICAÇÃO E SINCRONIZAÇÃO (COMPLEMENTO CRÍTICO)', () => {
   beforeEach(() => {
@@ -214,4 +217,57 @@ describe('TESTES DE VALIDAÇÃO, AUTENTICAÇÃO E SINCRONIZAÇÃO (COMPLEMENTO C
       : consultant.specialties[0];
     expect(effective3).toBe('tarot');
   });
+
+
+it('9. Deve impedir heranca de superadmin e saldo ao recuperar perfil antigo por email', () => {
+  const oldProfile = {
+    id: 'uid-antigo',
+    name: 'Usuario Antigo',
+    birthFullName: 'Usuario Antigo da Silva',
+    email: 'usuario@example.com',
+    birthDate: '1980-01-01',
+    birthTime: '12:00',
+    doesNotKnowBirthTime: false,
+    role: 'superadmin' as const,
+    status: 'blocked' as const,
+    minuteBalance: 9999,
+    balance: 9999,
+    termsAccepted: true,
+    privacyAccepted: true,
+    birthDataConsent: true,
+    favorites: ['tarot'],
+    pixKey: 'pix-sensivel-antigo',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  };
+
+  const recovered =
+    buildSafeRecoveredProfile(
+      'uid-novo',
+      'usuario@example.com',
+      oldProfile,
+      '2026-08-27T12:00:00.000Z',
+    );
+
+  expect(recovered.id).toBe('uid-novo');
+  expect(recovered.role).toBe('user');
+  expect(recovered.status).toBe('active');
+  expect(recovered.minuteBalance).toBe(0);
+  expect(recovered.balance).toBe(0);
+
+  expect(recovered.name).toBe(
+    oldProfile.name,
+  );
+
+  expect(recovered.favorites).toEqual([
+    'tarot',
+  ]);
+
+  expect(recovered).not.toHaveProperty(
+    'pixKey',
+  );
+});
+
+
+
 });
