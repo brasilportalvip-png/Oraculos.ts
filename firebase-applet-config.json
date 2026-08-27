@@ -3,8 +3,9 @@
   "appId": "1:627902933974:web:96bb7c0b0142529a895277",
   "apiKey": "AIzaSyB6ss_Ga6f5zp1IIZ3Qehu0XEgkS3AtSZI",
   "authDomain": "oraculots.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-oraculosts-7043dc96-4272-413a-b356-e453554afa06",
-  "storageBucket": "oraculots.firebasestorage.app",
+  "firestoreDatabaseId": "(default)",
+
+"storageBucket": "oraculots.firebasestorage.app",
   "messagingSenderId": "627902933974",
   "measurementId": "",
   "oAuthClientId": "627902933974-flcitobuc7fd78lalgviem55v1u2lks3.apps.googleusercontent.com",

@@ -275,19 +275,11 @@ try {
   }
 
    if (firebaseAdminApp) {
-    const firestoreDatabaseId =
-  process.env.FIRESTORE_DATABASE_ID ||
-  'ai-studio-oraculosts-7043dc96-4272-413a-b356-e453554afa06';
+  adminDb = getFirestore(firebaseAdminApp);
 
-    adminDb =
-      firestoreDatabaseId && firestoreDatabaseId !== '(default)'
-        ? getFirestore(firebaseAdminApp, firestoreDatabaseId)
-        : getFirestore(firebaseAdminApp);
-
-    adminDb.settings({
-      ignoreUndefinedProperties: true,
-    });
-
+  adminDb.settings({
+    ignoreUndefinedProperties: true,
+  });
     firebaseAdminInitialized = true;
 
     console.log(
