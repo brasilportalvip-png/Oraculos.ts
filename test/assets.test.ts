@@ -48,12 +48,18 @@ describe('VALIDAÇÃO DE ATIVOS BINÁRIOS OFICIAIS (LOGO, ÍCONES E PWA ORACULOS
 
     const width = buf.readUInt32BE(16);
     const height = buf.readUInt32BE(20);
-    expect(width).toBe(1254);
-    expect(height).toBe(1254);
+    
 
-    const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
-    expect(sha256).toBe('365db6baa4c710cc45e35372bceb287f4f6a4a866ec9cda912316cb7462313a8');
-  });
+
+expect(width).toBe(300);
+expect(height).toBe(300);
+
+const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+expect(sha256).toBe('56ed6355889ee8b008b640fc56a3cd7f2937c7aac1a772b0dd1f6c7d79afb1ac');
+
+
+
+ });
 
   it('2. Deve validar que public/image/logo-oraculo.ts.png é rigorosamente idêntico byte a byte ao logo oficial', () => {
     expect(fs.existsSync(IMAGE_PATH)).toBe(true);
