@@ -169,7 +169,7 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
     expect(res.body.error.code).toBe('PROMPT_TOO_LONG');
   });
 
-  // TEST 12: Bloqueio por WAF em IP na Blacklist
+   // TEST 12: Bloqueio por WAF em IP na Blacklist
   it('12. Deve bloquear com HTTP 403 requisições vindas de IPs na Lista Negra do WAF', async () => {
     blacklistedIPs.add('203.0.113.199');
 
@@ -181,5 +181,35 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
     expect(res.body.error.code).toBe('WAF_IP_BLOCKED');
 
     blacklistedIPs.delete('203.0.113.199');
+  });
+
+  // TEST 13: Ação inválida no gerenciamento de IP
+  it('13. Deve rejeitar ação inválida no gerenciamento de IP', async () => {
+    const res = await request(app)
+      .post('/api/security/manage-ip')
+      .set('x-user-id', 'usr-admin-1')
+      .send({
+        ip: '203.0.113.50',
+        action: 'hack',
+        list: 'blacklist',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_IP_ACTION');
+  });
+
+  // TEST 14: Lista inválida no gerenciamento de IP
+  it('14. Deve rejeitar lista inválida no gerenciamento de IP', async () => {
+    const res = await request(app)
+      .post('/api/security/manage-ip')
+      .set('x-user-id', 'usr-admin-1')
+      .send({
+        ip: '203.0.113.50',
+        action: 'add',
+        list: 'qualquer-coisa',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_IP_LIST');
   });
 });

@@ -9,10 +9,15 @@ import {
 } from '../../middleware/auth.js';
 
 import {
+  buildSafeRecoveredProfile,
   createUserProfile,
   updateUserProfile,
   validateRegistrationInput,
 } from './authService.js';
+
+import type {
+  UserProfile,
+} from '../../types/index.js';
 
 export const userRoutes = Router();
 
@@ -235,13 +240,12 @@ userRoutes.get(
           const oldProfile =
             oldDocument.data();
 
-          const repairedProfile = {
-            ...oldProfile,
-            id: userId,
-            email: userEmail,
-            updatedAt:
-              new Date().toISOString(),
-          };
+         const repairedProfile =
+  buildSafeRecoveredProfile(
+    userId,
+    userEmail,
+    oldProfile as UserProfile,
+  );
 
           await userReference.set(
             repairedProfile,
