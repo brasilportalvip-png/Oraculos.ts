@@ -28,6 +28,10 @@ import {
 
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import crypto from 'crypto';
+import {
+  updateDistributedIpRule,
+  listDistributedIpRules,
+} from './server/security/securityStore.js';
 import { VIRTUAL_PROFILES } from './src/data/virtualProfiles.js';
 import { INITIAL_CONSULTANTS } from './src/data/mockData.js';
 import { ConsultationIntent, OracleResponseValidation } from './src/types.js';
@@ -355,38 +359,78 @@ export const securityMetrics = {
 export const blacklistedIPs = new Set<string>(['185.220.101.5', '198.51.100.42']);
 export const whitelistedIPs = new Set<string>(['127.0.0.1', '::1', '192.168.1.100']);
 
-const IP_RULES_FILE = path.join(process.cwd(), 'ip_security_rules.json');
 
-function loadIpRulesFromStorage() {
+
+
+
+let ipRulesLastRefreshMs = 0;
+
+const IP_RULES_REFRESH_MS =
+  30 * 1000;
+
+async function refreshIpRulesFromFirestore(
+  force = false,
+): Promise<void> {
+  if (!adminDb) {
+    return;
+  }
+
+  const now = Date.now();
+
+  if (
+    !force &&
+    now - ipRulesLastRefreshMs <
+      IP_RULES_REFRESH_MS
+  ) {
+    return;
+  }
+
   try {
-    if (fs.existsSync(IP_RULES_FILE)) {
-      const data = JSON.parse(fs.readFileSync(IP_RULES_FILE, 'utf-8'));
-      if (Array.isArray(data.blacklisted)) {
-        data.blacklisted.forEach((ip: string) => blacklistedIPs.add(ip));
-      }
-      if (Array.isArray(data.whitelisted)) {
-        data.whitelisted.forEach((ip: string) => whitelistedIPs.add(ip));
-      }
+    const rules =
+      await listDistributedIpRules(
+        adminDb,
+      );
+
+    blacklistedIPs.clear();
+    whitelistedIPs.clear();
+
+    for (
+      const ip of
+      rules.blacklistedIPs
+    ) {
+      blacklistedIPs.add(ip);
     }
-  } catch (e: any) {
-    console.error('Erro ao carregar regras de IP persistentes:', e.message);
+
+    for (
+      const ip of
+      rules.whitelistedIPs
+    ) {
+      whitelistedIPs.add(ip);
+    }
+
+    /*
+     * IPs locais permanecem confiáveis
+     * para desenvolvimento/testes.
+     */
+    whitelistedIPs.add(
+      '127.0.0.1',
+    );
+    whitelistedIPs.add(
+      '::1',
+    );
+
+    ipRulesLastRefreshMs =
+      now;
+  } catch (error) {
+    console.error(
+      '[ORACULOS.TS] Falha ao carregar regras de IP do Firestore:',
+      error,
+    );
   }
 }
 
-export function saveIpRulesToStorage() {
-  try {
-    const data = {
-      blacklisted: Array.from(blacklistedIPs),
-      whitelisted: Array.from(whitelistedIPs),
-      updatedAt: new Date().toISOString(),
-    };
-    fs.writeFileSync(IP_RULES_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (e: any) {
-    console.error('Erro ao salvar regras de IP persistentes:', e.message);
-  }
-}
 
-loadIpRulesFromStorage();
+
 
 // Memory rate limit buckets
 const requestBuckets: Record<string, number[]> = {};
@@ -684,7 +728,21 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       
       if (requestBuckets[clientIp].length > limit * 2.5) {
         blacklistedIPs.add(clientIp);
-        saveIpRulesToStorage();
+
+if (adminDb) {
+  void updateDistributedIpRule(
+    adminDb,
+    clientIp,
+    'add',
+    'blacklist',
+    'system-waf',
+  ).catch((error) => {
+    console.error(
+      '[ORACULOS.TS] Falha ao persistir banimento automático de IP:',
+      error,
+    );
+  });
+}
         auditLogs.unshift({
           id: `log-sec-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -1522,40 +1580,160 @@ app.post('/api/security/toggle-setting', requireAuth, requireRole(['admin', 'sup
   res.status(400).json({ success: false, error: { code: 'INVALID_SETTING', message: 'Configuração inválida.' } });
 });
 
-app.post('/api/security/manage-ip', requireAuth, requireRole(['admin', 'superadmin']), (req: AuthenticatedRequest, res: Response) => {
-  const { ip, action, list } = req.body;
-  if (!ip) return res.status(400).json({ success: false, error: { code: 'MISSING_IP', message: 'IP é obrigatório.' } });
 
-  if (list === 'blacklist') {
-    if (action === 'add') blacklistedIPs.add(ip);
-    else blacklistedIPs.delete(ip);
-  } else if (list === 'whitelist') {
-    if (action === 'add') whitelistedIPs.add(ip);
-    else whitelistedIPs.delete(ip);
-  }
+app.post(
+  '/api/security/manage-ip',
+  requireAuth,
+  requireRole([
+    'admin',
+    'superadmin',
+  ]),
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const {
+        ip,
+        action,
+        list,
+      } = req.body;
 
-  saveIpRulesToStorage();
+      if (
+        typeof ip !== 'string' ||
+        !ip.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_IP',
+            message: 'IP é obrigatório.',
+          },
+        });
+      }
 
-  auditLogs.unshift({
-    id: `log-ip-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    userId: req.user?.uid || 'usr-admin-1',
-    userName: req.user?.name || 'Administrador',
-    userRole: req.user?.role || 'admin',
-    action: `SECURITY_IP_${action.toUpperCase()}_${list.toUpperCase()}`,
-    details: `IP ${ip} ${action === 'add' ? 'adicionado à' : 'removido da'} ${list}`,
-    ip: req.ip || '127.0.0.1',
-    status: action === 'add' && list === 'blacklist' ? 'WARNING' : 'SUCCESS',
-  });
+      if (
+        action !== 'add' &&
+        action !== 'remove'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_IP_ACTION',
+            message:
+              'Ação deve ser add ou remove.',
+          },
+        });
+      }
 
-  res.json({
-    success: true,
-    data: {
-      blacklistedIPs: Array.from(blacklistedIPs),
-      whitelistedIPs: Array.from(whitelistedIPs),
+      if (
+        list !== 'blacklist' &&
+        list !== 'whitelist'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_IP_LIST',
+            message:
+              'Lista deve ser blacklist ou whitelist.',
+          },
+        });
+      }
+
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'SECURITY_STORE_UNAVAILABLE',
+            message:
+              'Armazenamento de segurança temporariamente indisponível.',
+          },
+        });
+      }
+
+      const normalizedIp =
+        ip.trim();
+
+      await updateDistributedIpRule(
+        adminDb,
+        normalizedIp,
+        action,
+        list,
+        req.user?.uid ||
+          'system-admin',
+      );
+
+      await refreshIpRulesFromFirestore(
+        true,
+      );
+
+      auditLogs.unshift({
+        id:
+          `log-ip-${Date.now()}`,
+        timestamp:
+          new Date().toISOString(),
+        userId:
+          req.user?.uid ||
+          'usr-admin-1',
+        userName:
+          req.user?.name ||
+          'Administrador',
+        userRole:
+          req.user?.role ||
+          'admin',
+        action:
+          `SECURITY_IP_${action.toUpperCase()}_${list.toUpperCase()}`,
+        details:
+          `IP ${normalizedIp} ${
+            action === 'add'
+              ? 'adicionado à'
+              : 'removido da'
+          } ${list}`,
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status:
+          action === 'add' &&
+          list === 'blacklist'
+            ? 'WARNING'
+            : 'SUCCESS',
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          blacklistedIPs:
+            Array.from(
+              blacklistedIPs,
+            ),
+          whitelistedIPs:
+            Array.from(
+              whitelistedIPs,
+            ),
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Falha ao atualizar regra de IP:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'SECURITY_IP_UPDATE_FAILED',
+          message:
+            'Não foi possível atualizar a regra de IP.',
+        },
+      });
     }
-  });
-});
+  },
+);
+
+
+
 
 app.post('/api/security/run-scan', requireAuth, requireRole(['admin', 'superadmin']), (req: AuthenticatedRequest, res: Response) => {
   securityMetrics.lastScanTime = new Date().toISOString();
