@@ -1,6 +1,18 @@
+import {
+  getApp,
+  getApps,
+} from 'firebase-admin/app';
+
+import {
+  getFirestore,
+} from 'firebase-admin/firestore';
+
 import type {
   MinutePackage,
 } from '../../types/index.js';
+
+const PACKAGES_COLLECTION =
+  'minutePackages';
 
 export const DEFAULT_MINUTE_PACKAGES: MinutePackage[] = [
   {
@@ -51,7 +63,7 @@ export const DEFAULT_MINUTE_PACKAGES: MinutePackage[] = [
   },
   {
     id: 'pkg-100',
-    title: 'Pacote Rubia R$ 100',
+    title: 'Pacote Rubi R$ 100',
     priceBrl: 100.0,
     minutes: 100,
     bonusMinutes: 25,
@@ -87,20 +99,161 @@ export const DEFAULT_MINUTE_PACKAGES: MinutePackage[] = [
   },
 ];
 
-export let minutePackagesStore: MinutePackage[] = [...DEFAULT_MINUTE_PACKAGES];
-
-export function getActivePackages(): MinutePackage[] {
-  return minutePackagesStore.filter((pkg) => pkg.active).sort((a, b) => a.displayOrder - b.displayOrder);
-}
-
-export function findPackageByAmountOrId(amountBrl: number, packageId?: string): MinutePackage | undefined {
-  if (packageId) {
-    const found = minutePackagesStore.find((p) => p.id === packageId && p.active);
-    if (found) return found;
+function getDatabase() {
+  if (getApps().length === 0) {
+    throw new Error(
+      'Firebase Admin ainda não foi inicializado.',
+    );
   }
-  return minutePackagesStore.find((p) => p.active && Math.abs(p.priceBrl - amountBrl) < 0.001);
+
+  return getFirestore(getApp());
 }
 
-export function updatePackageStore(updatedPackages: MinutePackage[]) {
-  minutePackagesStore = [...updatedPackages];
+async function ensureDefaultPackages(): Promise<void> {
+  const db = getDatabase();
+
+  const collectionReference =
+    db.collection(PACKAGES_COLLECTION);
+
+  const snapshot =
+    await collectionReference.limit(1).get();
+
+  if (!snapshot.empty) {
+    return;
+  }
+
+  const batch = db.batch();
+
+  for (const pkg of DEFAULT_MINUTE_PACKAGES) {
+    batch.set(
+      collectionReference.doc(pkg.id),
+      pkg,
+    );
+  }
+
+  await batch.commit();
+
+  console.log(
+    '[ORACULOS.TS] Pacotes padrão gravados no Firestore.',
+  );
+}
+
+export async function getPackages(): Promise<
+  MinutePackage[]
+> {
+  /*
+   * Testes e ambiente sem Firebase Admin:
+   * usa somente os padrões em memória.
+   *
+   * Produção continua usando Firestore.
+   */
+  if (getApps().length === 0) {
+    return [...DEFAULT_MINUTE_PACKAGES].sort(
+      (a, b) =>
+        a.displayOrder - b.displayOrder,
+    );
+  }
+
+  await ensureDefaultPackages();
+
+  const db = getDatabase();
+
+  const snapshot = await db
+    .collection(PACKAGES_COLLECTION)
+    .get();
+
+  return snapshot.docs
+    .map((document) => ({
+      ...(document.data() as MinutePackage),
+      id: document.id,
+    }))
+    .sort(
+      (a, b) =>
+        a.displayOrder - b.displayOrder,
+    );
+}
+
+export async function getActivePackages(): Promise<
+  MinutePackage[]
+> {
+  const packages =
+    await getPackages();
+
+  return packages.filter(
+    (pkg) => pkg.active,
+  );
+}
+
+export async function findPackageByAmountOrId(
+  amountBrl: number,
+  packageId?: string,
+): Promise<MinutePackage | undefined> {
+  const packages =
+    await getActivePackages();
+
+  if (packageId) {
+    const byId = packages.find(
+      (pkg) => pkg.id === packageId,
+    );
+
+    if (byId) {
+      return byId;
+    }
+  }
+
+  return packages.find(
+    (pkg) =>
+      Math.abs(
+        pkg.priceBrl - amountBrl,
+      ) < 0.001,
+  );
+}
+
+export async function updatePackageStore(
+  pkg: MinutePackage,
+): Promise<MinutePackage> {
+  if (!pkg.id) {
+    throw new Error(
+      'PACKAGE_ID_REQUIRED',
+    );
+  }
+
+  if (
+    !Number.isFinite(pkg.priceBrl) ||
+    pkg.priceBrl <= 0 ||
+    !Number.isFinite(pkg.minutes) ||
+    pkg.minutes <= 0
+  ) {
+    throw new Error(
+      'INVALID_PACKAGE',
+    );
+  }
+
+  const normalizedPackage: MinutePackage = {
+    ...pkg,
+    priceBrl:
+      Number(pkg.priceBrl),
+    minutes:
+      Number(pkg.minutes),
+    bonusMinutes:
+      Number(pkg.bonusMinutes || 0),
+    active:
+      pkg.active !== false,
+    displayOrder:
+      Number(pkg.displayOrder || 10),
+  };
+
+  const db = getDatabase();
+
+  await db
+    .collection(PACKAGES_COLLECTION)
+    .doc(normalizedPackage.id)
+    .set(
+      normalizedPackage,
+      {
+        merge: true,
+      },
+    );
+
+  return normalizedPackage;
 }

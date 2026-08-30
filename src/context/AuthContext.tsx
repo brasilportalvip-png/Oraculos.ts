@@ -44,9 +44,10 @@ resetPassword: (
 
 switchRole: (role: UserRole) => void;  
 
-
-  addMinutes: (minutes: number) => void;
+addMinutes: (minutes: number) => void;
 deductMinutes: (minutes: number) => boolean;
+syncMinuteBalance: (minutes: number) => void;
+  
   toggleFavorite: (consultantId: string) => void;
   isFavorite: (consultantId: string) => boolean;
   updateUserPix: (pixKey: string) => void;
@@ -531,6 +532,39 @@ const resetPassword = async (
   return true;
 };
 
+
+const syncMinuteBalance = (
+  minutes: number,
+): void => {
+  const normalizedBalance =
+    Number(minutes);
+
+  if (
+    !Number.isFinite(normalizedBalance) ||
+    normalizedBalance < 0
+  ) {
+    console.error(
+      '[ORACULOS.TS] Saldo inválido recebido do servidor.',
+      minutes,
+    );
+
+    return;
+  }
+
+  setUser((previous) => ({
+    ...previous,
+
+    minuteBalance:
+      normalizedBalance,
+
+    // Alias legado mantido sincronizado.
+    balance:
+      normalizedBalance,
+  }));
+};
+
+
+
   const toggleFavorite = (
     consultantId: string,
   ) => {
@@ -582,7 +616,8 @@ const resetPassword = async (
   switchRole,
         addMinutes,
 deductMinutes,
-        toggleFavorite,
+syncMinuteBalance,
+toggleFavorite,
         isFavorite,
         updateUserPix,
         registerUser,

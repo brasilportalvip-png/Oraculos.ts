@@ -1,4 +1,7 @@
-import { Router, type Response } from 'express';
+import {
+  Router,
+  type Response,
+} from 'express';
 
 import {
   requireAuth,
@@ -11,7 +14,7 @@ import type {
 
 import {
   getActivePackages,
-  minutePackagesStore,
+  getPackages,
   updatePackageStore,
 } from './packages.js';
 
@@ -25,81 +28,231 @@ import type {
 
 export const minuteRoutes = Router();
 
-// GET /api/packages (public/clients)
-minuteRoutes.get('/api/packages', (req, res) => {
-  return res.json({
-    success: true,
-    data: getActivePackages(),
-  });
-});
+/**
+ * GET /api/packages
+ * Retorna somente os pacotes ativos
+ * armazenados no Firestore.
+ */
+minuteRoutes.get(
+  '/api/packages',
+  async (_req, res) => {
+    try {
+      const packages =
+        await getActivePackages();
 
-// GET /api/admin/packages
-minuteRoutes.get('/api/admin/packages', requireAuth, requireRole(['admin', 'superadmin']), (req, res) => {
-  return res.json({
-    success: true,
-    data: minutePackagesStore,
-  });
-});
+      return res.json({
+        success: true,
+        data: packages,
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao carregar pacotes:',
+        error,
+      );
 
-// POST /api/admin/packages (create or update package configuration)
-minuteRoutes.post('/api/admin/packages', requireAuth, requireRole(['admin', 'superadmin']), (req, res) => {
-  const { id, title, priceBrl, minutes, bonusMinutes, active, displayOrder } = req.body;
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'PACKAGES_FETCH_ERROR',
+          message:
+            'Não foi possível carregar os pacotes.',
+        },
+      });
+    }
+  },
+);
 
-  if (typeof priceBrl !== 'number' || priceBrl <= 0 || typeof minutes !== 'number' || minutes <= 0) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_PACKAGE', message: 'Valor BRL e quantidade de minutos devem ser números positivos.' },
-    });
-  }
+/**
+ * GET /api/admin/packages
+ * Retorna todos os pacotes,
+ * inclusive os desativados.
+ */
+minuteRoutes.get(
+  '/api/admin/packages',
+  requireAuth,
+  requireRole([
+    'admin',
+    'superadmin',
+  ]),
+  async (_req, res) => {
+    try {
+      const packages =
+        await getPackages();
 
-  const pkgId = id || `pkg-${Date.now()}`;
-  const existingIdx = minutePackagesStore.findIndex((p) => p.id === pkgId);
+      return res.json({
+        success: true,
+        data: packages,
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao carregar pacotes administrativos:',
+        error,
+      );
 
-  const updatedPkg: MinutePackage = {
-    id: pkgId,
-    title: title || `Pacote de ${minutes} minutos`,
-    priceBrl,
-    minutes,
-    bonusMinutes: typeof bonusMinutes === 'number' ? bonusMinutes : 0,
-    active: active !== undefined ? Boolean(active) : true,
-    displayOrder: typeof displayOrder === 'number' ? displayOrder : 10,
-  };
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'ADMIN_PACKAGES_FETCH_ERROR',
+          message:
+            'Não foi possível carregar os pacotes.',
+        },
+      });
+    }
+  },
+);
 
-  if (existingIdx >= 0) {
-    minutePackagesStore[existingIdx] = updatedPkg;
-  } else {
-    minutePackagesStore.push(updatedPkg);
-  }
+/**
+ * POST /api/admin/packages
+ * Cria ou atualiza um pacote
+ * persistindo diretamente no Firestore.
+ */
+minuteRoutes.post(
+  '/api/admin/packages',
+  requireAuth,
+  requireRole([
+    'admin',
+    'superadmin',
+  ]),
+  async (req, res) => {
+    try {
+      const {
+        id,
+        title,
+        priceBrl,
+        minutes,
+        bonusMinutes,
+        active,
+        displayOrder,
+      } = req.body;
 
-  updatePackageStore(minutePackagesStore);
+      if (
+        typeof priceBrl !== 'number' ||
+        !Number.isFinite(priceBrl) ||
+        priceBrl <= 0 ||
+        typeof minutes !== 'number' ||
+        !Number.isFinite(minutes) ||
+        minutes <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_PACKAGE',
+            message:
+              'Valor BRL e quantidade de minutos devem ser números positivos.',
+          },
+        });
+      }
 
-  return res.json({
-    success: true,
-    data: updatedPkg,
-    message: 'Pacote de minutos atualizado pelo administrador.',
-  });
-});
+      const packageId =
+        typeof id === 'string' &&
+        id.trim()
+          ? id.trim()
+          : `pkg-${Date.now()}`;
 
-// GET /api/user/transactions
+      const updatedPackage:
+        MinutePackage = {
+        id: packageId,
+
+        title:
+          typeof title === 'string' &&
+          title.trim()
+            ? title.trim()
+            : `Pacote de ${minutes} minutos`,
+
+        priceBrl:
+          Number(priceBrl),
+
+        minutes:
+          Number(minutes),
+
+        bonusMinutes:
+          typeof bonusMinutes ===
+            'number' &&
+          Number.isFinite(
+            bonusMinutes,
+          )
+            ? Math.max(
+                0,
+                bonusMinutes,
+              )
+            : 0,
+
+        active:
+          active !== undefined
+            ? Boolean(active)
+            : true,
+
+        displayOrder:
+          typeof displayOrder ===
+            'number' &&
+          Number.isFinite(
+            displayOrder,
+          )
+            ? displayOrder
+            : 10,
+      };
+
+      const savedPackage =
+        await updatePackageStore(
+          updatedPackage,
+        );
+
+      return res.json({
+        success: true,
+        data: savedPackage,
+        message:
+          'Pacote de minutos salvo no Firestore.',
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao salvar pacote:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'PACKAGE_SAVE_ERROR',
+          message:
+            'Não foi possível salvar o pacote.',
+        },
+      });
+    }
+  },
+);
+
+/**
+ * GET /api/user/transactions
+ * Histórico financeiro real do usuário.
+ */
 minuteRoutes.get(
   '/api/user/transactions',
   requireAuth,
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
     try {
-      const userId = req.user?.uid;
+      const userId =
+        req.user?.uid;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
           error: {
             code: 'UNAUTHORIZED',
-            message: 'Não autorizado.',
+            message:
+              'Não autorizado.',
           },
         });
       }
 
       const transactions =
-        await getTransactionsByUserId(userId);
+        await getTransactionsByUserId(
+          userId,
+        );
 
       return res.json({
         success: true,
@@ -119,7 +272,8 @@ minuteRoutes.get(
       return res.status(500).json({
         success: false,
         error: {
-          code: 'TRANSACTIONS_FETCH_ERROR',
+          code:
+            'TRANSACTIONS_FETCH_ERROR',
           message:
             'Não foi possível carregar o histórico de minutos.',
         },

@@ -4,8 +4,33 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { ConsultantProfileModal } from '../src/components/ConsultantProfileModal';
 import { OraclesDirectory } from '../src/components/OraclesDirectory';
+import { OracleDetailPage } from '../src/components/OracleDetailPage';
 import { INITIAL_CONSULTANTS } from '../src/data/mockData';
 import { Consultant, OracleType } from '../src/types';
+
+/*
+ * OracleDetailPage utiliza ConsultantCard,
+ * que depende do AuthProvider real.
+ *
+ * Neste arquivo estamos testando a lógica
+ * de autorização e filtragem dos consultores,
+ * não autenticação/favoritos.
+ *
+ * Portanto o card é isolado para que o teste
+ * valide somente os consultores efetivamente
+ * renderizados pelo OracleDetailPage.
+ */
+vi.mock('../src/components/ConsultantCard', () => ({
+  ConsultantCard: ({
+    consultant,
+  }: {
+    consultant: Consultant;
+  }) => (
+    <div data-testid={`consultant-${consultant.id}`}>
+      {consultant.name}
+    </div>
+  ),
+}));
 
 describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', () => {
   let consoleErrorSpy: any;
@@ -223,5 +248,62 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
 
     // Confirma que o modal fechou
     expect(queryByText('Mestre Gabriel Astros')).toBeNull();
+  });
+
+  it('7. Deve exibir somente consultores realmente autorizados para o oráculo selecionado', () => {
+    render(
+      <OracleDetailPage
+        oracleId="cristais"
+        consultants={INITIAL_CONSULTANTS}
+        onBack={vi.fn()}
+        onSelectConsultant={vi.fn()}
+        onStartConsultation={vi.fn()}
+      />
+    );
+
+    // Consultores realmente autorizados para Cristais devem aparecer.
+    expect(screen.getByText('Clarice Mendonça')).toBeTruthy();
+    expect(screen.getByText('Maia da Terra')).toBeTruthy();
+
+    // Estes atendentes possuem "cristais" apenas em specialties,
+    // mas NÃO estão autorizados para atender esse oráculo.
+    expect(screen.queryByText('Aura Celeste')).toBeNull();
+    expect(screen.queryByText('Mestre Valerio')).toBeNull();
+    expect(screen.queryByText('Iara das Águas')).toBeNull();
+    expect(screen.queryByText('Yanis Místico')).toBeNull();
+  });
+
+  it('8. Deve impedir atendente virtual de selecionar oráculo presente apenas em specialties, mas não autorizado', () => {
+    const auraCeleste = INITIAL_CONSULTANTS.find((c) => c.id === 'ai_c1')!;
+    const handleStart = vi.fn();
+
+    render(
+      <ConsultantProfileModal
+        consultant={auraCeleste}
+        initialOracle="cristais"
+        onClose={vi.fn()}
+        onStartConsultation={handleStart}
+      />
+    );
+
+    // Aura Celeste é autorizada somente para Tarot e Mesa Radiônica.
+    expect(screen.getByText('Tarot')).toBeTruthy();
+    expect(screen.getByText('Mesa Radiônica')).toBeTruthy();
+
+    // Cristais existe em specialties, mas não em allowedOracles.
+    expect(screen.queryByText('Cristais & Litoterapia')).toBeNull();
+
+    // Como "cristais" não é permitido, o modal deve cair no primeiro autorizado: Tarot.
+    const tarotButton = screen.getByText('Tarot').closest('button');
+    expect(tarotButton?.className).toContain('bg-amber-500');
+
+    fireEvent.click(screen.getByText('Iniciar Chat Agora'));
+
+    expect(handleStart).toHaveBeenCalledTimes(1);
+    expect(handleStart).toHaveBeenCalledWith(
+      auraCeleste,
+      'tarot',
+      'chat'
+    );
   });
 });

@@ -174,12 +174,19 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
   const oracleType = oracleTypeFromSlug(canonicalSlug) || 'tarot';
   const oracleConfig = ORACLE_CATEGORIES[oracleType] || ORACLE_CATEGORIES.tarot;
 
-  // Filter consultants specialized in this oracle
-  const matchingConsultants = consultants.filter(
-    (c) => c.specialties.some((s) => s.toLowerCase().includes(oracleType) || s.toLowerCase().includes(oracleConfig.name.toLowerCase()))
-  );
+  // Authorized consultants only.
+  const matchingConsultants = consultants.filter((consultant) => {
+    const authorizedOracles =
+      consultant.allowedOracles && consultant.allowedOracles.length > 0
+        ? consultant.allowedOracles
+        : consultant.specialties || [];
 
-  const displayConsultants = matchingConsultants.length > 0 ? matchingConsultants : consultants.slice(0, 4);
+    return authorizedOracles.some(
+      (oracle) => canonicalOracleSlug(String(oracle)) === canonicalSlug
+    );
+  });
+
+  const displayConsultants = matchingConsultants;
 
   return (
     <div className="space-y-10 pb-16">
@@ -281,16 +288,24 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayConsultants.map((c) => (
-            <ConsultantCard
-              key={c.id}
-              consultant={c}
-              onSelect={() => onSelectConsultant(c)}
-              onStartChat={() => onStartConsultation(c, oracleType, 'chat')}
-              onStartVideo={() => onStartConsultation(c, oracleType, 'video')}
-            />
-          ))}
-        </div>
+  {displayConsultants.length > 0 ? (
+    displayConsultants.map((c) => (
+      <ConsultantCard
+        key={c.id}
+        consultant={c}
+        onSelect={() => onSelectConsultant(c)}
+        onStartChat={() => onStartConsultation(c, oracleType, 'chat')}
+        onStartVideo={() => onStartConsultation(c, oracleType, 'video')}
+      />
+    ))
+  ) : (
+    <div className="sm:col-span-2 lg:col-span-4 rounded-2xl border border-purple-800/30 bg-[#150F26]/60 p-6 text-center">
+      <p className="text-sm text-gray-300">
+        Nenhum consultor credenciado está disponível para este oráculo no momento.
+      </p>
+    </div>
+  )}
+</div>
       </div>
     </div>
   );
