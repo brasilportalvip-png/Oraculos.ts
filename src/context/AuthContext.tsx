@@ -26,6 +26,15 @@ interface AuthResult {
   message?: string;
 }
 
+interface ApiResponse<T = unknown> {
+  success?: boolean;
+  data?: T;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+}
+
 interface AuthContextType {
   user: UserProfile;
   isAuthenticated: boolean;
@@ -85,6 +94,48 @@ function normalizeUserProfile(
     ),
     balance: Number(data?.balance ?? 0),
   };
+}
+
+async function readApiResponse<T>(
+  response: Response,
+): Promise<ApiResponse<T>> {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return {
+      success: false,
+      error: {
+        code: 'EMPTY_API_RESPONSE',
+      },
+    };
+  }
+
+  try {
+    return JSON.parse(rawBody) as ApiResponse<T>;
+  } catch {
+    return {
+      success: false,
+      error: {
+        code: 'INVALID_API_RESPONSE',
+      },
+    };
+  }
+}
+
+function getApiErrorMessage(
+  response: Response,
+  body: ApiResponse,
+  fallback: string,
+): string {
+  if (body.error?.message) {
+    return body.error.message;
+  }
+
+  if (response.status >= 500) {
+    return 'O serviço de acesso está temporariamente indisponível. Tente novamente em alguns instantes.';
+  }
+
+  return fallback;
 }
 
 function getFirebaseErrorMessage(
@@ -177,7 +228,10 @@ export const AuthProvider: React.FC<{
             },
           );
 
-          const body = await response.json();
+          const body =
+            await readApiResponse<UserProfile>(
+              response,
+            );
 
           if (response.ok && body.success) {
             setUser(
@@ -242,7 +296,10 @@ export const AuthProvider: React.FC<{
         },
       );
 
-      const body = await response.json();
+      const body =
+        await readApiResponse<UserProfile>(
+          response,
+        );
 
       if (!response.ok || !body.success) {
         await signOut(auth);
@@ -250,8 +307,11 @@ export const AuthProvider: React.FC<{
         return {
           success: false,
           message:
-            body.error?.message ||
-            'Seu perfil não foi encontrado no Firestore.',
+            getApiErrorMessage(
+              response,
+              body,
+              'Seu perfil não foi encontrado.',
+            ),
         };
       }
 
@@ -384,14 +444,21 @@ const resetPassword = async (
         },
       );
 
-      const body = await response.json();
+      const body =
+        await readApiResponse<{
+          user?: UserProfile;
+          customToken?: string;
+        }>(response);
 
       if (!response.ok || !body.success) {
         return {
           success: false,
           message:
-            body.error?.message ||
-            'Falha ao realizar o cadastro.',
+            getApiErrorMessage(
+              response,
+              body,
+              'Falha ao realizar o cadastro.',
+            ),
         };
       }
 
@@ -457,14 +524,20 @@ const resetPassword = async (
         },
       );
 
-      const body = await response.json();
+      const body =
+        await readApiResponse<UserProfile>(
+          response,
+        );
 
       if (!response.ok || !body.success) {
         return {
           success: false,
           message:
-            body.error?.message ||
-            'Falha ao atualizar o perfil.',
+            getApiErrorMessage(
+              response,
+              body,
+              'Falha ao atualizar o perfil.',
+            ),
         };
       }
 
