@@ -18,10 +18,27 @@ interface ConsultationContextType {
   transactions: FinancialTransaction[];
   isRechargeModalOpen: boolean;
   setIsRechargeModalOpen: (open: boolean) => void;
-  startConsultation: (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => { success: boolean; message?: string };
-  sendMessage: (text: string) => void;
+
+
+  startConsultation: (
+  consultant: Consultant,
+  oracle: OracleType,
+  mode: 'chat' | 'video',
+) => Promise<{
+  success: boolean;
+  message?: string;
+}>;
+
+
+sendMessage: (text: string) => void;
   drawOracleCard: () => void;
-  endConsultation: (rating?: number, reviewText?: string) => void;
+  endConsultation: (
+  rating?: number,
+  reviewText?: string,
+) => Promise<{
+  success: boolean;
+  message?: string;
+}>;
   addTransaction: (tx: FinancialTransaction) => void;
   updateConsultantStatus: (consultantId: string, status: 'online' | 'busy' | 'offline') => void;
   updateConsultantPrice: (consultantId: string, newPrice: number) => void;
@@ -42,7 +59,7 @@ const TAROT_CARDS = [
 export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
   user,
-  deductMinutes,
+  syncMinuteBalance,
 } = useAuth();
   const [activeSession, setActiveSession] = useState<ConsultationSession | null>(null);
   const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
@@ -60,38 +77,78 @@ const isAutoReplyInProgressRef =
   useRef(false);
 
 
-
-  // Live Timer & Per-minute Credit Consumption
+  /*
+   * Timer exclusivamente visual.
+   *
+   * A duração e a cobrança definitivas
+   * são calculadas pelo servidor no
+   * encerramento da consulta.
+   */
   useEffect(() => {
-    if (!activeSession || activeSession.status !== 'active') return;
+    if (
+      !activeSession ||
+      activeSession.status !== 'active'
+    ) {
+      return;
+    }
 
-    const timer = setInterval(() => {
-      setActiveSession((prev) => {
-        if (!prev) return null;
+    const timer =
+      window.setInterval(() => {
+        setActiveSession(
+          (previousSession) => {
+            if (
+              !previousSession ||
+              previousSession.status !==
+                'active'
+            ) {
+              return previousSession;
+            }
 
-        const newDuration = prev.durationSeconds + 1;
-        // Every 60 seconds (or fraction), update cost
-        const currentMinutes = Math.ceil(newDuration / 60);
-        const accumulatedCost = currentMinutes * prev.pricePerMinute;
+            const newDuration =
+              previousSession
+                .durationSeconds + 1;
 
-        // Check if user balance is running out
-        if (
-  user.minuteBalance < prev.pricePerMinute &&
-  newDuration % 60 === 0
-) {
-  // O cliente está sem minutos suficientes para continuar
-}
+            const currentMinutes =
+              Math.max(
+                1,
+                Math.ceil(
+                  newDuration / 60,
+                ),
+              );
 
-        return {
-          ...prev,
-          durationSeconds: newDuration,
-          totalCost: accumulatedCost,
-        };
-      });
-    }, 1000);
+            const estimatedCost =
+              Number(
+                (
+                  currentMinutes *
+                  previousSession
+                    .pricePerMinute
+                ).toFixed(2),
+              );
 
-    return () => clearInterval(timer);
-  }, [activeSession, user.minuteBalance]);
+            return {
+              ...previousSession,
+
+              durationSeconds:
+                newDuration,
+
+              /*
+               * Apenas estimativa visual.
+               * Não é usada para cobrar.
+               */
+              totalCost:
+                estimatedCost,
+            };
+          },
+        );
+      }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    activeSession?.id,
+    activeSession?.status,
+  ]);
 
   // Simulated automated or Gemini AI responses from the Consultant during chat
   
@@ -528,21 +585,139 @@ return;
   }
   };
 
-  const startConsultation = (consultant: Consultant, oracle: OracleType, mode: 'chat' | 'video') => {
-    if (user.minuteBalance < consultant.pricePerMinute) {
-  setIsRechargeModalOpen(true);
+  const startConsultation = async (
+  consultant: Consultant,
+  oracle: OracleType,
+  mode: 'chat' | 'video',
+
+
+): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
+  const firebaseUser =
+    auth.currentUser;
+
+  if (!firebaseUser) {
+    return {
+      success: false,
+      message:
+        'Sua sessão expirou. Entre novamente para iniciar a consulta.',
+    };
+  }
+
+  const consultationId =
+    `sess_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+
+  
+let serverPricePerMinute =
+  consultant.pricePerMinute;
+
+
+let serverStartedAt =
+  new Date().toISOString();
+
+try {
+  const idToken =
+    await firebaseUser.getIdToken(true);
+
+  const response =
+    await fetch(
+      '/api/finance/start-consultation',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':
+            'application/json',
+          Authorization:
+            `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          consultationId,
+          consultantId:
+            consultant.id,
+        }),
+      },
+    );
+
+  const body =
+    await response
+      .json()
+      .catch(() => ({}));
+
+  if (
+    !response.ok ||
+    !body.success
+  ) {
+    if (
+      body.error?.code ===
+      'INSUFFICIENT_FUNDS'
+    ) {
+      setIsRechargeModalOpen(true);
+    }
+
+    return {
+      success: false,
+      message:
+        body.error?.message ||
+        'Não foi possível iniciar a consulta com segurança.',
+    };
+  }
+
+  const officialPrice =
+    Number(
+      body.data?.pricePerMinute,
+    );
+
+  if (
+    !Number.isFinite(
+      officialPrice,
+    ) ||
+    officialPrice <= 0
+  ) {
+    return {
+      success: false,
+      message:
+        'O servidor retornou um preço inválido para esta consulta.',
+    };
+  }
+
+  serverPricePerMinute =
+    officialPrice;
+
+  if (
+    typeof body.data?.startedAt ===
+      'string' &&
+    body.data.startedAt
+  ) {
+    serverStartedAt =
+      body.data.startedAt;
+  }
+} catch (error) {
+  console.error(
+    '[ORACULOS.TS] Falha ao registrar início da consulta:',
+    error,
+  );
 
   return {
     success: false,
-    message: `Minutos insuficientes. É necessário ter ao menos ${consultant.pricePerMinute.toFixed(2)} min disponíveis para iniciar o atendimento.`,
+    message:
+      'Falha de conexão ao iniciar a consulta. Nenhuma sessão foi aberta.',
   };
 }
 
-    const initialMessage: ChatMessage = {
+const initialMessage: ChatMessage = {
+
+
       id: `msg_${Date.now()}`,
       senderId: 'system',
       senderName: 'ORACULOS.TS',
-      text: `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${consultant.pricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
+      
+
+text: `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
+
 
 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: true,
@@ -557,7 +732,7 @@ timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit
     };
 
     const newSession: ConsultationSession = {
-      id: `sess_${Date.now()}`,
+  id: consultationId,
       clientId: user.id,
       clientName: user.name,
       consultantId: consultant.id,
@@ -566,9 +741,19 @@ timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit
       oracleType: oracle,
       mode,
       status: 'active',
-      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      startTime:
+  new Date(
+    serverStartedAt,
+  ).toLocaleTimeString(
+    [],
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+  ),
       durationSeconds: 0,
-      pricePerMinute: consultant.pricePerMinute,
+      pricePerMinute:
+  serverPricePerMinute,
       totalCost: 0,
       adminCommission: 0,
       consultantEarnings: 0,
@@ -698,89 +883,476 @@ const sendMessage = (text: string) => {
     });
   };
 
-  const endConsultation = (rating?: number, reviewText?: string) => {
-    if (!activeSession) return;
 
-    const durationMinutes = Math.max(1, Math.ceil(activeSession.durationSeconds / 60));
-    const finalCost = durationMinutes * activeSession.pricePerMinute;
-    const commissionRate = 0.30; // 30% for platform, 70% for consultant
-    const adminCommission = Number((finalCost * commissionRate).toFixed(2));
-    const consultantEarnings = Number((finalCost * (1 - commissionRate)).toFixed(2));
 
-    // Desconta os minutos consumidos da carteira do cliente
-deductMinutes(finalCost);
 
-    const completedSession: ConsultationSession = {
-      ...activeSession,
-      status: 'completed',
-      endTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      totalCost: finalCost,
+
+const endConsultation = async (
+  rating?: number,
+  reviewText?: string,
+): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
+  if (!activeSession) {
+    return {
+      success: false,
+      message:
+        'Nenhuma consulta ativa foi encontrada.',
+    };
+  }
+
+  const sessionToFinish =
+    activeSession;
+
+  try {
+    const firebaseUser =
+      auth.currentUser;
+
+    if (!firebaseUser) {
+      return {
+        success: false,
+        message:
+          'Sua sessão expirou. Entre novamente para encerrar a consulta com segurança.',
+      };
+    }
+
+    const idToken =
+      await firebaseUser
+        .getIdToken(true);
+
+    /*
+     * O frontend envia somente a
+     * identidade da consulta.
+     *
+     * Não envia preço, duração
+     * nem valor a cobrar.
+     */
+    const response =
+      await fetch(
+        '/api/finance/debit-consultation',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json',
+
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+
+          body: JSON.stringify({
+            consultantId:
+              sessionToFinish
+                .consultantId,
+
+            consultationId:
+              sessionToFinish.id,
+          }),
+        },
+      );
+
+    const body =
+      await response
+        .json()
+        .catch(() => ({}));
+
+    if (
+      !response.ok ||
+      !body.success
+    ) {
+      return {
+        success: false,
+
+        message:
+          body.error?.message ||
+          'Não foi possível encerrar a consulta com segurança.',
+      };
+    }
+
+    /*
+     * Todos os valores financeiros
+     * abaixo vêm do servidor.
+     */
+    const serverDebitMinutes =
+      Number(
+        body.data?.debitMinutes,
+      );
+
+    const serverDurationMinutes =
+      Number(
+        body.data?.durationMinutes,
+      );
+
+    const serverPricePerMinute =
+      Number(
+        body.data?.pricePerMinute,
+      );
+
+    const serverBalance =
+      Number(
+        body.data?.balanceAfter,
+      );
+
+    const transactionId =
+      typeof body.data
+        ?.transactionId ===
+        'string'
+        ? body.data
+            .transactionId
+            .trim()
+        : '';
+
+    if (
+      !Number.isFinite(
+        serverDebitMinutes,
+      ) ||
+      serverDebitMinutes < 0 ||
+
+      !Number.isFinite(
+        serverDurationMinutes,
+      ) ||
+      serverDurationMinutes < 1 ||
+
+      !Number.isFinite(
+        serverPricePerMinute,
+      ) ||
+      serverPricePerMinute <= 0 ||
+
+      !Number.isFinite(
+        serverBalance,
+      ) ||
+      serverBalance < 0 ||
+
+      !transactionId
+    ) {
+      console.error(
+        '[ORACULOS.TS] Resposta financeira inválida do servidor:',
+        body.data,
+      );
+
+      return {
+        success: false,
+
+        message:
+          'O servidor retornou dados financeiros inválidos. A tela foi mantida aberta para evitar inconsistência.',
+      };
+    }
+
+    const processedAtValue =
+      typeof body.data
+        ?.processedAt ===
+        'string'
+        ? body.data
+            .processedAt
+        : '';
+
+    const processedAtDate =
+      new Date(
+        processedAtValue,
+      );
+
+    const safeProcessedAtDate =
+      Number.isFinite(
+        processedAtDate.getTime(),
+      )
+        ? processedAtDate
+        : new Date();
+
+    const cappedByBalance =
+      body.data?.cappedByBalance ===
+      true;
+
+    /*
+     * Sincroniza imediatamente
+     * a carteira local com o
+     * saldo confirmado no servidor.
+     */
+    syncMinuteBalance(
+      serverBalance,
+    );
+
+    /*
+     * Comissão exibida no frontend.
+     * A base financeira usada aqui
+     * é exclusivamente o débito
+     * confirmado pelo servidor.
+     */
+    const currentConsultant =
+      consultants.find(
+        (consultant) =>
+          consultant.id ===
+          sessionToFinish
+            .consultantId,
+      );
+
+    const configuredConsultantShare =
+      Number(
+        currentConsultant
+          ?.commissionRate ??
+          0.70,
+      );
+
+    const consultantShareRate =
+      Number.isFinite(
+        configuredConsultantShare,
+      ) &&
+      configuredConsultantShare > 0 &&
+      configuredConsultantShare <= 1
+        ? configuredConsultantShare
+        : 0.70;
+
+    const adminShareRate =
+      1 -
+      consultantShareRate;
+
+    const adminCommission =
+      Number(
+        (
+          serverDebitMinutes *
+          adminShareRate
+        ).toFixed(2),
+      );
+
+    const consultantEarnings =
+      Number(
+        (
+          serverDebitMinutes *
+          consultantShareRate
+        ).toFixed(2),
+      );
+
+    const completedSession:
+      ConsultationSession = {
+      ...sessionToFinish,
+
+      status:
+        'completed',
+
+      endTime:
+        safeProcessedAtDate
+          .toLocaleTimeString(
+            [],
+            {
+              hour: '2-digit',
+              minute: '2-digit',
+            },
+          ),
+
+      /*
+       * Converte os minutos oficiais
+       * para a representação local
+       * utilizada pela interface.
+       */
+      durationSeconds:
+        serverDurationMinutes *
+        60,
+
+      pricePerMinute:
+        serverPricePerMinute,
+
+      totalCost:
+        serverDebitMinutes,
+
       adminCommission,
+
       consultantEarnings,
-      ratingGiven: rating,
+
+      ratingGiven:
+        rating,
+
       reviewText,
     };
 
-    // Record client debit transaction
-    const debitTx: FinancialTransaction = {
-      id: `tx_${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      type: 'consultation_debit',
-      amount: finalCost,
-      method: 'wallet_balance',
-      status: 'completed',
-      date: new Date().toLocaleString(),
-      description: `Atendimento (${durationMinutes} min) com ${activeSession.consultantName}`,
+    const debitTx:
+      FinancialTransaction = {
+      id:
+        transactionId,
+
+      userId:
+        user.id,
+
+      userName:
+        user.name,
+
+      type:
+        'consultation_debit',
+
+      amount:
+        serverDebitMinutes,
+
+      method:
+        'wallet_balance',
+
+      status:
+        'completed',
+
+      date:
+        safeProcessedAtDate
+          .toLocaleString(),
+
+      description:
+        cappedByBalance
+          ? `Atendimento (${serverDurationMinutes} min) com ${sessionToFinish.consultantName} — cobrança limitada ao saldo disponível`
+          : `Atendimento (${serverDurationMinutes} min) com ${sessionToFinish.consultantName}`,
     };
 
-    // Record consultant credit transaction
-    const creditTx: FinancialTransaction = {
-      id: `tx_cred_${Date.now()}`,
-      userId: activeSession.consultantId,
-      userName: activeSession.consultantName,
-      type: 'consultation_credit',
-      amount: consultantEarnings,
-      method: 'wallet_balance',
-      status: 'completed',
-      date: new Date().toLocaleString(),
-      description: `Comissão (${(1 - commissionRate) * 100}%) consulta ${activeSession.clientName}`,
+    const creditTx:
+      FinancialTransaction = {
+      id:
+        `tx_cred_${transactionId}`,
+
+      userId:
+        sessionToFinish
+          .consultantId,
+
+      userName:
+        sessionToFinish
+          .consultantName,
+
+      type:
+        'consultation_credit',
+
+      amount:
+        consultantEarnings,
+
+      method:
+        'wallet_balance',
+
+      status:
+        'completed',
+
+      date:
+        safeProcessedAtDate
+          .toLocaleString(),
+
+      description:
+        `Comissão (${(
+          consultantShareRate *
+          100
+        ).toFixed(0)}%) consulta ${sessionToFinish.clientName}`,
     };
 
-    setTransactions((prev) => [debitTx, creditTx, ...prev]);
-    setPastSessions((prev) => [completedSession, ...prev]);
+    setTransactions(
+      (previous) => [
+        debitTx,
+        creditTx,
+        ...previous,
+      ],
+    );
 
-    // Update consultant stats & rating if provided
-    setConsultants((prev) =>
-      prev.map((c) => {
-        if (c.id === activeSession.consultantId) {
-          const newTotalConsultations = c.totalConsultations + 1;
-          const newReviews = rating && reviewText ? [
-            {
-              id: `rev_${Date.now()}`,
-              clientName: user.name,
-              rating,
-              comment: reviewText,
-              date: new Date().toLocaleDateString('pt-BR'),
-              oracleUsed: activeSession.oracleType,
-            },
-            ...c.reviews,
-          ] : c.reviews;
+    setPastSessions(
+      (previous) => [
+        completedSession,
+        ...previous,
+      ],
+    );
 
-          return {
-            ...c,
-            status: 'online',
-            totalConsultations: newTotalConsultations,
-            totalEarned: (c.totalEarned || 0) + consultantEarnings,
-            reviews: newReviews,
-          };
-        }
-        return c;
-      })
+    setConsultants(
+      (previous) =>
+        previous.map(
+          (consultant) => {
+            if (
+              consultant.id !==
+              sessionToFinish
+                .consultantId
+            ) {
+              return consultant;
+            }
+
+            const newReviews =
+              rating &&
+              reviewText
+                ? [
+                    {
+                      id:
+                        `rev_${Date.now()}`,
+
+                      clientName:
+                        user.name,
+
+                      rating,
+
+                      comment:
+                        reviewText,
+
+                      date:
+                        safeProcessedAtDate
+                          .toLocaleDateString(
+                            'pt-BR',
+                          ),
+
+                      oracleUsed:
+                        sessionToFinish
+                          .oracleType,
+                    },
+
+                    ...consultant
+                      .reviews,
+                  ]
+                : consultant.reviews;
+
+            return {
+              ...consultant,
+
+              status:
+                'online',
+
+              totalConsultations:
+                consultant
+                  .totalConsultations +
+                1,
+
+              totalEarned:
+                (
+                  consultant
+                    .totalEarned ||
+                  0
+                ) +
+                consultantEarnings,
+
+              reviews:
+                newReviews,
+            };
+          },
+        ),
     );
 
     setActiveSession(null);
-  };
+
+    /*
+     * Se a cobrança precisou ser
+     * limitada ao saldo disponível,
+     * oferece recarga somente após
+     * encerrar a sessão corretamente.
+     */
+    if (cappedByBalance) {
+      setIsRechargeModalOpen(
+        true,
+      );
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(
+      '[ORACULOS.TS] Falha ao finalizar consulta:',
+      error,
+    );
+
+    return {
+      success: false,
+
+      message:
+        'Falha de conexão ao registrar o encerramento. A consulta continua aberta para permitir nova tentativa segura.',
+    };
+  }
+};
+
+
+
 
   const addTransaction = (
   tx: FinancialTransaction,

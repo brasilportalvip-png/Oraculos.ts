@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, MessageSquare, Video, Shield, Clock, Calendar, Sparkles } from 'lucide-react';
 import { Consultant, OracleType } from '../types';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
+import { oracleTypeFromSlug } from '../routing/routes';
 
 interface Props {
   consultant: Consultant | null;
@@ -17,16 +18,33 @@ export const ConsultantProfileModal: React.FC<Props> = ({
   onClose,
   onStartConsultation,
 }) => {
+ 
+
+  const getAllowedOracles = (cons: Consultant | null): OracleType[] => {
+    const source =
+      cons?.allowedOracles && cons.allowedOracles.length > 0
+        ? cons.allowedOracles
+        : cons?.specialties || [];
+
+    return source
+      .map((oracle) => oracleTypeFromSlug(String(oracle)))
+      .filter((oracle): oracle is OracleType => oracle !== null);
+  };
+
   const computeInitialOracle = (
     cons: Consultant | null,
     initOracle?: OracleType | null
   ): OracleType => {
-    const specs = cons?.specialties || [];
-    if (initOracle && specs.includes(initOracle)) {
+    const allowedOracles = getAllowedOracles(cons);
+
+    if (initOracle && allowedOracles.includes(initOracle)) {
       return initOracle;
     }
-    return specs[0] || 'tarot';
+
+    return allowedOracles[0] || 'tarot';
   };
+
+
 
   const [selectedOracle, setSelectedOracle] = useState<OracleType>(() =>
     computeInitialOracle(consultant, initialOracle)
@@ -36,9 +54,17 @@ export const ConsultantProfileModal: React.FC<Props> = ({
     setSelectedOracle(computeInitialOracle(consultant, initialOracle));
   }, [consultant?.id, initialOracle]);
 
+
   if (!consultant) return null;
 
+  const allowedOracles = getAllowedOracles(consultant);
+  const canStartConsultation = allowedOracles.includes(selectedOracle);
+
   return (
+
+
+
+
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <motion.div
@@ -125,7 +151,7 @@ export const ConsultantProfileModal: React.FC<Props> = ({
                 Escolha o Oráculo para esta Consulta
               </label>
               <div className="flex flex-wrap gap-2">
-                {consultant.specialties.map((spec) => {
+                {allowedOracles.map((spec) => {
                   const cat = ORACLE_CATEGORIES[spec];
                   return (
                     <button
@@ -180,9 +206,11 @@ export const ConsultantProfileModal: React.FC<Props> = ({
             <div className="pt-4 border-t border-purple-900/40 grid grid-cols-2 gap-3">
               <button
                 onClick={() => {
-                  onClose();
-                  onStartConsultation(consultant, selectedOracle, 'chat');
-                }}
+  if (!canStartConsultation) return;
+  onClose();
+  onStartConsultation(consultant, selectedOracle, 'chat');
+}}
+disabled={!canStartConsultation}
                 className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm rounded-xl shadow-lg transition-all"
               >
                 <MessageSquare className="w-4 h-4" />
@@ -191,9 +219,11 @@ export const ConsultantProfileModal: React.FC<Props> = ({
 
               <button
                 onClick={() => {
-                  onClose();
-                  onStartConsultation(consultant, selectedOracle, 'video');
-                }}
+  if (!canStartConsultation) return;
+  onClose();
+  onStartConsultation(consultant, selectedOracle, 'video');
+}}
+disabled={!canStartConsultation}
                 className="flex items-center justify-center gap-2 py-3 bg-[#1F1638] hover:bg-purple-900/50 border border-purple-700/50 text-purple-200 font-bold text-sm rounded-xl transition-all"
               >
                 <Video className="w-4 h-4 text-amber-400" />

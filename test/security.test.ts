@@ -99,39 +99,88 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
     expect(res.body.status).toBe('already_processed');
   });
 
-  // TEST 7: Débito em Saldo Insuficiente
+  // TEST 7: Saldo insuficiente no início seguro da consulta
   it('7. Deve bloquear início de consulta e retornar HTTP 400 se o usuário não tiver saldo suficiente', async () => {
-    usersDb['usr-client-1'].balance = 5.0; // Saldo de R$ 5,00
+    usersDb['usr-client-1'].balance = 0;
 
     const res = await request(app)
-      .post('/api/finance/debit-consultation')
+      .post('/api/finance/start-consultation')
       .set('x-user-id', 'usr-client-1')
-      .send({ amount: 50.0, consultantId: 'cons-1', durationMinutes: 10 });
+      .send({
+        consultationId: 'security-test-insufficient',
+        consultantId: 'c1',
+      });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INSUFFICIENT_FUNDS');
+    expect(usersDb['usr-client-1'].balance).toBe(0);
   });
 
-  // TEST 8: Débito Concorrente / Atualização Atômica
-  it('8. Deve processar débitos consecutivos sem gerar saldo negativo', async () => {
-    usersDb['usr-client-1'].balance = 30.0;
+  // TEST 8: Débito seguro e idempotente
+  it('8. Deve impedir débito duplicado e nunca gerar saldo negativo', async () => {
+    usersDb['usr-client-1'].balance = 1000;
 
-    const res1 = await request(app)
+    const consultationId =
+      'security-test-idempotency';
+
+    const startRes = await request(app)
+      .post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({
+        consultationId,
+        consultantId: 'c1',
+      });
+
+    expect(startRes.status).toBe(200);
+
+    const firstDebit = await request(app)
       .post('/api/finance/debit-consultation')
       .set('x-user-id', 'usr-client-1')
-      .send({ amount: 20.0, consultantId: 'cons-1' });
+      .send({
+        consultationId,
+        consultantId: 'c1',
 
-    expect(res1.status).toBe(200);
-    expect(usersDb['usr-client-1'].balance).toBe(10.0);
+        // Valores manipulados pelo cliente
+        // devem ser ignorados pelo servidor.
+        amount: 999999,
+        durationMinutes: 999999,
+      });
 
-    const res2 = await request(app)
+    expect(firstDebit.status).toBe(200);
+
+    const balanceAfterFirstDebit =
+      usersDb['usr-client-1'].balance;
+
+    expect(balanceAfterFirstDebit)
+      .toBeGreaterThanOrEqual(0);
+
+    expect(
+      firstDebit.body.data.debitMinutes,
+    ).toBeLessThan(999999);
+
+    const secondDebit = await request(app)
       .post('/api/finance/debit-consultation')
       .set('x-user-id', 'usr-client-1')
-      .send({ amount: 20.0, consultantId: 'cons-1' });
+      .send({
+        consultationId,
+        consultantId: 'c1',
+        amount: 1,
+        durationMinutes: 1,
+      });
 
-    expect(res2.status).toBe(400);
-    expect(res2.body.error.code).toBe('INSUFFICIENT_FUNDS');
-    expect(usersDb['usr-client-1'].balance).toBe(10.0); // Saldo preservado sem valor negativo
+    expect(secondDebit.status).toBe(200);
+
+    expect(
+      secondDebit.body.data.alreadyProcessed,
+    ).toBe(true);
+
+    expect(
+      usersDb['usr-client-1'].balance,
+    ).toBe(balanceAfterFirstDebit);
+
+    expect(
+      usersDb['usr-client-1'].balance,
+    ).toBeGreaterThanOrEqual(0);
   });
 
   // TEST 9: Alteração de Papel pelo Frontend Negada
@@ -169,7 +218,7 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
     expect(res.body.error.code).toBe('PROMPT_TOO_LONG');
   });
 
-   // TEST 12: Bloqueio por WAF em IP na Blacklist
+  // TEST 12: Bloqueio por WAF em IP na Blacklist
   it('12. Deve bloquear com HTTP 403 requisições vindas de IPs na Lista Negra do WAF', async () => {
     blacklistedIPs.add('203.0.113.199');
 

@@ -38,6 +38,12 @@ export const ConsultationRoom: React.FC = () => {
   const [rating, setRating] = useState<number>(5);
   const [reviewText, setReviewText] = useState('');
   const [showReviewModal, setShowReviewModal] = useState(false);
+
+const [isEndingConsultation, setIsEndingConsultation] =
+  useState(false);
+
+const [endConsultationError, setEndConsultationError] =
+  useState<string | null>(null);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiInterpretation, setAiInterpretation] = useState<string | null>(null);
@@ -182,18 +188,48 @@ export const ConsultationRoom: React.FC = () => {
   };
 
   const handleFinishConsultation = () => {
-    setShowEndConfirm(false);
-    setShowReviewModal(true);
-  };
+  setShowEndConfirm(false);
+  setEndConsultationError(null);
+  setShowReviewModal(true);
+};
 
-  const submitReviewAndExit = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-    }
-    endConsultation(rating, reviewText);
-    setShowReviewModal(false);
-  };
+  const submitReviewAndExit = async () => {
+  if (isEndingConsultation) {
+    return;
+  }
+
+  setIsEndingConsultation(true);
+  setEndConsultationError(null);
+
+  const result =
+    await endConsultation(
+      rating,
+      reviewText,
+    );
+
+  if (!result.success) {
+    setEndConsultationError(
+      result.message ||
+        'Não foi possível encerrar a consulta com segurança.',
+    );
+
+    setIsEndingConsultation(false);
+    return;
+  }
+
+  if (localStreamRef.current) {
+    localStreamRef.current
+      .getTracks()
+      .forEach((track) =>
+        track.stop(),
+      );
+
+    localStreamRef.current = null;
+  }
+
+  setShowReviewModal(false);
+  setIsEndingConsultation(false);
+};
 
   const handleAskAiCopilot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -627,8 +663,11 @@ export const ConsultationRoom: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#150F26] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
             <div className="text-center space-y-1">
-              <span className="text-xs uppercase font-bold text-amber-400 tracking-wider">Atendimento Finalizado</span>
-              <h3 className="text-lg font-bold text-white">Como foi sua experiência?</h3>
+              <span className="text-xs uppercase font-bold text-amber-400 tracking-wider">
+  Finalizar Atendimento
+</span>
+              
+<h3 className="text-lg font-bold text-white">Como foi sua experiência?</h3>
               <p className="text-xs text-slate-400 font-light">Sua avaliação ajuda a manter a excelência da plataforma.</p>
             </div>
 
@@ -650,19 +689,32 @@ export const ConsultationRoom: React.FC = () => {
             </div>
 
             <textarea
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-              placeholder="Deixe um comentário sobre a clareza e acolhimento da consulta (opcional)..."
-              rows={3}
-              className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-light"
-            />
+  value={reviewText}
+  onChange={(e) => setReviewText(e.target.value)}
+  placeholder="Deixe um comentÃ¡rio sobre a clareza e acolhimento da consulta (opcional)..."
+  rows={3}
+  className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-light"
+/>
+
+{endConsultationError && (
+  <div className="flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-200">
+    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+
+    <span>
+      {endConsultationError}
+    </span>
+  </div>
+)}
 
             <button
-              onClick={submitReviewAndExit}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-colors cursor-pointer uppercase tracking-wider"
-            >
-              Enviar Avaliação e Voltar ao Início
-            </button>
+  onClick={submitReviewAndExit}
+  disabled={isEndingConsultation}
+  className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-colors cursor-pointer uppercase tracking-wider"
+>
+  {isEndingConsultation
+    ? 'Finalizando com segurança...'
+    : 'Enviar Avaliação e Voltar ao Início'}
+</button>
           </div>
         </div>
       )}

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -35,6 +34,13 @@ import {
 import { VIRTUAL_PROFILES } from './src/data/virtualProfiles.js';
 import { INITIAL_CONSULTANTS } from './src/data/mockData.js';
 import { ConsultationIntent, OracleResponseValidation } from './src/types.js';
+import {
+  findPackageByAmountOrId,
+} from './server/modules/minutes/packages.js';
+import {
+  getTransactionsByUserId,
+  recordTransaction,
+} from './server/modules/minutes/walletService.js';
 
 // Configuration collision validation between Human and Virtual profiles
 const humanConsultants = INITIAL_CONSULTANTS.filter((c) => !c.isAI);
@@ -437,71 +443,11 @@ const requestBuckets: Record<string, number[]> = {};
 
 // Idempotency Keys Set
 export const processedPaymentIds = new Set<string>();
+export const processedConsultationDebitIds = new Set<string>();
 
 // User AI Daily Usage Tracker (userId -> { count: number, resetAt: number })
 export const userDailyAiUsage: Record<string, { count: number; resetAt: number }> = {};
 
-// Server-Defined Product Credit Packages (Prevents client price manipulation)
-
-
-
-
-
-
-
-
-export const VALID_CREDIT_PACKAGES: Record<
-  number,
-  {
-    credits: number;
-    title: string;
-  }
-> = {
-  5: {
-    credits: 5,
-    title: 'Pacote Essencial R$ 5',
-  },
-
-  10: {
-    credits: 11,
-    title: 'Pacote Bronze R$ 10',
-  },
-
-  20: {
-    credits: 23,
-    title: 'Pacote Prata R$ 20',
-  },
-
-  30: {
-    credits: 35,
-    title: 'Pacote Ouro R$ 30',
-  },
-
-  50: {
-    credits: 60,
-    title: 'Pacote Safira R$ 50',
-  },
-
-  100: {
-    credits: 125,
-    title: 'Pacote Rubi R$ 100',
-  },
-
-  150: {
-    credits: 190,
-    title: 'Pacote Esmeralda R$ 150',
-  },
-
-  200: {
-    credits: 260,
-    title: 'Pacote Diamante R$ 200',
-  },
-
-  300: {
-    credits: 400,
-    title: 'Pacote Oráculo Master R$ 300',
-  },
-};
 
 
 
@@ -682,6 +628,83 @@ export const couponsDb: Record<string, Coupon> = {
     createdBy: 'system',
   },
 };
+
+const COUPONS_COLLECTION = 'coupons';
+
+async function getCouponByCode(
+  code: string,
+): Promise<Coupon | null> {
+  const normalizedCode =
+    String(code || '')
+      .trim()
+      .toUpperCase();
+
+  if (!normalizedCode) {
+    return null;
+  }
+
+  /*
+   * Os mocks ficam disponíveis somente
+   * para o ambiente automatizado.
+   */
+  if (
+    process.env.NODE_ENV === 'test'
+  ) {
+    return couponsDb[normalizedCode] || null;
+  }
+
+  if (!adminDb) {
+    throw new Error(
+      'FIRESTORE_NOT_AVAILABLE',
+    );
+  }
+
+  const document = await adminDb
+    .collection(COUPONS_COLLECTION)
+    .doc(normalizedCode)
+    .get();
+
+  if (!document.exists) {
+    return null;
+  }
+
+  return {
+    ...(document.data() as Coupon),
+    id:
+      String(
+        document.data()?.id ||
+        document.id,
+      ),
+    code:
+      String(
+        document.data()?.code ||
+        document.id,
+      )
+        .trim()
+        .toUpperCase(),
+  };
+}
+
+function getCouponBonusMinutes(
+  coupon: Coupon,
+): number {
+  /*
+   * O checkout atual trabalha com bônus
+   * de minutos, não desconto percentual.
+   * Evita interpretar percentual como minutos.
+   */
+  if (coupon.type !== 'bonus_fixed') {
+    return 0;
+  }
+
+  const value = Number(coupon.value);
+
+  return Number.isFinite(value) &&
+    value > 0
+    ? value
+    : 0;
+}
+
 
 // ==========================================
 // MIDDLEWARES DE SEGURANÇA E WAF
@@ -1361,7 +1384,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   const firestoreStatus = adminDb ? 'ok' : 'not_configured';
   const geminiStatus = process.env.GEMINI_API_KEY ? 'ok' : 'not_configured';
   const mercadoPagoStatus = mpConfig ? 'ok' : 'not_configured';
-  const commitVersion = process.env.VERCEL_GIT_COMMIT_SHA || 'f2d61729d9d50b8c51c8e3929374c2bd359b9673';
+  const commitVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.npm_package_version || 'local-uncommitted';
 
   res.json({
     status: 'ok',
@@ -1826,9 +1849,9 @@ app.post(
       }
 
       const selectedPackage =
-        VALID_CREDIT_PACKAGES[
-          requestedAmount
-        ];
+  await findPackageByAmountOrId(
+    requestedAmount,
+  );
 
       if (!selectedPackage) {
         auditLogs.unshift({
@@ -1908,45 +1931,116 @@ app.post(
 
       if (couponCode) {
         const coupon =
-          couponsDb[couponCode];
+          await getCouponByCode(
+            couponCode,
+          );
 
         if (
-          coupon &&
-          coupon.active &&
-          (
-            !coupon.expiresAt ||
-            new Date(
-              coupon.expiresAt,
-            ) > new Date()
-          ) &&
-          coupon.currentUses <
-            coupon.maxUses
+          !coupon ||
+          !coupon.active
         ) {
-          const userUses =
-            coupon.userUsesCount[
-              userId
-            ] || 0;
-
-          if (
-            userUses <
-            coupon.maxUsesPerUser
-          ) {
-            couponBonusMinutes =
-              Number(
-                coupon.value || 0,
-              );
-          }
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_COUPON',
+              message:
+                'Cupom inválido ou inativo.',
+            },
+          });
         }
+
+        if (
+          coupon.type !==
+          'bonus_fixed'
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code:
+                'UNSUPPORTED_COUPON_TYPE',
+              message:
+                'Este tipo de cupom não está disponível para esta recarga.',
+            },
+          });
+        }
+
+        if (
+          coupon.expiresAt &&
+          new Date(
+            coupon.expiresAt,
+          ) <= new Date()
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'EXPIRED_COUPON',
+              message:
+                'Este cupom já expirou.',
+            },
+          });
+        }
+
+        if (
+          Number(
+            coupon.currentUses || 0,
+          ) >=
+          Number(
+            coupon.maxUses || 0,
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code:
+                'MAX_USES_REACHED',
+              message:
+                'Este cupom atingiu o limite máximo de resgates.',
+            },
+          });
+        }
+
+        const userUses =
+          Number(
+            coupon.userUsesCount?.[
+              userId
+            ] || 0,
+          );
+
+        if (
+          userUses >=
+          Number(
+            coupon.maxUsesPerUser ||
+            1,
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code:
+                'USER_LIMIT_REACHED',
+              message:
+                'Você já atingiu o limite de uso para este cupom.',
+            },
+          });
+        }
+
+        couponBonusMinutes =
+          getCouponBonusMinutes(
+            coupon,
+          );
       }
 
       const packageMinutes =
-        Number(
-          selectedPackage.credits,
-        );
+  Number(
+    selectedPackage.minutes,
+  ) +
+  Number(
+    selectedPackage.bonusMinutes || 0,
+  );
 
-      const totalMinutes =
-        packageMinutes +
-        couponBonusMinutes;
+const totalMinutes =
+  packageMinutes +
+  couponBonusMinutes;
 
       const preferenceReference =
         adminDb
@@ -2042,11 +2136,11 @@ app.post(
       }
 
       await preferenceReference.set({
-        id:
-          preferenceInternalId,
-        mercadoPagoPreferenceId:
-          result.id,
-        userId,
+  id:
+    preferenceInternalId,
+  mercadoPagoPreferenceId:
+    result.id,
+  userId,
         userEmail:
           userEmail || null,
         amount:
@@ -2430,82 +2524,124 @@ if (
         });
       }
 
-      const officialPackage =
-        VALID_CREDIT_PACKAGES[
-          packageAmount
-        ];
+      
+const paymentReference =
+  adminDb
+    .collection(
+      'mercadoPagoPayments',
+    )
+    .doc(paymentId);
 
-      if (!officialPackage) {
-        console.error(
-          '[ORACULOS.TS] Pacote inválido no webhook.',
-          {
-            paymentId,
-            packageAmount,
-          },
-        );
+const userReference =
+  adminDb
+    .collection('users')
+    .doc(userId);
 
-        return res.status(400).json({
-          error:
-            'Pacote de pagamento inválido.',
-        });
-      }
+const preferenceReference =
+  adminDb
+    .collection(
+      'mercadoPagoPreferences',
+    )
+    .doc(
+      preferenceInternalId,
+    );
 
-      const officialMinutes =
-        Number(
-          officialPackage.credits,
-        );
+const preferenceDocument =
+  await preferenceReference.get();
 
-      const expectedTotalMinutes =
-        officialMinutes +
-        couponBonusMinutes;
+if (!preferenceDocument.exists) {
+  console.error(
+    '[ORACULOS.TS] Preferência interna não encontrada.',
+    {
+      paymentId,
+      preferenceInternalId,
+    },
+  );
 
-      if (
-        amount !==
-          packageAmount ||
-        packageMinutes !==
-          officialMinutes ||
-        totalMinutes !==
-          expectedTotalMinutes
-      ) {
-        console.error(
-          '[ORACULOS.TS] Divergência nos dados do pagamento.',
-          {
-            paymentId,
-            amount,
-            packageAmount,
-            packageMinutes,
-            officialMinutes,
-            totalMinutes,
-            expectedTotalMinutes,
-          },
-        );
+  return res.status(400).json({
+    error:
+      'Preferência de pagamento não encontrada.',
+  });
+}
 
-        return res.status(400).json({
-          error:
-            'Os dados do pagamento não correspondem ao pacote oficial.',
-        });
-      }
+const storedPreference =
+  preferenceDocument.data() || {};
 
-      const paymentReference =
-        adminDb
-          .collection(
-            'mercadoPagoPayments',
-          )
-          .doc(paymentId);
+const expectedUserId =
+  String(
+    storedPreference.userId || '',
+  ).trim();
 
-      const userReference =
-        adminDb
-          .collection('users')
-          .doc(userId);
+const expectedAmount =
+  Number(
+    storedPreference.amount,
+  );
 
-      const preferenceReference =
-        adminDb
-          .collection(
-            'mercadoPagoPreferences',
-          )
-          .doc(
-            preferenceInternalId,
-          );
+const officialMinutes =
+  Number(
+    storedPreference.packageMinutes,
+  );
+
+const expectedCouponBonusMinutes =
+  Number(
+    storedPreference.couponBonusMinutes || 0,
+  );
+
+const expectedTotalMinutes =
+  Number(
+    storedPreference.totalMinutes,
+  );
+
+const officialPackage = {
+  title:
+    String(
+      storedPreference.packageTitle ||
+      'Pacote de minutos',
+    ),
+};
+
+if (
+  !expectedUserId ||
+  !Number.isFinite(expectedAmount) ||
+  !Number.isFinite(officialMinutes) ||
+  !Number.isFinite(expectedCouponBonusMinutes) ||
+  !Number.isFinite(expectedTotalMinutes) ||
+  expectedUserId !== userId ||
+  amount !== expectedAmount ||
+  packageAmount !== expectedAmount ||
+  packageMinutes !== officialMinutes ||
+  couponBonusMinutes !==
+    expectedCouponBonusMinutes ||
+  totalMinutes !==
+    expectedTotalMinutes
+) {
+  console.error(
+    '[ORACULOS.TS] Divergência entre pagamento e preferência salva.',
+    {
+      paymentId,
+      preferenceInternalId,
+      userId,
+      expectedUserId,
+      amount,
+      expectedAmount,
+      packageAmount,
+      packageMinutes,
+      officialMinutes,
+      couponBonusMinutes,
+      expectedCouponBonusMinutes,
+      totalMinutes,
+      expectedTotalMinutes,
+    },
+  );
+
+  return res.status(400).json({
+    error:
+      'Os dados do pagamento não correspondem à preferência original.',
+  });
+}
+
+
+
 
       /*
        * Pagamento ainda pendente ou rejeitado:
@@ -2663,10 +2799,13 @@ if (
                 balanceBefore,
                 balanceAfter,
                 paymentId,
-                preferenceInternalId,
-                mercadoPagoPreferenceId:
-  preferenceInternalId,
-                paymentMethod:
+preferenceInternalId,
+mercadoPagoPreferenceId:
+  String(
+    storedPreference.mercadoPagoPreferenceId ||
+    '',
+  ),
+paymentMethod:
                   payment.payment_method_id ||
                   null,
                 status:
@@ -2770,8 +2909,9 @@ if (
 
 
       /*
-       * O cupom só é consumido depois que o
-       * pagamento foi realmente aprovado.
+       * O cupom é contabilizado no Firestore
+       * somente após a aprovação real e apenas
+       * na primeira execução do pagamento.
        */
       const couponCode =
         String(
@@ -2785,27 +2925,99 @@ if (
         couponCode &&
         couponBonusMinutes > 0
       ) {
-        const coupon =
-          couponsDb[
-            couponCode
-          ];
+        const couponReference =
+          adminDb
+            .collection(
+              COUPONS_COLLECTION,
+            )
+            .doc(couponCode);
 
-        if (
-          coupon &&
-          coupon.active
-        ) {
-          const currentUserUses =
-            coupon.userUsesCount[
-              userId
-            ] || 0;
+        await adminDb.runTransaction(
+          async (transaction) => {
+            const couponDocument =
+              await transaction.get(
+                couponReference,
+              );
 
-          coupon.currentUses += 1;
+            if (!couponDocument.exists) {
+              console.warn(
+                '[ORACULOS.TS] Cupom do pagamento não encontrado ao contabilizar uso.',
+                {
+                  paymentId,
+                  couponCode,
+                },
+              );
+              return;
+            }
 
-          coupon.userUsesCount[
-            userId
-          ] =
-            currentUserUses + 1;
-        }
+            const coupon =
+              couponDocument.data() as Coupon;
+
+            const currentUses =
+              Number(
+                coupon.currentUses || 0,
+              );
+
+            const currentUserUses =
+              Number(
+                coupon.userUsesCount?.[
+                  userId
+                ] || 0,
+              );
+
+            if (
+              !coupon.active ||
+              coupon.type !==
+                'bonus_fixed'
+            ) {
+              console.warn(
+                '[ORACULOS.TS] Cupom do pagamento não está mais ativo ou compatível.',
+                {
+                  paymentId,
+                  couponCode,
+                },
+              );
+              return;
+            }
+
+            if (
+              coupon.expiresAt &&
+              new Date(
+                coupon.expiresAt,
+              ) <= new Date()
+            ) {
+              console.warn(
+                '[ORACULOS.TS] Cupom do pagamento expirou antes da contabilização.',
+                {
+                  paymentId,
+                  couponCode,
+                },
+              );
+              return;
+            }
+
+            const updatedUserUses = {
+              ...(
+                coupon.userUsesCount ||
+                {}
+              ),
+              [userId]:
+                currentUserUses + 1,
+            };
+
+            transaction.update(
+              couponReference,
+              {
+                currentUses:
+                  currentUses + 1,
+                userUsesCount:
+                  updatedUserUses,
+                updatedAt:
+                  new Date().toISOString(),
+              },
+            );
+          },
+        );
       }
 
       auditLogs.unshift({
@@ -2898,31 +3110,54 @@ processedPaymentIds.add(
   },
 );
 
-// Consultation Balance Debit Endpoint
-// Debita minutos de forma atômica no Firestore.
+
+
+
+interface ServerConsultationSession {
+  id: string;
+  userId: string;
+  consultantId: string;
+  consultantName: string;
+  pricePerMinute: number;
+  startedAt: string;
+  status: 'active' | 'completed';
+  endedAt?: string;
+  durationMinutes?: number;
+    debitMinutes?: number;
+  calculatedDebitMinutes?: number;
+  transactionId?: string;
+  balanceBefore?: number;
+  balanceAfter?: number;
+  cappedByBalance?: boolean;
+}
+
+export const consultationSessionsDb:
+  Record<string, ServerConsultationSession> = {};
+
+// Inicia uma consulta usando horário e preço
+// definidos exclusivamente pelo servidor.
 app.post(
-  '/api/finance/debit-consultation',
+  '/api/finance/start-consultation',
   requireAuth,
   async (
     req: AuthenticatedRequest,
     res: Response,
   ) => {
     try {
-      const userId = req.user?.uid;
+      const userId =
+        req.user?.uid;
 
-      const debitMinutes = Number(
-        req.body?.amount,
-      );
+      const consultationId =
+        typeof req.body?.consultationId ===
+        'string'
+          ? req.body.consultationId.trim()
+          : '';
 
       const consultantId =
         typeof req.body?.consultantId ===
         'string'
           ? req.body.consultantId.trim()
           : '';
-
-      const durationMinutes = Number(
-        req.body?.durationMinutes || 0,
-      );
 
       if (!userId) {
         return res.status(401).json({
@@ -2936,32 +3171,155 @@ app.post(
       }
 
       if (
-        !Number.isFinite(debitMinutes) ||
-        debitMinutes <= 0
+        !consultationId ||
+        !/^[A-Za-z0-9_-]{1,120}$/.test(
+          consultationId,
+        )
       ) {
         return res.status(400).json({
           success: false,
           error: {
-            code: 'INVALID_AMOUNT',
+            code:
+              'INVALID_CONSULTATION_ID',
             message:
-              'Quantidade de minutos inválida.',
+              'Identificador da consulta inválido.',
+          },
+        });
+      }
+
+      if (!consultantId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'CONSULTANT_REQUIRED',
+            message:
+              'Consultor não informado.',
           },
         });
       }
 
       /*
-       * Compatibilidade com a bateria de testes automatizados e fallback de memória
+       * Fonte oficial do preço.
+       * INITIAL_CONSULTANTS contém
+       * consultores humanos e virtuais.
        */
-      if (process.env.NODE_ENV === 'test' || !adminDb) {
-        const testUser = usersDb[userId];
+      const consultant =
+        INITIAL_CONSULTANTS.find(
+          (item) =>
+            item.id === consultantId,
+        );
+
+      if (!consultant) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code:
+              'CONSULTANT_NOT_FOUND',
+            message:
+              'Consultor não encontrado.',
+          },
+        });
+      }
+
+      const pricePerMinute =
+        Number(
+          consultant.pricePerMinute,
+        );
+
+      if (
+        !Number.isFinite(
+          pricePerMinute,
+        ) ||
+        pricePerMinute <= 0
+      ) {
+        return res.status(500).json({
+          success: false,
+          error: {
+            code:
+              'INVALID_CONSULTANT_PRICE',
+            message:
+              'Preço do consultor não está configurado corretamente.',
+          },
+        });
+      }
+
+      /*
+       * Ambiente automatizado/local.
+       */
+      if (
+        process.env.NODE_ENV ===
+          'test' ||
+        !adminDb
+      ) {
+        const testUser =
+          usersDb[userId];
 
         if (!testUser) {
           return res.status(404).json({
             success: false,
             error: {
-              code: 'USER_NOT_FOUND',
+              code:
+                'USER_NOT_FOUND',
               message:
                 'Usuário não encontrado.',
+            },
+          });
+        }
+
+        const sessionKey =
+          `${userId}:${consultationId}`;
+
+        const existingSession =
+          consultationSessionsDb[
+            sessionKey
+          ];
+
+        if (existingSession) {
+          if (
+            existingSession
+              .consultantId !==
+            consultantId
+          ) {
+            return res.status(409).json({
+              success: false,
+              error: {
+                code:
+                  'CONSULTATION_ID_CONFLICT',
+                message:
+                  'Esta consulta já está vinculada a outro consultor.',
+              },
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            data: {
+              ...existingSession,
+              alreadyStarted: true,
+            },
+          });
+        }
+
+        const activeSession =
+          Object.values(
+            consultationSessionsDb,
+          ).find(
+            (session) =>
+              session.userId ===
+                userId &&
+              session.status ===
+                'active',
+          );
+
+        if (activeSession) {
+          return res.status(409).json({
+            success: false,
+            error: {
+              code:
+                'ACTIVE_CONSULTATION_EXISTS',
+              message:
+                'Já existe uma consulta ativa para este usuário.',
             },
           });
         }
@@ -2973,7 +3331,7 @@ app.post(
 
         if (
           balanceBefore <
-          debitMinutes
+          pricePerMinute
         ) {
           return res.status(400).json({
             success: false,
@@ -2986,9 +3344,588 @@ app.post(
           });
         }
 
+        const startedAt =
+          new Date().toISOString();
+
+        const newSession:
+          ServerConsultationSession = {
+          id:
+            consultationId,
+          userId,
+          consultantId,
+          consultantName:
+            consultant.name,
+          pricePerMinute,
+          startedAt,
+          status:
+            'active',
+        };
+
+        consultationSessionsDb[
+          sessionKey
+        ] = newSession;
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            ...newSession,
+            balanceBefore,
+            alreadyStarted: false,
+          },
+        });
+      }
+
+      /*
+       * Produção:
+       * sessão persistida no Firestore.
+       */
+      const userReference =
+        adminDb
+          .collection('users')
+          .doc(userId);
+
+      const sessionReference =
+        userReference
+          .collection(
+            'consultationSessions',
+          )
+          .doc(consultationId);
+
+      const result =
+        await adminDb.runTransaction(
+          async (transaction) => {
+            /*
+             * Todas as leituras acontecem
+             * antes das gravações.
+             */
+            const userDocument =
+              await transaction.get(
+                userReference,
+              );
+
+            const sessionDocument =
+              await transaction.get(
+                sessionReference,
+              );
+
+            if (
+              sessionDocument.exists
+            ) {
+              const existingSession =
+                sessionDocument.data() ||
+                {};
+
+              if (
+                existingSession
+                  .consultantId !==
+                consultantId
+              ) {
+                throw new Error(
+                  'CONSULTATION_ID_CONFLICT',
+                );
+              }
+
+              return {
+                ...existingSession,
+                id:
+                  consultationId,
+                alreadyStarted:
+                  true,
+              };
+            }
+
+            if (
+              !userDocument.exists
+            ) {
+              throw new Error(
+                'FIRESTORE_USER_NOT_FOUND',
+              );
+            }
+
+            const userData =
+              userDocument.data() ||
+              {};
+
+            if (
+              userData.status ===
+              'blocked'
+            ) {
+              throw new Error(
+                'USER_BLOCKED',
+              );
+            }
+
+            const balanceBefore =
+              Number(
+                userData.minuteBalance ??
+                  userData.balance ??
+                  0,
+              );
+
+            if (
+              balanceBefore <
+              pricePerMinute
+            ) {
+              throw new Error(
+                'INSUFFICIENT_MINUTES',
+              );
+            }
+
+            const activeConsultationId =
+              typeof userData
+                .activeConsultationId ===
+              'string'
+                ? userData
+                    .activeConsultationId
+                : '';
+
+            if (
+              activeConsultationId &&
+              activeConsultationId !==
+                consultationId
+            ) {
+              throw new Error(
+                'ACTIVE_CONSULTATION_EXISTS',
+              );
+            }
+
+            const startedAt =
+              new Date().toISOString();
+
+            const newSession = {
+              id:
+                consultationId,
+              userId,
+              consultantId,
+              consultantName:
+                consultant.name,
+              pricePerMinute,
+              startedAt,
+              status:
+                'active',
+              createdAt:
+                startedAt,
+            };
+
+            transaction.update(
+              userReference,
+              {
+                activeConsultationId:
+                  consultationId,
+                updatedAt:
+                  startedAt,
+              },
+            );
+
+            transaction.create(
+              sessionReference,
+              newSession,
+            );
+
+            return {
+              ...newSession,
+              balanceBefore,
+              alreadyStarted:
+                false,
+            };
+          },
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+      if (
+        message ===
+        'FIRESTORE_USER_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code:
+              'USER_NOT_FOUND',
+            message:
+              'Perfil do usuário não encontrado.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'USER_BLOCKED'
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code:
+              'USER_BLOCKED',
+            message:
+              'Esta conta está bloqueada para consultas.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'INSUFFICIENT_MINUTES'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'INSUFFICIENT_FUNDS',
+            message:
+              'Você não possui minutos suficientes para iniciar esta consulta.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'ACTIVE_CONSULTATION_EXISTS'
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code:
+              'ACTIVE_CONSULTATION_EXISTS',
+            message:
+              'Já existe uma consulta ativa para este usuário.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'CONSULTATION_ID_CONFLICT'
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code:
+              'CONSULTATION_ID_CONFLICT',
+            message:
+              'Esta consulta já está vinculada a outro consultor.',
+          },
+        });
+      }
+
+      console.error(
+        '[ORACULOS.TS] Erro ao iniciar consulta segura:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'CONSULTATION_START_FAILED',
+          message:
+            'Não foi possível iniciar a consulta com segurança.',
+        },
+      });
+    }
+  },
+);
+
+
+               // Consultation Balance Debit Endpoint
+// Encerra a consulta usando exclusivamente
+// horário e preço registrados pelo servidor.
+app.post(
+  '/api/finance/debit-consultation',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId =
+        req.user?.uid;
+
+      const consultationId =
+        typeof req.body?.consultationId ===
+        'string'
+          ? req.body.consultationId.trim()
+          : '';
+
+      const consultantId =
+        typeof req.body?.consultantId ===
+        'string'
+          ? req.body.consultantId.trim()
+          : '';
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message:
+              'Usuário não autenticado.',
+          },
+        });
+      }
+
+      if (
+        !consultationId ||
+        !/^[A-Za-z0-9_-]{1,120}$/.test(
+          consultationId,
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'INVALID_CONSULTATION_ID',
+            message:
+              'Identificador da consulta é obrigatório e deve ser válido.',
+          },
+        });
+      }
+
+      if (!consultantId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'CONSULTANT_REQUIRED',
+            message:
+              'Consultor não informado.',
+          },
+        });
+      }
+
+      /*
+       * TESTE / FALLBACK LOCAL
+       *
+       * O navegador NÃO define:
+       * - preço;
+       * - duração;
+       * - valor debitado.
+       */
+      if (
+        process.env.NODE_ENV ===
+          'test' ||
+        !adminDb
+      ) {
+        const testUser =
+          usersDb[userId];
+
+        const sessionKey =
+          `${userId}:${consultationId}`;
+
+        const serverSession =
+          consultationSessionsDb[
+            sessionKey
+          ];
+
+        if (!testUser) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code:
+                'USER_NOT_FOUND',
+              message:
+                'Usuário não encontrado.',
+            },
+          });
+        }
+
+        if (!serverSession) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code:
+                'CONSULTATION_NOT_FOUND',
+              message:
+                'A consulta não foi encontrada no servidor.',
+            },
+          });
+        }
+
+        if (
+          serverSession.consultantId !==
+          consultantId
+        ) {
+          return res.status(409).json({
+            success: false,
+            error: {
+              code:
+                'CONSULTATION_ID_CONFLICT',
+              message:
+                'Esta consulta não pertence ao consultor informado.',
+            },
+          });
+        }
+
+        /*
+         * Idempotência real:
+         * consulta concluída retorna
+         * exatamente os valores já gravados.
+         */
+        if (
+          serverSession.status ===
+          'completed'
+        ) {
+          return res.status(200).json({
+            success: true,
+            data: {
+              transactionId:
+                serverSession
+                  .transactionId ||
+                `test-consultation-${userId}-${consultationId}`,
+
+              debitMinutes:
+                Number(
+                  serverSession
+                    .debitMinutes ??
+                    0,
+                ),
+
+              calculatedDebitMinutes:
+                Number(
+                  serverSession
+                    .calculatedDebitMinutes ??
+                    serverSession
+                      .debitMinutes ??
+                    0,
+                ),
+
+              durationMinutes:
+                Number(
+                  serverSession
+                    .durationMinutes ??
+                    0,
+                ),
+
+              pricePerMinute:
+                serverSession
+                  .pricePerMinute,
+
+              balanceBefore:
+                Number(
+                  serverSession
+                    .balanceBefore ??
+                    0,
+                ),
+
+              balanceAfter:
+                Number(
+                  serverSession
+                    .balanceAfter ??
+                    0,
+                ),
+
+              processedAt:
+                serverSession.endedAt ||
+                new Date().toISOString(),
+
+              cappedByBalance:
+                serverSession
+                  .cappedByBalance ??
+                false,
+
+              alreadyProcessed:
+                true,
+            },
+          });
+        }
+
+        const startedAtMilliseconds =
+          new Date(
+            serverSession.startedAt,
+          ).getTime();
+
+        const pricePerMinute =
+          Number(
+            serverSession
+              .pricePerMinute,
+          );
+
+        if (
+          !Number.isFinite(
+            startedAtMilliseconds,
+          ) ||
+          !Number.isFinite(
+            pricePerMinute,
+          ) ||
+          pricePerMinute <= 0
+        ) {
+          return res.status(409).json({
+            success: false,
+            error: {
+              code:
+                'INVALID_CONSULTATION_STATE',
+              message:
+                'A sessão da consulta possui dados inválidos.',
+            },
+          });
+        }
+
+        const durationMinutes =
+          Math.max(
+            1,
+            Math.ceil(
+              (
+                Date.now() -
+                startedAtMilliseconds
+              ) /
+                60000,
+            ),
+          );
+
+        const calculatedDebitMinutes =
+          Number(
+            (
+              durationMinutes *
+              pricePerMinute
+            ).toFixed(2),
+          );
+
+        const balanceBefore =
+          Math.max(
+            0,
+            Number(
+              testUser.balance ||
+                0,
+            ),
+          );
+
+        /*
+         * Nunca permite saldo negativo.
+         * Se a sessão ultrapassou o saldo,
+         * encerra e debita até o limite.
+         */
+        const debitMinutes =
+          Math.min(
+            calculatedDebitMinutes,
+            balanceBefore,
+          );
+
         const balanceAfter =
-          balanceBefore -
-          debitMinutes;
+          Number(
+            Math.max(
+              0,
+              balanceBefore -
+                debitMinutes,
+            ).toFixed(2),
+          );
+
+        const processedAt =
+          new Date().toISOString();
+
+        const transactionId =
+          `test-consultation-${userId}-${consultationId}`;
+
+        const cappedByBalance =
+          debitMinutes <
+          calculatedDebitMinutes;
 
         testUser.balance =
           balanceAfter;
@@ -2996,34 +3933,68 @@ app.post(
         usersDb[userId] =
           testUser;
 
-        const transactionId =
-          `test-consultation-${userId}-${Date.now()}`;
+        consultationSessionsDb[
+          sessionKey
+        ] = {
+          ...serverSession,
+
+          status:
+            'completed',
+
+          endedAt:
+            processedAt,
+
+          durationMinutes,
+
+          debitMinutes,
+
+          calculatedDebitMinutes,
+
+          transactionId,
+
+          balanceBefore,
+
+          balanceAfter,
+
+          cappedByBalance,
+        };
 
         return res.status(200).json({
           success: true,
           data: {
             transactionId,
             debitMinutes,
+            calculatedDebitMinutes,
+            durationMinutes,
+            pricePerMinute,
             balanceBefore,
             balanceAfter,
-            processedAt:
-              new Date().toISOString(),
+            processedAt,
+            cappedByBalance,
+            alreadyProcessed:
+              false,
           },
         });
       }
 
-
-
-
-
+      /*
+       * PRODUÇÃO / FIRESTORE
+       */
 
       const transactionId =
-        `consultation-${userId}-${Date.now()}`;
+        `consultation-${userId}-${consultationId}`;
 
       const userReference =
         adminDb
           .collection('users')
           .doc(userId);
+
+      const sessionReference =
+        userReference
+          .collection(
+            'consultationSessions',
+          )
+          .doc(consultationId);
 
       const minuteTransactionReference =
         userReference
@@ -3035,9 +4006,23 @@ app.post(
       const result =
         await adminDb.runTransaction(
           async (transaction) => {
+            /*
+             * Todas as leituras acontecem
+             * antes de qualquer gravação.
+             */
             const userDocument =
               await transaction.get(
                 userReference,
+              );
+
+            const sessionDocument =
+              await transaction.get(
+                sessionReference,
+              );
+
+            const existingDebitDocument =
+              await transaction.get(
+                minuteTransactionReference,
               );
 
             if (!userDocument.exists) {
@@ -3046,69 +4031,367 @@ app.post(
               );
             }
 
-            const userData =
-              userDocument.data() || {};
-
-            const balanceBefore =
-              Number(
-                userData.minuteBalance ??
-                  userData.balance ??
-                  0,
-              );
-
-            if (
-              balanceBefore <
-              debitMinutes
-            ) {
+            if (!sessionDocument.exists) {
               throw new Error(
-                'INSUFFICIENT_MINUTES',
+                'CONSULTATION_NOT_FOUND',
               );
             }
 
+            const userData =
+              userDocument.data() ||
+              {};
+
+            const sessionData =
+              sessionDocument.data() ||
+              {};
+
+            if (
+              sessionData.userId &&
+              sessionData.userId !==
+                userId
+            ) {
+              throw new Error(
+                'CONSULTATION_ID_CONFLICT',
+              );
+            }
+
+            if (
+              sessionData
+                .consultantId !==
+              consultantId
+            ) {
+              throw new Error(
+                'CONSULTATION_ID_CONFLICT',
+              );
+            }
+
+            /*
+             * Consulta já encerrada:
+             * devolve exatamente o débito
+             * anteriormente confirmado.
+             */
+            if (
+              sessionData.status ===
+              'completed'
+            ) {
+              if (
+                !existingDebitDocument
+                  .exists
+              ) {
+                throw new Error(
+                  'CONSULTATION_STATE_CORRUPT',
+                );
+              }
+
+              const existingDebit =
+                existingDebitDocument
+                  .data() ||
+                {};
+
+              return {
+                transactionId,
+
+                debitMinutes:
+                  Number(
+                    sessionData
+                      .debitMinutes ??
+                      existingDebit
+                        .minutes ??
+                      0,
+                  ),
+
+                calculatedDebitMinutes:
+                  Number(
+                    sessionData
+                      .calculatedDebitMinutes ??
+                      existingDebit
+                        .calculatedDebitMinutes ??
+                      existingDebit
+                        .minutes ??
+                      0,
+                  ),
+
+                durationMinutes:
+                  Number(
+                    sessionData
+                      .durationMinutes ??
+                      existingDebit
+                        .durationMinutes ??
+                      0,
+                  ),
+
+                pricePerMinute:
+                  Number(
+                    sessionData
+                      .pricePerMinute ??
+                      existingDebit
+                        .pricePerMinute ??
+                      0,
+                  ),
+
+                balanceBefore:
+                  Number(
+                    sessionData
+                      .balanceBefore ??
+                      existingDebit
+                        .balanceBefore ??
+                      0,
+                  ),
+
+                balanceAfter:
+                  Number(
+                    sessionData
+                      .balanceAfter ??
+                      existingDebit
+                        .balanceAfter ??
+                      0,
+                  ),
+
+                processedAt:
+                  String(
+                    sessionData
+                      .endedAt ??
+                      existingDebit
+                        .createdAt ??
+                      new Date()
+                        .toISOString(),
+                  ),
+
+                cappedByBalance:
+                  Boolean(
+                    sessionData
+                      .cappedByBalance ??
+                      existingDebit
+                        .cappedByBalance ??
+                      false,
+                  ),
+
+                alreadyProcessed:
+                  true,
+              };
+            }
+
+            /*
+             * Uma transação de débito
+             * não pode existir para uma
+             * sessão ainda marcada ativa.
+             */
+            if (
+              existingDebitDocument
+                .exists
+            ) {
+              throw new Error(
+                'CONSULTATION_STATE_CORRUPT',
+              );
+            }
+
+            const activeConsultationId =
+              typeof userData
+                .activeConsultationId ===
+              'string'
+                ? userData
+                    .activeConsultationId
+                : '';
+
+            if (
+              activeConsultationId &&
+              activeConsultationId !==
+                consultationId
+            ) {
+              throw new Error(
+                'CONSULTATION_ID_CONFLICT',
+              );
+            }
+
+            /*
+             * Fonte oficial:
+             * dados congelados quando
+             * a sessão foi iniciada.
+             */
+            const startedAtMilliseconds =
+              new Date(
+                String(
+                  sessionData
+                    .startedAt ||
+                    '',
+                ),
+              ).getTime();
+
+            const pricePerMinute =
+              Number(
+                sessionData
+                  .pricePerMinute,
+              );
+
+            if (
+              !Number.isFinite(
+                startedAtMilliseconds,
+              ) ||
+              !Number.isFinite(
+                pricePerMinute,
+              ) ||
+              pricePerMinute <= 0
+            ) {
+              throw new Error(
+                'INVALID_CONSULTATION_STATE',
+              );
+            }
+
+            const durationMinutes =
+              Math.max(
+                1,
+                Math.ceil(
+                  (
+                    Date.now() -
+                    startedAtMilliseconds
+                  ) /
+                    60000,
+                ),
+              );
+
+            const calculatedDebitMinutes =
+              Number(
+                (
+                  durationMinutes *
+                  pricePerMinute
+                ).toFixed(2),
+              );
+
+            const balanceBefore =
+              Math.max(
+                0,
+                Number(
+                  userData
+                    .minuteBalance ??
+                    userData.balance ??
+                    0,
+                ),
+              );
+
+            /*
+             * O saldo nunca fica negativo.
+             * Mesmo que o navegador pare,
+             * a sessão consegue ser encerrada.
+             */
+            const debitMinutes =
+              Math.min(
+                calculatedDebitMinutes,
+                balanceBefore,
+              );
+
             const balanceAfter =
-              balanceBefore -
-              debitMinutes;
+              Number(
+                Math.max(
+                  0,
+                  balanceBefore -
+                    debitMinutes,
+                ).toFixed(2),
+              );
 
             const processedAt =
               new Date().toISOString();
 
+            const cappedByBalance =
+              debitMinutes <
+              calculatedDebitMinutes;
+
+            /*
+             * 1. Atualiza carteira.
+             * 2. Libera consulta ativa.
+             */
             transaction.update(
               userReference,
               {
                 minuteBalance:
                   balanceAfter,
+
                 balance:
                   balanceAfter,
+
+                activeConsultationId:
+                  null,
+
                 updatedAt:
                   processedAt,
               },
             );
 
+            /*
+             * Registro financeiro
+             * idempotente.
+             */
             transaction.create(
               minuteTransactionReference,
               {
                 id:
                   transactionId,
+
                 userId,
+
                 type:
                   'consultation_debit',
+
                 minutes:
                   debitMinutes,
+
+                calculatedDebitMinutes,
+
+                pricePerMinute,
+
                 balanceBefore,
+
                 balanceAfter,
-                consultantId:
-                  consultantId || null,
-                durationMinutes:
-                  durationMinutes || null,
+
+                consultantId,
+
+                consultationId,
+
+                durationMinutes,
+
+                cappedByBalance,
+
                 status:
                   'completed',
+
                 reason:
-                  consultantId
-                    ? `Débito de consulta com o consultor ${consultantId}.`
-                    : 'Débito de consulta.',
+                  `Débito de consulta com o consultor ${consultantId}.`,
+
                 createdBy:
                   userId,
+
                 createdAt:
+                  processedAt,
+              },
+            );
+
+            /*
+             * A própria sessão fica
+             * marcada como concluída.
+             */
+            transaction.update(
+              sessionReference,
+              {
+                status:
+                  'completed',
+
+                endedAt:
+                  processedAt,
+
+                durationMinutes,
+
+                debitMinutes,
+
+                calculatedDebitMinutes,
+
+                transactionId,
+
+                balanceBefore,
+
+                balanceAfter,
+
+                cappedByBalance,
+
+                updatedAt:
                   processedAt,
               },
             );
@@ -3116,25 +4399,42 @@ app.post(
             return {
               transactionId,
               debitMinutes,
+              calculatedDebitMinutes,
+              durationMinutes,
+              pricePerMinute,
               balanceBefore,
               balanceAfter,
               processedAt,
+              cappedByBalance,
+              alreadyProcessed:
+                false,
             };
           },
         );
 
       console.log(
-        '[ORACULOS.TS] Minutos debitados no Firestore.',
+        '[ORACULOS.TS] Consulta encerrada e debitada no Firestore.',
         {
           userId,
+          consultationId,
+
           transactionId:
             result.transactionId,
+
           debitMinutes:
             result.debitMinutes,
+
+          durationMinutes:
+            result.durationMinutes,
+
           balanceBefore:
             result.balanceBefore,
+
           balanceAfter:
             result.balanceAfter,
+
+          alreadyProcessed:
+            result.alreadyProcessed,
         },
       );
 
@@ -3155,7 +4455,9 @@ app.post(
         return res.status(404).json({
           success: false,
           error: {
-            code: 'USER_NOT_FOUND',
+            code:
+              'USER_NOT_FOUND',
+
             message:
               'Perfil do usuário não encontrado.',
           },
@@ -3164,21 +4466,56 @@ app.post(
 
       if (
         message ===
-        'INSUFFICIENT_MINUTES'
+        'CONSULTATION_NOT_FOUND'
       ) {
-        return res.status(400).json({
+        return res.status(404).json({
           success: false,
           error: {
             code:
-              'INSUFFICIENT_FUNDS',
+              'CONSULTATION_NOT_FOUND',
+
             message:
-              'Você não possui minutos suficientes para iniciar esta consulta.',
+              'A consulta não foi encontrada no servidor.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'CONSULTATION_ID_CONFLICT'
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code:
+              'CONSULTATION_ID_CONFLICT',
+
+            message:
+              'Os dados informados não correspondem à consulta ativa.',
+          },
+        });
+      }
+
+      if (
+        message ===
+          'INVALID_CONSULTATION_STATE' ||
+        message ===
+          'CONSULTATION_STATE_CORRUPT'
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code:
+              'INVALID_CONSULTATION_STATE',
+
+            message:
+              'O estado da consulta no servidor é inválido e a cobrança foi bloqueada.',
           },
         });
       }
 
       console.error(
-        '[ORACULOS.TS] Erro ao debitar minutos da consulta:',
+        '[ORACULOS.TS] Erro ao encerrar e debitar consulta:',
         error,
       );
 
@@ -3187,8 +4524,9 @@ app.post(
         error: {
           code:
             'CONSULTATION_DEBIT_FAILED',
+
           message:
-            'Não foi possível debitar os minutos da consulta.',
+            'Não foi possível encerrar e debitar a consulta.',
         },
       });
     }
@@ -3197,109 +4535,572 @@ app.post(
 
 
 
+app.get(
+  '/api/finance/wallet-history',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId = req.user?.uid;
 
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Usuário não autenticado.',
+          },
+        });
+      }
 
+      if (!adminDb) {
+        if (process.env.NODE_ENV === 'test') {
+          const history =
+            ledgerDb.filter(
+              (tx) => tx.userId === userId,
+            );
 
+          return res.json({
+            success: true,
+            data: { history },
+          });
+        }
 
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Histórico financeiro temporariamente indisponível.',
+          },
+        });
+      }
 
+      const isPrivileged =
+        req.user?.role === 'admin' ||
+        req.user?.role === 'superadmin' ||
+        req.user?.role === 'support';
 
+      if (!isPrivileged) {
+        const history =
+          await getTransactionsByUserId(
+            userId,
+          );
 
+        return res.json({
+          success: true,
+          data: { history },
+        });
+      }
 
+      const requestedUserId =
+        typeof req.query.userId === 'string'
+          ? req.query.userId.trim()
+          : '';
 
+      if (requestedUserId) {
+        const history =
+          await getTransactionsByUserId(
+            requestedUserId,
+          );
 
+        return res.json({
+          success: true,
+          data: { history },
+        });
+      }
 
+      const snapshot =
+        await adminDb
+          .collectionGroup(
+            'minuteTransactions',
+          )
+          .limit(500)
+          .get();
 
-app.get('/api/finance/wallet-history', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user?.uid;
-  const isPrivileged = req.user?.role === 'admin' || req.user?.role === 'superadmin' || req.user?.role === 'support';
-  
-  const history = isPrivileged
-    ? ledgerDb
-    : ledgerDb.filter((tx) => tx.userId === userId);
+     const history = snapshot.docs
+  .map((document) => {
+    const data = document.data();
 
-  res.json({ success: true, data: { history } });
-});
+    return {
+      ...data,
+      id: document.id,
+      createdAt:
+        typeof data.createdAt === 'string'
+          ? data.createdAt
+          : '',
+    };
+  })
+  .sort((a, b) =>
+    b.createdAt.localeCompare(
+      a.createdAt,
+    ),
+  );
+
+      return res.json({
+        success: true,
+        data: { history },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao carregar histórico financeiro:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'WALLET_HISTORY_FAILED',
+          message:
+            'Não foi possível carregar o histórico financeiro.',
+        },
+      });
+    }
+  },
+);
 
 // Secure Coupon Validation API
-app.post('/api/finance/validate-coupon', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { code } = req.body;
-  const userId = req.user?.uid || 'usr-client-1';
-  const upperCode = (code || '').toUpperCase().trim();
-  const coupon = couponsDb[upperCode];
+app.post(
+  '/api/finance/validate-coupon',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId = req.user?.uid;
 
-  if (!coupon || !coupon.active) {
-    return res.status(404).json({ success: false, error: { code: 'INVALID_COUPON', message: 'Cupom inválido ou inativo.' } });
-  }
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Usuário não autenticado.',
+          },
+        });
+      }
 
-  if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-    return res.status(400).json({ success: false, error: { code: 'EXPIRED_COUPON', message: 'Este cupom já expirou.' } });
-  }
+      const upperCode =
+        String(req.body?.code || '')
+          .trim()
+          .toUpperCase();
 
-  if (coupon.currentUses >= coupon.maxUses) {
-    return res.status(400).json({ success: false, error: { code: 'MAX_USES_REACHED', message: 'Este cupom atingiu o limite máximo de resgates.' } });
-  }
+      if (!upperCode) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_COUPON',
+            message: 'Informe um cupom válido.',
+          },
+        });
+      }
 
-  const userUses = coupon.userUsesCount[userId] || 0;
-  if (userUses >= coupon.maxUsesPerUser) {
-    return res.status(400).json({ success: false, error: { code: 'USER_LIMIT_REACHED', message: 'Você já atingiu o limite de uso para este cupom.' } });
-  }
+      const coupon =
+        await getCouponByCode(
+          upperCode,
+        );
 
-  res.json({
-    success: true,
-    data: {
-      valid: true,
-      code: coupon.code,
-      type: coupon.type,
-      bonusAmount: coupon.value,
-      message: `Cupom ativado! Você ganhará R$ ${coupon.value},00 de saldo bônus em sua próxima recarga.`,
+      if (!coupon || !coupon.active) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'INVALID_COUPON',
+            message:
+              'Cupom inválido ou inativo.',
+          },
+        });
+      }
+
+      if (
+        coupon.type !== 'bonus_fixed'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'UNSUPPORTED_COUPON_TYPE',
+            message:
+              'Este tipo de cupom não está disponível para esta modalidade de recarga.',
+          },
+        });
+      }
+
+      if (
+        coupon.expiresAt &&
+        new Date(coupon.expiresAt) <=
+          new Date()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'EXPIRED_COUPON',
+            message:
+              'Este cupom já expirou.',
+          },
+        });
+      }
+
+      if (
+        Number(coupon.currentUses || 0) >=
+        Number(coupon.maxUses || 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MAX_USES_REACHED',
+            message:
+              'Este cupom atingiu o limite máximo de resgates.',
+          },
+        });
+      }
+
+      const userUses =
+        Number(
+          coupon.userUsesCount?.[
+            userId
+          ] || 0,
+        );
+
+      if (
+        userUses >=
+        Number(
+          coupon.maxUsesPerUser || 1,
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'USER_LIMIT_REACHED',
+            message:
+              'Você já atingiu o limite de uso para este cupom.',
+          },
+        });
+      }
+
+      const bonusMinutes =
+        getCouponBonusMinutes(
+          coupon,
+        );
+
+      return res.json({
+        success: true,
+        data: {
+          valid: true,
+          code: coupon.code,
+          type: coupon.type,
+          bonusAmount: bonusMinutes,
+          bonusMinutes,
+          message:
+            `Cupom ativado! Você receberá ${bonusMinutes} minutos bônus após a aprovação da recarga.`,
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao validar cupom:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'COUPON_VALIDATION_FAILED',
+          message:
+            'Não foi possível validar o cupom.',
+        },
+      });
     }
-  });
-});
+  },
+);
 
 // Coupon Management APIs (Admin)
-app.get('/api/admin/coupons', ...requireAdmin, (req: Request, res: Response) => {
-  res.json({ success: true, data: { coupons: Object.values(couponsDb) } });
-});
+app.get(
+  '/api/admin/coupons',
+  ...requireAdmin,
+  async (
+    _req: Request,
+    res: Response,
+  ) => {
+    try {
+      if (!adminDb) {
+        if (
+          process.env.NODE_ENV === 'test'
+        ) {
+          return res.json({
+            success: true,
+            data: {
+              coupons:
+                Object.values(
+                  couponsDb,
+                ),
+            },
+          });
+        }
 
-app.post('/api/admin/coupons', ...requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { code, type, value, expiresAt, maxUses, maxUsesPerUser } = req.body;
-  if (!code || !value || value <= 0) {
-    return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: 'Código e valor são obrigatórios.' } });
-  }
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
+          },
+        });
+      }
 
-  const upperCode = code.toUpperCase().trim();
-  const newCoupon: Coupon = {
-    id: `coup-${Date.now()}`,
-    code: upperCode,
-    type: type === 'percent_discount' ? 'percent_discount' : 'bonus_fixed',
-    value: Number(value),
-    active: true,
-    expiresAt: expiresAt || null,
-    maxUses: Number(maxUses || 100),
-    currentUses: 0,
-    maxUsesPerUser: Number(maxUsesPerUser || 1),
-    userUsesCount: {},
-    eligibleProducts: ['all'],
-    createdAt: new Date().toISOString(),
-    createdBy: req.user?.uid || 'admin',
-  };
+      const snapshot =
+        await adminDb
+          .collection(
+            COUPONS_COLLECTION,
+          )
+          .get();
 
-  couponsDb[upperCode] = newCoupon;
+      const coupons =
+        snapshot.docs.map(
+          (document) => ({
+            ...document.data(),
+            id:
+              document.data()?.id ||
+              document.id,
+            code:
+              String(
+                document.data()?.code ||
+                document.id,
+              )
+                .trim()
+                .toUpperCase(),
+          }),
+        );
 
-  auditLogs.unshift({
-    id: `log-coup-add-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    userId: req.user?.uid || 'admin',
-    userName: req.user?.name || 'Administrador',
-    userRole: req.user?.role || 'admin',
-    action: 'COUPON_CREATED',
-    details: `Novo cupom '${upperCode}' criado com valor R$ ${value}`,
-    ip: req.ip || '127.0.0.1',
-    status: 'SUCCESS',
-  });
+      return res.json({
+        success: true,
+        data: { coupons },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao listar cupons:',
+        error,
+      );
 
-  res.json({ success: true, data: { coupon: newCoupon } });
-});
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'COUPONS_FETCH_FAILED',
+          message:
+            'Não foi possível carregar os cupons.',
+        },
+      });
+    }
+  },
+);
+
+app.post(
+  '/api/admin/coupons',
+  ...requireAdmin,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const {
+        code,
+        type,
+        value,
+        expiresAt,
+        maxUses,
+        maxUsesPerUser,
+      } = req.body;
+
+      const upperCode =
+        String(code || '')
+          .trim()
+          .toUpperCase();
+
+      const numericValue =
+        Number(value);
+
+      if (
+        !upperCode ||
+        !Number.isFinite(
+          numericValue,
+        ) ||
+        numericValue <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_INPUT',
+            message:
+              'Código e valor positivo são obrigatórios.',
+          },
+        });
+      }
+
+      if (
+        type &&
+        type !== 'bonus_fixed'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'UNSUPPORTED_COUPON_TYPE',
+            message:
+              'O checkout atual aceita somente cupons de bônus fixo em minutos.',
+          },
+        });
+      }
+
+      const normalizedMaxUses =
+        Math.max(
+          1,
+          Number(maxUses || 100),
+        );
+
+      const normalizedUserLimit =
+        Math.max(
+          1,
+          Number(
+            maxUsesPerUser || 1,
+          ),
+        );
+
+      if (
+        !Number.isFinite(
+          normalizedMaxUses,
+        ) ||
+        !Number.isFinite(
+          normalizedUserLimit,
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_INPUT',
+            message:
+              'Limites de uso inválidos.',
+          },
+        });
+      }
+
+      const newCoupon: Coupon = {
+        id: upperCode,
+        code: upperCode,
+        type: 'bonus_fixed',
+        value: numericValue,
+        active: true,
+        expiresAt:
+          expiresAt || null,
+        maxUses:
+          normalizedMaxUses,
+        currentUses: 0,
+        maxUsesPerUser:
+          normalizedUserLimit,
+        userUsesCount: {},
+        eligibleProducts: ['all'],
+        createdAt:
+          new Date().toISOString(),
+        createdBy:
+          req.user?.uid ||
+          'admin',
+      };
+
+      if (!adminDb) {
+        if (
+          process.env.NODE_ENV === 'test'
+        ) {
+          couponsDb[upperCode] =
+            newCoupon;
+        } else {
+          return res.status(503).json({
+            success: false,
+            error: {
+              code:
+                'FIRESTORE_NOT_AVAILABLE',
+              message:
+                'Banco de dados temporariamente indisponível.',
+            },
+          });
+        }
+      } else {
+        const couponReference =
+          adminDb
+            .collection(
+              COUPONS_COLLECTION,
+            )
+            .doc(upperCode);
+
+        const existingDocument =
+          await couponReference.get();
+
+        if (existingDocument.exists) {
+          return res.status(409).json({
+            success: false,
+            error: {
+              code:
+                'COUPON_ALREADY_EXISTS',
+              message:
+                'Já existe um cupom com este código.',
+            },
+          });
+        }
+
+        await couponReference.create(
+          newCoupon,
+        );
+      }
+
+      auditLogs.unshift({
+        id:
+          `log-coup-add-${Date.now()}`,
+        timestamp:
+          new Date().toISOString(),
+        userId:
+          req.user?.uid ||
+          'admin',
+        userName:
+          req.user?.name ||
+          'Administrador',
+        userRole:
+          req.user?.role ||
+          'admin',
+        action: 'COUPON_CREATED',
+        details:
+          `Novo cupom '${upperCode}' criado com ${numericValue} minutos bônus`,
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status: 'SUCCESS',
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          coupon: newCoupon,
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao criar cupom:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'COUPON_CREATE_FAILED',
+          message:
+            'Não foi possível criar o cupom.',
+        },
+      });
+    }
+  },
+);
 
 // ==========================================
 // GEMINI AI SECURE PROXY ENDPOINTS
@@ -4695,255 +6496,1139 @@ app.post('/api/ai/moderate-and-support', async (req: Request, res: Response) => 
 });
 
 // Create Support Ticket
-app.post('/api/support/ticket', async (req: Request, res: Response) => {
-  try {
-    const { email, name, category, subject, message, userId } = req.body;
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    const cleanSubject = String(subject || 'Solicitação de Suporte').replace(/<[^>]*>/g, '').trim();
-    const cleanMessage = String(message || '').replace(/<[^>]*>/g, '').trim();
+app.post(
+  '/api/support/ticket',
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const {
+        email,
+        name,
+        category,
+        subject,
+        message,
+        userId,
+      } = req.body;
 
-    if (!cleanEmail || !cleanMessage) {
-      return res.status(400).json({
+      const cleanEmail =
+        String(email || '')
+          .trim()
+          .toLowerCase();
+
+      const cleanSubject =
+        String(
+          subject ||
+          'Solicitação de Suporte',
+        )
+          .replace(
+            /<[^>]*>/g,
+            '',
+          )
+          .trim();
+
+      const cleanMessage =
+        String(message || '')
+          .replace(
+            /<[^>]*>/g,
+            '',
+          )
+          .trim();
+
+      if (
+        !cleanEmail ||
+        !cleanMessage
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_DATA',
+            message:
+              'E-mail e descrição são obrigatórios para registrar o ticket.',
+          },
+        });
+      }
+
+      const ticketId =
+        `tkt_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(2, 7)}`;
+
+      const protocol =
+        `TKT-${new Date().getFullYear()}-${Date.now()
+          .toString()
+          .slice(-6)}`;
+
+      const now =
+        new Date().toISOString();
+
+      const ticket = {
+        id: ticketId,
+        protocol,
+        userId:
+          typeof userId === 'string' &&
+          userId.trim()
+            ? userId.trim()
+            : undefined,
+        userName:
+          String(
+            name || 'Consulente',
+          ).trim(),
+        userEmail:
+          cleanEmail,
+        category:
+          String(
+            category || 'general',
+          ).trim(),
+        subject:
+          cleanSubject,
+        message:
+          cleanMessage,
+        status:
+          'open' as const,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      if (!adminDb) {
+        if (
+          process.env.NODE_ENV === 'test'
+        ) {
+          supportTicketsDb[
+            ticketId
+          ] = ticket;
+        } else {
+          return res.status(503).json({
+            success: false,
+            error: {
+              code:
+                'FIRESTORE_NOT_AVAILABLE',
+              message:
+                'Serviço de suporte temporariamente indisponível.',
+            },
+          });
+        }
+      } else {
+        await adminDb
+          .collection(
+            'supportTickets',
+          )
+          .doc(ticketId)
+          .create(ticket);
+      }
+
+      auditLogs.unshift({
+        id:
+          `log-${Date.now()}`,
+        timestamp: now,
+        userId:
+          ticket.userId ||
+          'anonymous',
+        userName:
+          ticket.userName ||
+          'Consulente',
+        userRole: 'client',
+        action:
+          'SUPPORT_TICKET_CREATED',
+        details:
+          `Novo ticket criado: Protocolo ${protocol} [${ticket.category}] - ${cleanSubject}`,
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status: 'SUCCESS',
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          ticketId,
+          protocol,
+          status:
+            ticket.status,
+          createdAt:
+            ticket.createdAt,
+          message:
+            `Ticket registrado com sucesso sob o protocolo ${protocol}.`,
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao criar ticket:',
+        error,
+      );
+
+      return res.status(500).json({
         success: false,
-        error: { code: 'INVALID_DATA', message: 'E-mail e descrição são obrigatórios para registrar o ticket.' },
+        error: {
+          code:
+            'TICKET_CREATION_FAILED',
+          message:
+            'Não foi possível registrar o ticket de suporte.',
+        },
       });
     }
-
-    const ticketId = `tkt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const protocol = `TKT-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
-
-    const ticket = {
-      id: ticketId,
-      protocol,
-      userId: userId || undefined,
-      userName: name || 'Consulente',
-      userEmail: cleanEmail,
-      category: category || 'general',
-      subject: cleanSubject,
-      message: cleanMessage,
-      status: 'open' as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    supportTicketsDb[ticketId] = ticket;
-
-    // Audit Log
-    auditLogs.unshift({
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      userId: userId || 'anonymous',
-      userName: name || 'Consulente',
-      userRole: 'client',
-      action: 'SUPPORT_TICKET_CREATED',
-      details: `Novo ticket criado: Protocolo ${protocol} [${ticket.category}] - ${cleanSubject}`,
-      ip: req.ip || '127.0.0.1',
-      status: 'SUCCESS',
-    });
-
-    return res.json({
-      success: true,
-      data: {
-        ticketId,
-        protocol,
-        status: ticket.status,
-        createdAt: ticket.createdAt,
-        message: `Ticket registrado com sucesso sob o protocolo ${protocol}. Nossa equipe responderá em até 24 horas úteis.`,
-      },
-    });
-  } catch (error: any) {
-    console.error('Erro ao criar ticket:', error);
-    return res.status(500).json({
-      success: false,
-      error: { code: 'TICKET_CREATION_FAILED', message: 'Não foi possível registrar o ticket de suporte.' },
-    });
-  }
-});
+  },
+);
 
 // Admin Report AI Endpoint
-app.post('/api/ai/admin-report', requireAuth, requireRole(['admin', 'superadmin']), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { timeframe = '30d', metrics } = req.body;
-    const totalUsers = Object.keys(usersDb).length;
-    const totalTransactions = ledgerDb.length;
-    const totalTickets = Object.keys(supportTicketsDb).length;
+app.post(
+  '/api/ai/admin-report',
+  requireAuth,
+  requireRole([
+    'admin',
+    'superadmin',
+  ]),
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const {
+        timeframe = '30d',
+      } = req.body;
 
-    const report = {
-      timeframe,
-      generatedAt: new Date().toISOString(),
-      summary: `Relatório Executivo ORACULOS.TS: Período ${timeframe}. Plataforma operando com estabilidade. Total de ${totalUsers} usuários cadastrados, ${totalTransactions} transações no ledger financeiro e ${totalTickets} chamados de suporte registrados. Todas as reconciliações de minutos e faturamento estão em conformidade com as regras de auditoria estrita.`,
-      kpis: {
-        activeUsers: totalUsers,
-        totalLedgerTransactions: totalTransactions,
-        openTickets: Object.values(supportTicketsDb).filter(t => t.status === 'open').length,
-        systemHealth: '100% Operational',
-        uptimeSeconds: Math.floor((Date.now() - securityMetrics.serverUptimeStart) / 1000),
-      },
-      recommendations: [
-        'Manter monitoramento contínuo dos tempos médios de resposta de IA e webhooks do Mercado Pago.',
-        'Auditar periodicamente os relatórios de exportação LGPD e consentimentos dos titulares.',
-        'Acompanhar a fila de tickets de suporte e manter tempo de resposta inferior a 24h.',
-      ],
-    };
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
+          },
+        });
+      }
 
-    return res.json({
-      success: true,
-      data: report,
-    });
-  } catch (error: any) {
-    console.error('Erro ao gerar relatório administrativo:', error);
-    return res.status(500).json({
-      success: false,
-      error: { code: 'REPORT_FAILED', message: 'Erro ao gerar relatório administrativo.' },
-    });
-  }
-});
+      const [
+        usersSnapshot,
+        transactionsSnapshot,
+        ticketsSnapshot,
+      ] = await Promise.all([
+        adminDb
+          .collection('users')
+          .get(),
+
+        adminDb
+          .collectionGroup(
+            'minuteTransactions',
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'supportTickets',
+          )
+          .get(),
+      ]);
+
+      const totalUsers =
+        usersSnapshot.size;
+
+      const totalTransactions =
+        transactionsSnapshot.size;
+
+      const totalTickets =
+        ticketsSnapshot.size;
+
+      const openTickets =
+        ticketsSnapshot.docs.filter(
+          (document) =>
+            document.data()?.status ===
+            'open',
+        ).length;
+
+      const servicesReady =
+        Boolean(
+          firebaseAdminInitialized &&
+          adminDb &&
+          process.env.GEMINI_API_KEY &&
+          mpConfig,
+        );
+
+      const systemHealth =
+        servicesReady
+          ? 'Operational'
+          : 'Degraded';
+
+      const report = {
+        timeframe,
+        generatedAt:
+          new Date().toISOString(),
+        summary:
+          `Relatório Executivo ORACULOS.TS: período ${timeframe}. Dados calculados a partir do Firestore. Usuários cadastrados: ${totalUsers}. Transações de minutos: ${totalTransactions}. Tickets de suporte: ${totalTickets}.`,
+        kpis: {
+          activeUsers:
+            totalUsers,
+          totalLedgerTransactions:
+            totalTransactions,
+          openTickets,
+          systemHealth,
+          uptimeSeconds:
+            Math.floor(
+              (
+                Date.now() -
+                securityMetrics
+                  .serverUptimeStart
+              ) / 1000,
+            ),
+        },
+        services: {
+          firebaseAdmin:
+            firebaseAdminInitialized
+              ? 'ok'
+              : 'not_configured',
+          firestore:
+            adminDb
+              ? 'ok'
+              : 'not_configured',
+          gemini:
+            process.env
+              .GEMINI_API_KEY
+              ? 'ok'
+              : 'not_configured',
+          mercadoPago:
+            mpConfig
+              ? 'ok'
+              : 'not_configured',
+        },
+        recommendations: [
+          'Manter monitoramento dos tempos de resposta da IA e dos webhooks do Mercado Pago.',
+          'Auditar periodicamente exportações e exclusões LGPD.',
+          'Acompanhar tickets de suporte e reconciliação das transações de minutos.',
+        ],
+      };
+
+      return res.json({
+        success: true,
+        data: report,
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao gerar relatório administrativo:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'REPORT_FAILED',
+          message:
+            'Erro ao gerar relatório administrativo.',
+        },
+      });
+    }
+  },
+);
 
 // ==========================================
 // ADMINISTRATIVE USER & CREDIT MANAGEMENT APIS
 // ==========================================
-app.get('/api/admin/users', requireAuth, requireRole(['admin', 'superadmin', 'support']), (req: Request, res: Response) => {
-  const userList = Object.values(usersDb);
-  res.json({ success: true, data: { users: userList } });
-});
 
-app.post('/api/admin/update-user-role', ...requireSuperAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { targetUserId, newRole } = req.body;
-  if (!targetUserId || !['user', 'client', 'consultant', 'support', 'admin', 'superadmin'].includes(newRole)) {
-    return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: 'ID ou papel inválido.' } });
-  }
 
-  const user = usersDb[targetUserId];
-  if (user) {
-    const oldRole = user.role;
-    user.role = newRole;
+app.get(
+  '/api/admin/users',
+  requireAuth,
+  requireRole([
+    'admin',
+    'superadmin',
+    'support',
+  ]),
+  async (_req: Request, res: Response) => {
+    try {
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
+          },
+        });
+      }
 
-    auditLogs.unshift({
-      id: `log-role-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      userId: req.user?.uid || 'usr-superadmin-1',
-      userName: req.user?.name || 'Superadmin',
-      userRole: req.user?.role || 'superadmin',
-      action: 'USER_ROLE_UPDATED',
-      details: `Papel do usuário ${user.name} (${user.email}) alterado de ${oldRole} para ${newRole}`,
-      target: targetUserId,
-      ip: req.ip || '127.0.0.1',
-      status: 'WARNING',
-    });
+      const snapshot =
+        await adminDb
+          .collection('users')
+          .get();
 
-    return res.json({ success: true, data: { user } });
-  }
+      const users = snapshot.docs.map(
+        (document) => ({
+          ...document.data(),
+          id: document.id,
+        }),
+      );
 
-  res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Usuário não encontrado.' } });
-});
+      return res.json({
+        success: true,
+        data: {
+          users,
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao listar usuários administrativos:',
+        error,
+      );
 
-app.post('/api/admin/adjust-balance', ...requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { targetUserId, amount, type, reason } = req.body;
-
-  if (!targetUserId || !amount || amount <= 0 || !reason || reason.trim().length < 5) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_INPUT', message: 'Valor e justificativa (mínimo 5 caracteres) são obrigatórios.' },
-    });
-  }
-
-  const user = usersDb[targetUserId];
-  if (!user) {
-    return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Usuário não encontrado.' } });
-  }
-
-  const adjustmentAmount = type === 'deduct' ? -Math.abs(amount) : Math.abs(amount);
-  const balanceBefore = user.balance;
-  const balanceAfter = Math.max(0, balanceBefore + adjustmentAmount);
-
-  user.balance = balanceAfter;
-
-  const txId = `ADJ-TX-${Date.now()}`;
-  const ledgerEntry: FinancialLedgerEntry = {
-    id: txId,
-    userId: targetUserId,
-    userName: user.name,
-    type: 'admin_adjustment',
-    amount: Math.abs(adjustmentAmount),
-    balanceBefore,
-    balanceAfter,
-    method: 'system_adjustment',
-    status: 'completed',
-    referenceId: txId,
-    reason: `Ajuste Administrativo por ${req.user?.name}: ${reason}`,
-    createdAt: new Date().toISOString(),
-    createdBy: req.user?.uid || 'admin',
-  };
-
-  ledgerDb.unshift(ledgerEntry);
-
-  auditLogs.unshift({
-    id: `log-adj-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    userId: req.user?.uid || 'admin',
-    userName: req.user?.name || 'Administrador',
-    userRole: req.user?.role || 'admin',
-    action: 'ADMIN_CREDIT_ADJUSTMENT',
-    details: `Ajuste de saldo para ${user.name}: ${adjustmentAmount > 0 ? '+' : ''}R$ ${adjustmentAmount}. Justificativa: ${reason}`,
-    target: targetUserId,
-    ip: req.ip || '127.0.0.1',
-    status: 'WARNING',
-  });
-
-  res.json({
-    success: true,
-    data: {
-      userId: targetUserId,
-      balanceBefore,
-      balanceAfter,
-      adjustmentAmount,
-      reason,
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'ADMIN_USERS_FETCH_FAILED',
+          message:
+            'Não foi possível carregar os usuários.',
+        },
+      });
     }
-  });
-});
+  },
+);
+
+
+app.post(
+  '/api/admin/update-user-role',
+  ...requireSuperAdmin,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    const {
+      targetUserId,
+      newRole,
+    } = req.body;
+
+    if (
+      !targetUserId ||
+      typeof targetUserId !== 'string' ||
+      !isValidUserRole(newRole)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message:
+            'ID ou papel inválido.',
+        },
+      });
+    }
+
+    if (
+      !adminDb ||
+      !firebaseAdminApp
+    ) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          code:
+            'FIREBASE_NOT_AVAILABLE',
+          message:
+            'Firebase temporariamente indisponível.',
+        },
+      });
+    }
+
+    try {
+      const userReference =
+        adminDb
+          .collection('users')
+          .doc(targetUserId);
+
+      const userDocument =
+        await userReference.get();
+
+      if (!userDocument.exists) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message:
+              'Usuário não encontrado.',
+          },
+        });
+      }
+
+      const user =
+        userDocument.data() || {};
+
+      const oldRole =
+        isValidUserRole(user.role)
+          ? user.role
+          : 'user';
+
+      const adminAuth =
+        getAdminAuth(
+          firebaseAdminApp,
+        );
+
+      const authUser =
+        await adminAuth.getUser(
+          targetUserId,
+        );
+
+      await adminAuth
+        .setCustomUserClaims(
+          targetUserId,
+          {
+            ...(
+              authUser.customClaims ||
+              {}
+            ),
+            role: newRole,
+          },
+        );
+
+      const now =
+        new Date().toISOString();
+
+      try {
+        await userReference.update({
+          role: newRole,
+          updatedAt: now,
+        });
+      } catch (firestoreError) {
+        try {
+          await adminAuth
+            .setCustomUserClaims(
+              targetUserId,
+              {
+                ...(
+                  authUser.customClaims ||
+                  {}
+                ),
+                role: oldRole,
+              },
+            );
+        } catch (rollbackError) {
+          console.error(
+            '[ORACULOS.TS] Falha ao restaurar claim do usuário:',
+            rollbackError,
+          );
+        }
+
+        throw firestoreError;
+      }
+
+      auditLogs.unshift({
+        id:
+          `log-role-${Date.now()}`,
+        timestamp: now,
+        userId:
+          req.user?.uid ||
+          'superadmin',
+        userName:
+          req.user?.name ||
+          'Superadmin',
+        userRole:
+          req.user?.role ||
+          'superadmin',
+        action:
+          'USER_ROLE_UPDATED',
+        details:
+          `Papel do usuário ${String(
+            user.name ||
+            targetUserId,
+          )} alterado de ${oldRole} para ${newRole}`,
+        target: targetUserId,
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status: 'WARNING',
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          user: {
+            ...user,
+            id: userDocument.id,
+            role: newRole,
+            updatedAt: now,
+          },
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao alterar papel do usuário:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'USER_ROLE_UPDATE_FAILED',
+          message:
+            'Não foi possível alterar o papel do usuário.',
+        },
+      });
+    }
+  },
+);
+
+app.post(
+  '/api/admin/adjust-balance',
+  ...requireAdmin,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const {
+        targetUserId,
+        amount,
+        type,
+        reason,
+      } = req.body;
+
+      const numericAmount =
+        Number(amount);
+
+      const normalizedReason =
+        String(reason || '')
+          .trim();
+
+      if (
+        !targetUserId ||
+        typeof targetUserId !==
+          'string' ||
+        !Number.isFinite(
+          numericAmount,
+        ) ||
+        numericAmount <= 0 ||
+        (
+          type !== 'add' &&
+          type !== 'deduct'
+        ) ||
+        normalizedReason.length < 5
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_INPUT',
+            message:
+              'Usuário, tipo, valor positivo e justificativa de no mínimo 5 caracteres são obrigatórios.',
+          },
+        });
+      }
+
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
+          },
+        });
+      }
+
+      const userReference =
+        adminDb
+          .collection('users')
+          .doc(targetUserId);
+
+      const userDocument =
+        await userReference.get();
+
+      if (!userDocument.exists) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message:
+              'Usuário não encontrado.',
+          },
+        });
+      }
+
+      const storedUser = {
+        ...(userDocument.data() || {}),
+        id: userDocument.id,
+      } as any;
+
+      const adjustmentAmount =
+        type === 'deduct'
+          ? -Math.abs(numericAmount)
+          : Math.abs(numericAmount);
+
+      const result =
+        await recordTransaction(
+          storedUser,
+          'admin_adjustment',
+          adjustmentAmount,
+          `Ajuste administrativo: ${normalizedReason}`,
+          req.user?.uid ||
+            'admin',
+        );
+
+      const balanceBefore =
+        result.transaction
+          .balanceBefore;
+
+      const balanceAfter =
+        result.transaction
+          .balanceAfter;
+
+      auditLogs.unshift({
+        id:
+          `log-adj-${Date.now()}`,
+        timestamp:
+          new Date().toISOString(),
+        userId:
+          req.user?.uid ||
+          'admin',
+        userName:
+          req.user?.name ||
+          'Administrador',
+        userRole:
+          req.user?.role ||
+          'admin',
+        action:
+          'ADMIN_CREDIT_ADJUSTMENT',
+        details:
+          `Ajuste de minutos para ${String(
+            storedUser.name ||
+            targetUserId,
+          )}: ${adjustmentAmount > 0 ? '+' : ''}${adjustmentAmount}. Justificativa: ${normalizedReason}`,
+        target:
+          targetUserId,
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status:
+          'WARNING',
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          userId:
+            targetUserId,
+          balanceBefore,
+          balanceAfter,
+          adjustmentAmount,
+          reason:
+            normalizedReason,
+          transaction:
+            result.transaction,
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : '';
+
+      if (
+        message ===
+        'INSUFFICIENT_MINUTES'
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code:
+              'INSUFFICIENT_MINUTES',
+            message:
+              'O ajuste solicitado deixaria o saldo negativo.',
+          },
+        });
+      }
+
+      if (
+        message ===
+        'USER_BLOCKED'
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'USER_BLOCKED',
+            message:
+              'Usuário bloqueado não pode receber ajustes de saldo.',
+          },
+        });
+      }
+
+      console.error(
+        '[ORACULOS.TS] Erro ao ajustar saldo administrativo:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'ADMIN_BALANCE_ADJUST_FAILED',
+          message:
+            'Não foi possível realizar o ajuste de saldo.',
+        },
+      });
+    }
+  },
+);
 
 // LGPD User Endpoints
-app.get('/api/user/data-export', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user?.uid || 'usr-client-1';
-  const userData = usersDb[userId];
-  const userLedger = ledgerDb.filter((tx) => tx.userId === userId);
+app.get(
+  '/api/user/data-export',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId = req.user?.uid;
 
-  res.json({
-    success: true,
-    data: {
-      exportedAt: new Date().toISOString(),
-      profile: userData,
-      financialHistory: userLedger,
-      privacyPolicyNotice: 'Conforme previsto pela LGPD (Lei 13.709/2018), estes são seus dados pessoais completos armazenados.',
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message:
+              'Usuário não autenticado.',
+          },
+        });
+      }
+
+      if (!adminDb) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'FIRESTORE_NOT_AVAILABLE',
+            message:
+              'Banco de dados temporariamente indisponível.',
+          },
+        });
+      }
+
+      const userReference =
+        adminDb
+          .collection('users')
+          .doc(userId);
+
+      const [
+        userDocument,
+        minuteTransactions,
+        consultationSessions,
+        paymentPreferences,
+        payments,
+        supportTickets,
+      ] = await Promise.all([
+        userReference.get(),
+
+        userReference
+          .collection(
+            'minuteTransactions',
+          )
+          .get(),
+
+        userReference
+          .collection(
+            'consultationSessions',
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'mercadoPagoPreferences',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'mercadoPagoPayments',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'supportTickets',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+      ]);
+
+      if (!userDocument.exists) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message:
+              'Perfil do usuário não encontrado.',
+          },
+        });
+      }
+
+      const mapDocuments = (
+        snapshot: {
+          docs: Array<{
+            id: string;
+            data: () => unknown;
+          }>;
+        },
+      ) =>
+        snapshot.docs.map(
+          (document) => ({
+            ...(document.data() as Record<
+              string,
+              unknown
+            >),
+            id: document.id,
+          }),
+        );
+
+      return res.json({
+        success: true,
+        data: {
+          exportedAt:
+            new Date().toISOString(),
+          profile: {
+            ...(userDocument.data() || {}),
+            id:
+              userDocument.id,
+          },
+          minuteTransactions:
+            mapDocuments(
+              minuteTransactions,
+            ),
+          consultationSessions:
+            mapDocuments(
+              consultationSessions,
+            ),
+          mercadoPagoPreferences:
+            mapDocuments(
+              paymentPreferences,
+            ),
+          mercadoPagoPayments:
+            mapDocuments(payments),
+          supportTickets:
+            mapDocuments(
+              supportTickets,
+            ),
+          privacyPolicyNotice:
+            'Exportação dos dados pessoais e registros operacionais localizados nas coleções atuais do ORACULOS.TS, conforme os direitos do titular previstos na LGPD (Lei 13.709/2018).',
+        },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro na exportação LGPD:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'LGPD_EXPORT_FAILED',
+          message:
+            'Não foi possível exportar os dados da conta.',
+        },
+      });
     }
-  });
-});
+  },
+);
 
-app.post('/api/user/delete-account', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user?.uid;
-  if (userId && usersDb[userId]) {
-    delete usersDb[userId];
+app.post(
+  '/api/user/delete-account',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId = req.user?.uid;
 
-    auditLogs.unshift({
-      id: `log-lgpd-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      userId,
-      userName: 'Usuário (Excluído)',
-      userRole: 'user',
-      action: 'LGPD_ACCOUNT_DELETION',
-      details: 'Solicitação de exclusão de conta e anonimização de dados executada com sucesso.',
-      ip: req.ip || '127.0.0.1',
-      status: 'SUCCESS',
-    });
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message:
+              'Usuário não autenticado.',
+          },
+        });
+      }
 
-    return res.json({
-      success: true,
-      message: 'Sua conta e dados pessoais foram permanentemente removidos conforme LGPD.',
-    });
-  }
+      if (
+        !adminDb ||
+        !firebaseAdminApp
+      ) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code:
+              'FIREBASE_NOT_AVAILABLE',
+            message:
+              'Serviços de conta temporariamente indisponíveis.',
+          },
+        });
+      }
 
-  res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Usuário não encontrado.' } });
-});
+      const userReference =
+        adminDb
+          .collection('users')
+          .doc(userId);
+
+      const userDocument =
+        await userReference.get();
+
+      if (!userDocument.exists) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message:
+              'Usuário não encontrado.',
+          },
+        });
+      }
+
+      const [
+        paymentPreferences,
+        payments,
+        supportTickets,
+      ] = await Promise.all([
+        adminDb
+          .collection(
+            'mercadoPagoPreferences',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'mercadoPagoPayments',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+
+        adminDb
+          .collection(
+            'supportTickets',
+          )
+          .where(
+            'userId',
+            '==',
+            userId,
+          )
+          .get(),
+      ]);
+
+      const externalDocuments = [
+        ...paymentPreferences.docs,
+        ...payments.docs,
+        ...supportTickets.docs,
+      ];
+
+      if (
+        externalDocuments.length > 0
+      ) {
+        const bulkWriter =
+          adminDb.bulkWriter();
+
+        for (
+          const document of
+          externalDocuments
+        ) {
+          bulkWriter.delete(
+            document.ref,
+          );
+        }
+
+        await bulkWriter.close();
+      }
+
+      /*
+       * Remove o documento do usuário
+       * e todas as suas subcoleções.
+       */
+      await adminDb.recursiveDelete(
+        userReference,
+      );
+
+      const adminAuth =
+        getAdminAuth(
+          firebaseAdminApp,
+        );
+
+      try {
+        await adminAuth.deleteUser(
+          userId,
+        );
+      } catch (authError: any) {
+        if (
+          authError?.code !==
+          'auth/user-not-found'
+        ) {
+          throw authError;
+        }
+      }
+
+      auditLogs.unshift({
+        id:
+          `log-lgpd-${Date.now()}`,
+        timestamp:
+          new Date().toISOString(),
+        userId,
+        userName:
+          'Usuário (Excluído)',
+        userRole:
+          req.user?.role ||
+          'user',
+        action:
+          'LGPD_ACCOUNT_DELETION',
+        details:
+          'Conta do Firebase Authentication, perfil Firestore e registros pessoais associados foram removidos.',
+        ip:
+          req.ip ||
+          '127.0.0.1',
+        status: 'SUCCESS',
+      });
+
+      return res.json({
+        success: true,
+        message:
+          'Sua conta e os dados pessoais associados foram removidos.',
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro na exclusão LGPD:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code:
+            'LGPD_DELETE_FAILED',
+          message:
+            'Não foi possível concluir a exclusão da conta.',
+        },
+      });
+    }
+  },
+);
 
 // Vite & Static Production Server
 async function startLocalServer(): Promise<void> {

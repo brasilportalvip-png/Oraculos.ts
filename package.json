@@ -11,9 +11,8 @@
     "validate:assets": "node scripts/validate-assets.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run --exclude test/firestore-rules.test.ts",
-"test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\""
-
-},
+    "test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\""
+  },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
@@ -21,7 +20,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.16.0",
-    "firebase-admin": "13.10.0",
+    "firebase-admin": "14.3.0",
     "helmet": "^8.3.0",
     "lucide-react": "^0.546.0",
     "mercadopago": "^3.2.1",
