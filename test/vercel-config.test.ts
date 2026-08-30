@@ -7,73 +7,113 @@ import {
 } from 'vitest';
 
 interface VercelConfig {
-  builds?: Array<{
-    src?: string;
-    use?: string;
-    config?: {
-      distDir?: string;
-    };
-  }>;
-  routes?: Array<{
-    src?: string;
-    dest?: string;
-    handle?: string;
+  buildCommand?: string;
+  outputDirectory?: string;
+  rewrites?: Array<{
+    source?: string;
+    destination?: string;
   }>;
 }
 
-const config = JSON.parse(
-  fs.readFileSync(
-    path.resolve(
-      process.cwd(),
-      'vercel.json',
+interface PackageJson {
+  scripts?: Record<string, string>;
+}
+
+const readJson = <T>(
+  filename: string,
+): T =>
+  JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        filename,
+      ),
+      'utf8',
     ),
-    'utf8',
+  ) as T;
+
+const config =
+  readJson<VercelConfig>('vercel.json');
+
+const packageJson =
+  readJson<PackageJson>('package.json');
+
+const buildSource = fs.readFileSync(
+  path.resolve(
+    process.cwd(),
+    'scripts/build.cjs',
   ),
-) as VercelConfig;
+  'utf8',
+);
 
 describe('Contrato de implantação da Vercel', () => {
-  it('publica o Express como função Node e mantém o backend fora dos arquivos públicos', () => {
-    expect(config.builds).toContainEqual({
-      src: 'server.ts',
-      use: '@vercel/node',
-    });
+  it('gera o pacote serverless antes de montar a função', () => {
+    expect(config.buildCommand).toBe(
+      'npm run build',
+    );
 
-    expect(config.builds).toContainEqual({
-      src: 'package.json',
-      use: '@vercel/static-build',
-      config: {
-        distDir: 'dist/public',
-      },
-    });
+    expect(config.outputDirectory).toBe(
+      'dist/public',
+    );
+
+    expect(
+      packageJson.scripts?.['vercel-build'],
+    ).toBe('npm run build');
+
+    expect(packageJson.scripts?.build).toBe(
+      'node scripts/build.cjs',
+    );
+
+    expect(buildSource).toContain(
+      "outfile: 'dist/serverless.cjs'",
+    );
+
+    expect(buildSource).toContain(
+      'process.env.VERCEL',
+    );
   });
 
-  it('encaminha a API ao Express antes do fallback da SPA', () => {
-    const apiRouteIndex =
-      config.routes?.findIndex(
-        (route) =>
-          route.src === '/api/(.*)' &&
-          route.dest === '/server.ts',
-      ) ?? -1;
+  it('usa somente a entrada CommonJS empacotada para a API', () => {
+    expect(
+      fs.existsSync(
+        path.resolve(
+          process.cwd(),
+          'api/index.cjs',
+        ),
+      ),
+    ).toBe(true);
 
-    const filesystemIndex =
-      config.routes?.findIndex(
-        (route) =>
-          route.handle === 'filesystem',
-      ) ?? -1;
+    expect(
+      fs.existsSync(
+        path.resolve(
+          process.cwd(),
+          'api/index.ts',
+        ),
+      ),
+    ).toBe(false);
 
-    const spaIndex =
-      config.routes?.findIndex(
-        (route) =>
-          route.src === '/(.*)' &&
-          route.dest === '/index.html',
-      ) ?? -1;
-
-    expect(apiRouteIndex).toBeGreaterThanOrEqual(0);
-    expect(filesystemIndex).toBeGreaterThan(
-      apiRouteIndex,
+    const entrySource = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        'api/index.cjs',
+      ),
+      'utf8',
     );
-    expect(spaIndex).toBeGreaterThan(
-      filesystemIndex,
+
+    expect(entrySource).toContain(
+      "require('../dist/serverless.cjs')",
     );
+  });
+
+  it('encaminha a API antes do fallback da SPA', () => {
+    expect(config.rewrites?.[0]).toEqual({
+      source: '/api/(.*)',
+      destination: '/api/index',
+    });
+
+    expect(config.rewrites?.[1]).toEqual({
+      source: '/(.*)',
+      destination: '/index.html',
+    });
   });
 });

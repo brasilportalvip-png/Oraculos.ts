@@ -74,9 +74,14 @@ jobs:
         run: |
           test ! -f dist/public/server.cjs
           test ! -f dist/public/server.cjs.map
+          test ! -f dist/public/serverless.cjs
           test -f dist/server.cjs
           test -f dist/server.cjs.map
+          test -f dist/serverless.cjs
           echo "Backend bundle correctly isolated from public output."
+
+      - name: Smoke test serverless bundle
+        run: npm run smoke:serverless
 
       - name: Production dependency security gate
         run: npm audit --omit=dev --audit-level=high
