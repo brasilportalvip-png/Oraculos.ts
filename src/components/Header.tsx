@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           >
             <div className="relative">
               <img
-                src="/brand/logo-oraculos.png"
+                src="/brand/logo-oraculos.png?v=20260831"
                 alt="ORACULOS.TS Logo"
                 width="48"
                 height="48"
@@ -183,6 +183,18 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
             >
               <Lock className="w-3.5 h-3.5" />
               Ajuda & LGPD
+            </a>
+
+            <a
+              href={hrefFor('workWithUs')}
+              onClick={(event) => handleInternalLink(event, 'workWithUs')}
+              aria-current={currentTab === 'workWithUs' ? 'page' : undefined}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
+                currentTab === 'workWithUs' ? 'bg-[#d4af37] text-black font-bold shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Trabalhe Conosco
             </a>
 
             {/* Role Panel Access Link */}
@@ -397,6 +409,14 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
             >
               <Lock className="w-4 h-4" />
               Ajuda & LGPD
+            </a>
+            <a
+              href={hrefFor('workWithUs')}
+              onClick={(event) => handleInternalLink(event, 'workWithUs')}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 bg-purple-500/10"
+            >
+              <UserPlus className="w-4 h-4" />
+              Trabalhe Conosco
             </a>
 
             {isAuthenticated && (user.role === 'user' || user.role === 'client') && (

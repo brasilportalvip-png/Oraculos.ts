@@ -224,7 +224,7 @@ const [resetMessage, setResetMessage] =
         <div className="text-center mb-5">
           <div className="flex justify-center mb-3">
             <img
-              src="/brand/logo-oraculos.png"
+              src="/brand/logo-oraculos.png?v=20260831"
               alt="ORACULOS.TS Logo"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';

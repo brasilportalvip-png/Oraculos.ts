@@ -33,6 +33,7 @@ import {
 import { useConsultation } from '../../context/ConsultationContext';
 import { auth } from '../../firebase';
 import { SecurityProtectionCenter } from './SecurityProtectionCenter';
+import { AdminWorkforcePanel } from './AdminWorkforcePanel';
 
 interface AuditLog {
   id: string;
@@ -48,7 +49,7 @@ interface AuditLog {
 
 export const AdminDashboard: React.FC = () => {
   const { consultants, transactions, pastSessions } = useConsultation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'securityCenter' | 'aiCentral' | 'securityLogs' | 'coupons'>('securityCenter');
+  const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
   const [platformFee, setPlatformFee] = useState('30');
 
   // AI Feature Toggles
@@ -280,6 +281,12 @@ export const AdminDashboard: React.FC = () => {
       {/* Admin Tab Buttons */}
       <div className="flex items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto">
         <button
+          onClick={() => setActiveTab('workforce')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold ${activeTab === 'workforce' ? 'bg-amber-400 text-black' : 'bg-purple-500/10 text-purple-200'}`}
+        >
+          Profissionais
+        </button>
+        <button
           onClick={() => setActiveTab('securityCenter')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'securityCenter'
@@ -342,6 +349,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* TAB 0: SECURITY & PROTECTION CENTER */}
       {activeTab === 'securityCenter' && <SecurityProtectionCenter />}
+      {activeTab === 'workforce' && <AdminWorkforcePanel consultants={consultants} />}
 
       {/* TAB 1: OVERVIEW & FINANCE */}
       {activeTab === 'overview' && (

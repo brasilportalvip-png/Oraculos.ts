@@ -31,7 +31,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img
-                src="/brand/logo-oraculos.png"
+                src="/brand/logo-oraculos.png?v=20260831"
                 alt="ORACULOS.TS Logo"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
@@ -65,6 +65,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>{footerLink('oraculos/numerologia', 'Numerologia Pessoal & Destino')}</li>
               <li>{footerLink('oraculos/buzios', 'Jogo de Búzios, Ifá & Runas')}</li>
               <li>{footerLink('oraculos/i-ching', 'I Ching, Cristais & Mesa Radiônica')}</li>
+              <li>{footerLink('workWithUs', 'Trabalhe Conosco', 'font-bold text-amber-300 hover:text-amber-200 transition')}</li>
             </ul>
           </div>
 
