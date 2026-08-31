@@ -691,7 +691,7 @@ const [endConsultationError, setEndConsultationError] =
             <textarea
   value={reviewText}
   onChange={(e) => setReviewText(e.target.value)}
-  placeholder="Deixe um comentÃ¡rio sobre a clareza e acolhimento da consulta (opcional)..."
+  placeholder="Deixe um comentário sobre a clareza e acolhimento da consulta (opcional)..."
   rows={3}
   className="w-full bg-[#0B0813] border border-purple-800/60 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-light"
 />

@@ -161,7 +161,16 @@ const __filename_val = getFilename();
 const __dirname_val = __filename_val ? path.dirname(__filename_val) : process.cwd();
 
 export const app = express();
-const PORT = 3000;
+const configuredPort = Number(
+  process.env.PORT || 3000,
+);
+
+const PORT =
+  Number.isInteger(configuredPort) &&
+  configuredPort > 0 &&
+  configuredPort <= 65535
+    ? configuredPort
+    : 3000;
 const isProductionRuntime =
   process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
@@ -7654,6 +7663,7 @@ async function startLocalServer(): Promise<void> {
     const distPath = path.join(
       process.cwd(),
       'dist',
+      'public',
     );
 
     app.use(express.static(distPath));

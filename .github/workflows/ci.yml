@@ -83,5 +83,8 @@ jobs:
       - name: Smoke test serverless bundle
         run: npm run smoke:serverless
 
+      - name: Smoke test standalone production server
+        run: npm run smoke:production
+
       - name: Production dependency security gate
         run: npm audit --omit=dev --audit-level=high
