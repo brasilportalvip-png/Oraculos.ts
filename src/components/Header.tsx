@@ -82,12 +82,12 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
   return (
     <>
       <header className="sticky top-0 z-40 bg-[#050508]/90 backdrop-blur-xl border-b border-white/5 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
           {/* Logo Brand */}
           <a
             href={hrefFor('showcase')}
             onClick={(event) => handleInternalLink(event, 'showcase')}
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0 min-w-0"
             aria-label="ORACULOS.TS — página inicial"
           >
             <div className="relative">
@@ -99,10 +99,10 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = 'https://portalvipbrasil.com.br/wp-content/uploads/2026/07/logo-oraculos.png';
                 }}
-                className="w-12 h-12 object-contain rounded-xl border border-[#d4af37]/40 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform bg-[#0a0a12]/80 p-0.5"
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-xl border border-[#d4af37]/40 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform bg-[#0a0a12]/80 p-0.5"
               />
             </div>
-            <div>
+            <div className="hidden min-[430px]:block">
               <div className="flex items-center gap-1">
                 <span className="text-xl font-semibold tracking-tighter text-white">ORACULOS</span>
                 <span className="text-xl font-extrabold gold-accent">.TS</span>
@@ -249,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           </nav>
 
           {/* User Right Section */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
             {!isAuthenticated ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
@@ -288,7 +288,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
 
             {/* Wallet Balance Widget */}
             {isAuthenticated && (
-              <div className="flex items-center glass-card border border-white/10 rounded-full pl-3 pr-1 py-1 sm:py-1.5">
+              <div className="hidden sm:flex items-center glass-card border border-white/10 rounded-full pl-3 pr-1 py-1 sm:py-1.5">
                 <div className="flex items-center gap-1.5 sm:gap-2 pr-2 sm:pr-3">
                   <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#d4af37]" />
                   <div className="text-left">
@@ -310,6 +310,18 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
+            )}
+
+            {isAuthenticated && (user.role === 'employee' || user.role === 'consultant') && (
+              <a
+                href={hrefFor('consultantDashboard')}
+                onClick={(event) => handleInternalLink(event, 'consultantDashboard')}
+                className="lg:hidden flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-amber-400 text-black text-[11px] font-black whitespace-nowrap"
+                aria-label="Abrir painel profissional"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span className="hidden min-[360px]:inline">Painel</span>
+              </a>
             )}
 
             {isAuthenticated && (
@@ -349,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           <nav
             id="mobile-primary-navigation"
             aria-label="Navegação principal móvel"
-            className="lg:hidden bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 space-y-2 shadow-2xl animate-in slide-in-from-top duration-200 max-h-[calc(100dvh-5rem)] overflow-y-auto"
+            className="lg:hidden fixed z-50 left-0 right-0 top-16 sm:top-20 bottom-0 bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-2 shadow-2xl animate-in slide-in-from-top duration-200 overflow-y-auto overscroll-contain"
           >
             <a
               href={hrefFor('showcase')}

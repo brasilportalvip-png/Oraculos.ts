@@ -89,7 +89,7 @@ function MainAppContent() {
       <Header currentTab={currentRoute.view} setCurrentTab={navigateTo} />
 
       {/* Main Container with Suspense Fallback */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto px-3 sm:px-6 lg:px-8 pt-5 sm:pt-8 overflow-x-hidden">
         <Suspense
           fallback={
             <div className="py-24 text-center space-y-4">
