@@ -67,11 +67,11 @@ export const ConsultantDashboard: React.FC = () => {
   const averageRating = reviewedSessions.length ? reviewedSessions.reduce((sum, session) => sum + Number(session.ratingGiven || 0), 0) / reviewedSessions.length : Number(profile.rating || 5);
 
   return (
-    <div className="space-y-8 pb-12">
-      <header className="flex flex-col md:flex-row justify-between gap-5 items-start md:items-center">
-        <div className="flex gap-4 items-center"><img src={profile.avatar} alt={profile.name} className="w-16 h-16 rounded-2xl object-cover border border-amber-400/40" /><div><h1 className="text-2xl font-black text-amber-200">{profile.name}</h1><p className="text-sm text-purple-200">{profile.title}</p></div></div>
-        <div className="flex gap-2 bg-[#150F26] p-2 rounded-xl border border-purple-900/60">
-          {(['online', 'busy', 'offline'] as const).map((status) => <button key={status} onClick={() => void updateStatus(status)} className={`px-3 py-2 rounded-lg text-xs font-bold capitalize ${profile.status === status ? 'bg-amber-400 text-black' : 'text-slate-300'}`}>{status}</button>)}
+    <div className="space-y-5 sm:space-y-8 pb-12 min-w-0 overflow-x-hidden">
+      <header className="flex flex-col md:flex-row justify-between gap-4 sm:gap-5 items-start md:items-center min-w-0">
+        <div className="flex gap-3 sm:gap-4 items-center min-w-0"><img src={profile.avatar} alt={profile.name} className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl object-cover border border-amber-400/40" /><div className="min-w-0"><h1 className="text-xl sm:text-2xl font-black text-amber-200 break-words">{profile.name}</h1><p className="text-xs sm:text-sm text-purple-200 break-words">{profile.title}</p></div></div>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-[#150F26] p-2 rounded-xl border border-purple-900/60 w-full md:w-auto">
+          {(['online', 'busy', 'offline'] as const).map((status) => <button key={status} onClick={() => void updateStatus(status)} className={`min-w-0 px-2 sm:px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold ${profile.status === status ? 'bg-amber-400 text-black' : 'text-slate-300 bg-white/5'}`}>{status === 'online' ? 'Online' : status === 'busy' ? 'Ocupado' : 'Offline'}</button>)}
         </div>
       </header>
       {message && <p role="status" className="p-3 bg-amber-500/10 text-amber-200 rounded-xl text-sm">{message}</p>}
@@ -82,7 +82,7 @@ export const ConsultantDashboard: React.FC = () => {
         <Metric icon={<Wifi />} label="Valor definido pelo admin" value={`${profile.pricePerMinute.toFixed(2)} min/min`} />
       </section>
       <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Pagamento manual semanal: o administrador confere este relatório e realiza o repasse fora da plataforma. Não existe saque automático.</div>
-      <section className="p-6 bg-[#150F26] border border-purple-900/40 rounded-3xl space-y-4">
+      <section className="p-4 sm:p-6 bg-[#150F26] border border-purple-900/40 rounded-2xl sm:rounded-3xl space-y-4 min-w-0">
         <h2 className="font-bold text-amber-200 flex items-center gap-2"><MessageSquare className="w-5 h-5" /> Atendimentos ativos</h2>
         {activeSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhum cliente aguardando atendimento.</p> : activeSessions.map((session) => (
           <article key={session.id} className="p-4 bg-black/20 rounded-xl space-y-3">
@@ -92,14 +92,14 @@ export const ConsultantDashboard: React.FC = () => {
                 <div key={item.id} className="text-sm"><span className="font-bold text-purple-200">{item.senderName}:</span> <span className="text-slate-200">{item.text}</span> <span className="text-[10px] text-slate-500">{item.timestamp}</span></div>
               ))}
             </div>
-            <form onSubmit={(event) => { event.preventDefault(); void sendReply(session.id); }} className="flex gap-2">
-              <input value={replyBySession[session.id] || ''} onChange={(event) => setReplyBySession((current) => ({ ...current, [session.id]: event.target.value }))} placeholder="Responder ao cliente..." className="flex-1 rounded-xl border border-purple-900 bg-black/30 px-3 py-2 text-sm text-white" />
+            <form onSubmit={(event) => { event.preventDefault(); void sendReply(session.id); }} className="flex gap-2 min-w-0">
+              <input value={replyBySession[session.id] || ''} onChange={(event) => setReplyBySession((current) => ({ ...current, [session.id]: event.target.value }))} placeholder="Responder ao cliente..." className="flex-1 min-w-0 rounded-xl border border-purple-900 bg-black/30 px-3 py-2 text-sm text-white" />
               <button type="submit" className="rounded-xl bg-amber-400 px-4 text-black" aria-label="Enviar resposta"><Send className="w-4 h-4" /></button>
             </form>
           </article>
         ))}
       </section>
-      <section className="p-6 bg-[#150F26] border border-purple-900/40 rounded-3xl space-y-4">
+      <section className="p-4 sm:p-6 bg-[#150F26] border border-purple-900/40 rounded-2xl sm:rounded-3xl space-y-4 min-w-0">
         <div className="flex justify-between items-center"><h2 className="font-bold text-amber-200">Histórico real de atendimentos</h2><button onClick={() => void load()} className="p-2 text-purple-200"><RefreshCw className="w-4 h-4" /></button></div>
         {sessions.length === 0 ? <p className="text-sm text-slate-400">Nenhum atendimento concluído.</p> : sessions.map((session) => (
           <article key={session.id} className="p-4 bg-black/20 rounded-xl grid md:grid-cols-4 gap-2 text-sm">
