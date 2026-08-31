@@ -118,7 +118,7 @@ export const ConsultantShowcase: React.FC<Props> = ({
         </h1>
 
         <p className="max-w-2xl text-sm sm:text-base text-gray-400 font-light leading-relaxed mb-6">
-          Consulte os melhores oraculistas do Brasil em tempo real por Chat ou Chamada de Vídeo. Tarot, Baralho Cigano, Astrologia e Búzios para guiar seus próximos passos.
+          Consulte os melhores oraculistas do Brasil em tempo real pelo Chat Seguro. Tarot, Baralho Cigano, Astrologia e Búzios para guiar seus próximos passos.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-300 font-medium">

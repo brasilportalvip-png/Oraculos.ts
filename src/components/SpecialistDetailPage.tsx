@@ -146,11 +146,11 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
             Iniciar Consulta por Chat Seguro
           </button>
           <button
-            onClick={() => onStartConsultation(consultant, (consultant.specialties[0] as OracleType) || 'tarot', 'video')}
+            disabled
             className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 border border-white/10 transition-colors"
           >
             <Video className="w-4 h-4 text-purple-400" />
-            Iniciar Atendimento por Vídeo
+            Vídeo em breve
           </button>
         </div>
       </div>

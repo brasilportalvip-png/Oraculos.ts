@@ -3223,8 +3223,15 @@ app.post('/api/work-with-us/applications', async (req: Request, res: Response) =
     };
 
     if (adminDb) {
+      const duplicate = await adminDb.collection('workforceApplications').where('email', '==', email).limit(1).get();
+      if (!duplicate.empty && duplicate.docs.some((doc) => ['submitted', 'approved'].includes(String(doc.data()?.status)))) {
+        return res.status(409).json({ success: false, error: { code: 'APPLICATION_ALREADY_EXISTS', message: 'Já existe uma candidatura ativa para este e-mail.' } });
+      }
       await adminDb.collection('workforceApplications').doc(id).create(application);
     } else if (process.env.NODE_ENV === 'test') {
+      if (Object.values(workforceApplicationsDb).some((item) => item.email === email && ['submitted', 'approved'].includes(item.status))) {
+        return res.status(409).json({ success: false, error: { code: 'APPLICATION_ALREADY_EXISTS', message: 'Já existe uma candidatura ativa para este e-mail.' } });
+      }
       workforceApplicationsDb[id] = application;
     } else {
       return res.status(503).json({
@@ -3275,14 +3282,20 @@ app.patch(
       const reference = adminDb.collection('workforceApplications').doc(applicationId);
       const snapshot = await reference.get();
       if (snapshot.exists) application = snapshot.data() as WorkforceApplicationRecord;
-      if (application) await reference.update({ status, notes, reviewedAt, reviewedBy: req.user?.uid });
     } else {
       application = workforceApplicationsDb[applicationId];
-      if (application) workforceApplicationsDb[applicationId] = { ...application, status, notes, reviewedAt, reviewedBy: req.user?.uid };
     }
 
     if (!application) {
       return res.status(404).json({ success: false, error: { code: 'APPLICATION_NOT_FOUND', message: 'Candidatura não encontrada.' } });
+    }
+    if (application.status !== 'submitted') {
+      return res.status(409).json({ success: false, error: { code: 'APPLICATION_ALREADY_REVIEWED', message: 'Esta candidatura já foi analisada.' } });
+    }
+    if (adminDb) {
+      await adminDb.collection('workforceApplications').doc(applicationId).update({ status, notes, reviewedAt, reviewedBy: req.user?.uid });
+    } else {
+      workforceApplicationsDb[applicationId] = { ...application, status, notes, reviewedAt, reviewedBy: req.user?.uid };
     }
 
     if (status === 'approved') {
@@ -3387,6 +3400,7 @@ app.get(
       id: doc.id,
     }));
     const completed = sessions.filter((session) => session.status === 'completed');
+    const active = sessions.filter((session) => session.status === 'active');
     const grossMinutes = completed.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
     const commissionRate = Number(profileDocument.data()?.commissionRate || 0.7);
     return res.json({
@@ -3394,6 +3408,7 @@ app.get(
       data: {
         profile: { id: profileDocument.id, ...profileDocument.data() },
         sessions: completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))),
+        activeSessions: active.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
         earnings: {
           grossMinutes: Number(grossMinutes.toFixed(2)),
           commissionRate,
@@ -3447,10 +3462,68 @@ interface ServerConsultationSession {
   cappedByBalance?: boolean;
   ratingGiven?: number;
   reviewText?: string;
+  messages?: ServerConsultationMessage[];
+}
+
+interface ServerConsultationMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: string;
+  createdAt: string;
 }
 
 export const consultationSessionsDb:
   Record<string, ServerConsultationSession> = {};
+
+async function resolveConsultantId(userId: string): Promise<string> {
+  if (!adminDb) return String((usersDb[userId] as any)?.consultantId || '');
+  const userDocument = await adminDb.collection('users').doc(userId).get();
+  return String(userDocument.data()?.consultantId || '');
+}
+
+async function findConsultationSession(consultationId: string) {
+  if (!adminDb) {
+    const entry = Object.entries(consultationSessionsDb).find(([, session]) => session.id === consultationId);
+    return entry ? { session: entry[1], reference: null, key: entry[0] } : null;
+  }
+  const snapshot = await adminDb.collectionGroup('consultationSessions').where('id', '==', consultationId).limit(1).get();
+  if (snapshot.empty) return null;
+  return { session: snapshot.docs[0].data() as ServerConsultationSession, reference: snapshot.docs[0].ref, key: snapshot.docs[0].ref.path };
+}
+
+app.get('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const found = await findConsultationSession(req.params.id.trim());
+  if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
+  const consultantId = await resolveConsultantId(req.user.uid);
+  if (found.session.userId !== req.user.uid && found.session.consultantId !== consultantId) {
+    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não participa desta consulta.' } });
+  }
+  return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
+});
+
+app.post('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim().slice(0, 2000) : '';
+  if (!text) return res.status(400).json({ success: false, error: { code: 'INVALID_MESSAGE', message: 'Digite uma mensagem válida.' } });
+  const found = await findConsultationSession(req.params.id.trim());
+  if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
+  if (found.session.status !== 'active') return res.status(409).json({ success: false, error: { code: 'CONSULTATION_CLOSED', message: 'Esta consulta já foi encerrada.' } });
+  const consultantId = await resolveConsultantId(req.user.uid);
+  if (found.session.userId !== req.user.uid && found.session.consultantId !== consultantId) {
+    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não participa desta consulta.' } });
+  }
+  const now = new Date();
+  const message: ServerConsultationMessage = {
+    id: `msg_${crypto.randomUUID()}`, senderId: req.user.uid,
+    senderName: req.user.name || (found.session.userId === req.user.uid ? 'Cliente' : found.session.consultantName),
+    text, timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), createdAt: now.toISOString(),
+  };
+  const messages = [...(found.session.messages || []), message].slice(-500);
+  if (adminDb && found.reference) await found.reference.update({ messages, updatedAt: now.toISOString() });
+  else consultationSessionsDb[found.key] = { ...found.session, messages };
+  return res.status(201).json({ success: true, data: { message } });
+});
 
 // Inicia uma consulta usando horário e preço
 // definidos exclusivamente pelo servidor.
@@ -3486,6 +3559,16 @@ app.post(
         req.body?.mode === 'video'
           ? 'video'
           : 'chat';
+
+      if (mode === 'video') {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'VIDEO_NOT_AVAILABLE',
+            message: 'A videochamada está temporariamente indisponível. Inicie pelo Chat Seguro, que já está plenamente operacional.',
+          },
+        });
+      }
 
       if (!userId) {
         return res.status(401).json({

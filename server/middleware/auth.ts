@@ -40,6 +40,7 @@ const VALID_ROLES: UserRole[] = [
   'user',
   'client',
   'employee',
+  'consultant',
   'support',
   'admin',
   'superadmin',
