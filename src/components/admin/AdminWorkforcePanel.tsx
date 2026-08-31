@@ -42,6 +42,7 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
     const body = await response.json().catch(() => ({}));
     if (!response.ok) return setMessage(body.error?.message || 'Não foi possível registrar a decisão.');
     setMessage(status === 'approved' ? 'Profissional aprovado e publicado no marketplace.' : 'Candidatura recusada.');
+    if (status === 'approved') window.dispatchEvent(new Event('oraculos:consultants-updated'));
     await load();
   };
 
@@ -52,10 +53,14 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
     });
     const body = await response.json().catch(() => ({}));
     setMessage(response.ok ? `Valor de ${consultant.name} atualizado.` : body.error?.message || 'Falha ao atualizar valor.');
+    if (response.ok) window.dispatchEvent(new Event('oraculos:consultants-updated'));
   };
 
   return (
     <div className="space-y-8">
+      <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">
+        Pagamentos dos profissionais: conferência e pagamento manual uma vez por semana. A plataforma não executa saques automáticos.
+      </div>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-black text-amber-200">Profissionais e candidaturas</h2><p className="text-xs text-slate-400">Aprovação, publicação no marketplace e controle administrativo do minuto.</p></div>
         <button onClick={() => void load()} className="p-2 rounded-lg bg-purple-500/20 text-purple-200"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>

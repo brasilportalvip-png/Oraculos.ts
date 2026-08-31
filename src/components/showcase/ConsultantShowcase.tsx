@@ -97,7 +97,7 @@ export const ConsultantShowcase: React.FC<Props> = ({
         <div className="relative mb-6 group">
           <div className="absolute -inset-2 bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-amber-500/20 rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition-opacity"></div>
           <img
-            src="/brand/logo-oraculos.png"
+            src="/brand/logo-oraculos.png?v=20260831b"
             alt="ORACULOS.TS Logo Oficial"
             width="96"
             height="96"
@@ -131,6 +131,12 @@ export const ConsultantShowcase: React.FC<Props> = ({
             <span>Cobrança Transparente por Minuto</span>
           </div>
         </div>
+        <a
+          href="/trabalhe-conosco"
+          className="mt-7 inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-black uppercase tracking-wider text-xs shadow-lg shadow-amber-500/20 hover:from-amber-300 transition-all"
+        >
+          Trabalhe Conosco — Cadastre-se
+        </a>
       </section>
 
       {/* Filter & Search Bar */}
