@@ -6,6 +6,7 @@ import {
   consultantSettingsDb,
   workforceApplicationsDb,
 } from '../server';
+import { VIRTUAL_PROFILES } from '../src/data/virtualProfiles';
 
 describe('Gestão de profissionais em produção', () => {
   beforeEach(() => {
@@ -70,5 +71,11 @@ describe('Gestão de profissionais em produção', () => {
       .send({ pricePerMinute: 6 });
     expect(approved.status).toBe(200);
     expect(consultantSettingsDb.ai_c1.pricePerMinute).toBe(6);
+  });
+
+  it('usa uma imagem espiritual local e exclusiva para cada atendente de IA', () => {
+    const avatars = VIRTUAL_PROFILES.map((profile) => profile.avatar);
+    expect(new Set(avatars).size).toBe(VIRTUAL_PROFILES.length);
+    expect(avatars.every((avatar) => avatar.startsWith('/consultants/'))).toBe(true);
   });
 });

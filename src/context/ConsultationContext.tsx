@@ -122,7 +122,12 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     };
     void loadPublicConsultants();
-    return () => { cancelled = true; };
+    const refresh = () => { void loadPublicConsultants(); };
+    window.addEventListener('oraculos:consultants-updated', refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('oraculos:consultants-updated', refresh);
+    };
   }, []);
 
   useEffect(() => {

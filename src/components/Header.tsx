@@ -87,12 +87,12 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           <a
             href={hrefFor('showcase')}
             onClick={(event) => handleInternalLink(event, 'showcase')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
             aria-label="ORACULOS.TS — página inicial"
           >
             <div className="relative">
               <img
-                src="/brand/logo-oraculos.png?v=20260831"
+                src="/brand/logo-oraculos.png?v=20260831b"
                 alt="ORACULOS.TS Logo"
                 width="48"
                 height="48"
@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           </a>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1.5 glass-card px-3 py-1.5 rounded-full border border-white/10">
+          <nav className="hidden lg:flex items-center gap-1.5 glass-card px-3 py-1.5 rounded-full border border-white/10 overflow-x-auto">
             <a
               href={hrefFor('showcase')}
               onClick={(event) => handleInternalLink(event, 'showcase')}
