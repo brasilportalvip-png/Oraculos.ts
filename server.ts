@@ -3129,6 +3129,8 @@ interface ServerConsultationSession {
   consultantName: string;
   pricePerMinute: number;
   startedAt: string;
+  oracleType?: string;
+  mode?: 'chat' | 'video';
   status: 'active' | 'completed';
   endedAt?: string;
   durationMinutes?: number;
@@ -3138,6 +3140,8 @@ interface ServerConsultationSession {
   balanceBefore?: number;
   balanceAfter?: number;
   cappedByBalance?: boolean;
+  ratingGiven?: number;
+  reviewText?: string;
 }
 
 export const consultationSessionsDb:
@@ -3167,6 +3171,16 @@ app.post(
         'string'
           ? req.body.consultantId.trim()
           : '';
+
+      const oracleType =
+        typeof req.body?.oracleType === 'string'
+          ? req.body.oracleType.trim()
+          : '';
+
+      const mode: 'chat' | 'video' =
+        req.body?.mode === 'video'
+          ? 'video'
+          : 'chat';
 
       if (!userId) {
         return res.status(401).json({
@@ -3366,6 +3380,8 @@ app.post(
             consultant.name,
           pricePerMinute,
           startedAt,
+          oracleType,
+          mode,
           status:
             'active',
         };
@@ -3510,6 +3526,8 @@ app.post(
                 consultant.name,
               pricePerMinute,
               startedAt,
+              oracleType,
+              mode,
               status:
                 'active',
               createdAt:
@@ -3669,6 +3687,41 @@ app.post(
         'string'
           ? req.body.consultantId.trim()
           : '';
+
+      const rawRating = req.body?.rating;
+      const ratingGiven =
+        rawRating === undefined || rawRating === null
+          ? undefined
+          : Number(rawRating);
+      const reviewText =
+        typeof req.body?.reviewText === 'string'
+          ? req.body.reviewText.trim()
+          : undefined;
+
+      if (
+        ratingGiven !== undefined &&
+        (!Number.isInteger(ratingGiven) ||
+          ratingGiven < 1 ||
+          ratingGiven > 5)
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_RATING',
+            message: 'A avaliação deve ser um número inteiro de 1 a 5.',
+          },
+        });
+      }
+
+      if (reviewText && reviewText.length > 1000) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'REVIEW_TOO_LONG',
+            message: 'O comentário deve ter no máximo 1.000 caracteres.',
+          },
+        });
+      }
 
       if (!userId) {
         return res.status(401).json({
@@ -3966,6 +4019,14 @@ app.post(
           balanceAfter,
 
           cappedByBalance,
+
+          ...(ratingGiven !== undefined
+            ? { ratingGiven }
+            : {}),
+
+          ...(reviewText
+            ? { reviewText }
+            : {}),
         };
 
         return res.status(200).json({
@@ -4400,6 +4461,14 @@ app.post(
 
                 cappedByBalance,
 
+                ...(ratingGiven !== undefined
+                  ? { ratingGiven }
+                  : {}),
+
+                ...(reviewText
+                  ? { reviewText }
+                  : {}),
+
                 updatedAt:
                   processedAt,
               },
@@ -4542,6 +4611,95 @@ app.post(
   },
 );
 
+
+
+app.get(
+  '/api/consultations/history',
+  requireAuth,
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Usuário não autenticado.',
+          },
+        });
+      }
+
+      if (!adminDb) {
+        if (process.env.NODE_ENV === 'test') {
+          const history = Object.values(
+            consultationSessionsDb,
+          )
+            .filter(
+              (session) =>
+                session.userId === userId &&
+                session.status === 'completed',
+            )
+            .sort((first, second) =>
+              second.startedAt.localeCompare(first.startedAt),
+            );
+
+          return res.json({
+            success: true,
+            data: { history },
+          });
+        }
+
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'FIRESTORE_NOT_AVAILABLE',
+            message: 'Histórico de consultas temporariamente indisponível.',
+          },
+        });
+      }
+
+      const snapshot = await adminDb
+        .collection('users')
+        .doc(userId)
+        .collection('consultationSessions')
+        .get();
+
+      const history = snapshot.docs
+        .map((document) => ({
+          ...(document.data() as ServerConsultationSession),
+          id: document.id,
+        }))
+        .filter((session) => session.status === 'completed')
+        .sort((first, second) =>
+          String(second.startedAt || '').localeCompare(
+            String(first.startedAt || ''),
+          ),
+        );
+
+      return res.json({
+        success: true,
+        data: { history },
+      });
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Erro ao consultar histórico de atendimentos:',
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'CONSULTATION_HISTORY_FAILED',
+          message: 'Não foi possível carregar o histórico de consultas.',
+        },
+      });
+    }
+  },
+);
 
 
 app.get(

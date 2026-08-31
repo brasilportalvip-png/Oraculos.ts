@@ -8,6 +8,7 @@ import {
   couponsDb,
   processedPaymentIds,
   userDailyAiUsage,
+  consultationSessionsDb,
 } from '../server';
 
 describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', () => {
@@ -260,5 +261,68 @@ describe('BATERIA DE TESTES DE SEGURANÇA E AUDITORIA TÉCNICA (ORACULOS.TS)', (
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_IP_LIST');
+  });
+
+  it('15. Deve persistir avaliação e retornar o histórico da consulta autenticada', async () => {
+    usersDb['usr-client-1'].balance = 100;
+    const consultationId = 'history-rating-test';
+
+    const start = await request(app)
+      .post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({
+        consultationId,
+        consultantId: 'c1',
+        oracleType: 'tarot',
+        mode: 'chat',
+      });
+
+    expect(start.status).toBe(200);
+
+    const debit = await request(app)
+      .post('/api/finance/debit-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({
+        consultationId,
+        consultantId: 'c1',
+        rating: 5,
+        reviewText: 'Atendimento excelente.',
+      });
+
+    expect(debit.status).toBe(200);
+    expect(
+      consultationSessionsDb[
+        `usr-client-1:${consultationId}`
+      ].ratingGiven,
+    ).toBe(5);
+
+    const history = await request(app)
+      .get('/api/consultations/history')
+      .set('x-user-id', 'usr-client-1');
+
+    expect(history.status).toBe(200);
+    expect(history.body.data.history).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: consultationId,
+          ratingGiven: 5,
+          reviewText: 'Atendimento excelente.',
+        }),
+      ]),
+    );
+  });
+
+  it('16. Deve rejeitar avaliação fora da escala permitida', async () => {
+    const res = await request(app)
+      .post('/api/finance/debit-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({
+        consultationId: 'invalid-rating-test',
+        consultantId: 'c1',
+        rating: 6,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_RATING');
   });
 });
