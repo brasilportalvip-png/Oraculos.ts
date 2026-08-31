@@ -1,9 +1,9 @@
 // ==============================================================================
 // ORACULOS.TS — Service Worker PWA de Produção
-// Versão: 2.5.0
+// Versão: 2.6.0
 // ==============================================================================
 
-const CACHE_NAME = 'oraculos-ts-v2.5.0';
+const CACHE_NAME = 'oraculos-ts-v2.6.0';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE_ASSETS = [
@@ -11,6 +11,11 @@ const PRECACHE_ASSETS = [
   '/index.html',
   '/manifest.webmanifest',
   '/brand/logo-oraculos.png',
+  '/consultants/mestra-jurema-terra.webp',
+  '/consultants/mestre-zahir-oriente.webp',
+  '/consultants/guardia-morgana-lua.webp',
+  '/consultants/guardiao-rowan-mata.webp',
+  '/consultants/mestre-dante-sete-chaves.webp',
   '/image/logo-oraculo.ts.png',
   '/favicon.ico',
   '/favicon.png',

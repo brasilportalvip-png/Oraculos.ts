@@ -32,6 +32,7 @@ const OracleDetailPage = lazy(() => import('./components/OracleDetailPage').then
 const SpecialistDetailPage = lazy(() => import('./components/SpecialistDetailPage').then((m) => ({ default: m.SpecialistDetailPage })));
 const ArticleDetailPage = lazy(() => import('./components/blog/ArticleDetailPage').then((m) => ({ default: m.ArticleDetailPage })));
 const NotFoundPage = lazy(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const WorkWithUs = lazy(() => import('./components/WorkWithUs').then((m) => ({ default: m.WorkWithUs })));
 
 function parseLocation(): ParsedRoute {
   return parseRouteLocation(window.location.pathname, window.location.hash);
@@ -204,6 +205,13 @@ function MainAppContent() {
                 canonicalPath="/ajuda-e-privacidade"
               />
               <HelpAndPrivacy />
+            </>
+          )}
+
+          {currentRoute.view === 'workWithUs' && (
+            <>
+              <SEOHead title="Trabalhe Conosco" description="Cadastre-se para atuar como profissional no ORACULOS.TS." canonicalPath="/trabalhe-conosco" />
+              <WorkWithUs />
             </>
           )}
 

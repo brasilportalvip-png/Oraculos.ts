@@ -263,7 +263,7 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
 
     // Consultores realmente autorizados para Cristais devem aparecer.
     expect(screen.getByText('Clarice Mendonça')).toBeTruthy();
-    expect(screen.getByText('Maia da Terra')).toBeTruthy();
+    expect(screen.getByText('Mestra Jurema da Terra')).toBeTruthy();
 
     // Estes atendentes possuem "cristais" apenas em specialties,
     // mas NÃO estão autorizados para atender esse oráculo.

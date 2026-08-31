@@ -837,6 +837,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 type AppUserRole =
   | 'user'
   | 'client'
+  | 'employee'
   | 'consultant'
   | 'support'
   | 'admin'
@@ -855,6 +856,7 @@ export interface AuthenticatedRequest
 const VALID_USER_ROLES: AppUserRole[] = [
   'user',
   'client',
+  'employee',
   'consultant',
   'support',
   'admin',
@@ -1448,6 +1450,7 @@ app.get('/sitemap-static.xml', (_req: Request, res: Response) => {
   <url><loc>https://oraculos-ts.vercel.app/especialistas</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://oraculos-ts.vercel.app/oraculos</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://oraculos-ts.vercel.app/como-funciona</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oraculos-ts.vercel.app/trabalhe-conosco</loc><lastmod>2026-08-31T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://oraculos-ts.vercel.app/blog</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://oraculos-ts.vercel.app/suporte</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://oraculos-ts.vercel.app/termos</loc><lastmod>2026-08-14T00:00:00+00:00</lastmod><changefreq>yearly</changefreq><priority>0.5</priority></url>
@@ -3122,6 +3125,308 @@ processedPaymentIds.add(
 
 
 
+interface WorkforceApplicationRecord {
+  id: string;
+  fullName: string;
+  professionalName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  bio: string;
+  experienceYears: number;
+  specialties: string[];
+  oracles: string[];
+  languages: string[];
+  modality: 'chat' | 'video' | 'both';
+  profilePhoto?: string;
+  status: 'submitted' | 'approved' | 'rejected';
+  termsAccepted: boolean;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  notes?: string;
+}
+
+export const workforceApplicationsDb: Record<
+  string,
+  WorkforceApplicationRecord
+> = {};
+
+export const consultantSettingsDb: Record<
+  string,
+  { pricePerMinute: number; active: boolean }
+> = {};
+
+export const consultantProfilesDb: Record<
+  string,
+  Record<string, unknown>
+> = {};
+
+app.post('/api/work-with-us/applications', async (req: Request, res: Response) => {
+  try {
+    const text = (value: unknown, max: number) =>
+      typeof value === 'string' ? value.trim().slice(0, max) : '';
+    const fullName = text(req.body?.fullName, 120);
+    const professionalName = text(req.body?.professionalName, 120);
+    const email = text(req.body?.email, 180).toLowerCase();
+    const phone = text(req.body?.phone, 30);
+    const city = text(req.body?.city, 80);
+    const state = text(req.body?.state, 40);
+    const bio = text(req.body?.bio, 1500);
+    const profilePhoto = text(req.body?.profilePhoto, 500);
+    const experienceYears = Number(req.body?.experienceYears);
+    const specialties = Array.isArray(req.body?.specialties)
+      ? req.body.specialties.map((item: unknown) => text(item, 50)).filter(Boolean).slice(0, 10)
+      : [];
+    const oracles = Array.isArray(req.body?.oracles)
+      ? req.body.oracles.map((item: unknown) => text(item, 50)).filter(Boolean).slice(0, 10)
+      : [];
+    const languages = Array.isArray(req.body?.languages)
+      ? req.body.languages.map((item: unknown) => text(item, 40)).filter(Boolean).slice(0, 8)
+      : ['Português'];
+    const modality = ['chat', 'video', 'both'].includes(req.body?.modality)
+      ? req.body.modality as 'chat' | 'video' | 'both'
+      : 'chat';
+
+    if (
+      fullName.length < 3 ||
+      professionalName.length < 2 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      phone.length < 8 ||
+      city.length < 2 ||
+      state.length < 2 ||
+      bio.length < 40 ||
+      !Number.isInteger(experienceYears) ||
+      experienceYears < 0 ||
+      experienceYears > 80 ||
+      oracles.length === 0 ||
+      req.body?.termsAccepted !== true
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_APPLICATION',
+          message: 'Preencha corretamente todos os campos obrigatórios e aceite os termos.',
+        },
+      });
+    }
+
+    const id = `candidate_${crypto.randomUUID()}`;
+    const application: WorkforceApplicationRecord = {
+      id, fullName, professionalName, email, phone, city, state, bio,
+      experienceYears, specialties, oracles, languages, modality,
+      ...(profilePhoto ? { profilePhoto } : {}),
+      status: 'submitted',
+      termsAccepted: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (adminDb) {
+      await adminDb.collection('workforceApplications').doc(id).create(application);
+    } else if (process.env.NODE_ENV === 'test') {
+      workforceApplicationsDb[id] = application;
+    } else {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Cadastro temporariamente indisponível.' },
+      });
+    }
+
+    return res.status(201).json({ success: true, data: { id, status: 'submitted' } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao cadastrar candidatura:', error);
+    return res.status(500).json({ success: false, error: { code: 'APPLICATION_FAILED', message: 'Não foi possível enviar a candidatura.' } });
+  }
+});
+
+app.get(
+  '/api/admin/workforce-applications',
+  requireAuth,
+  requireRole(['admin', 'superadmin']),
+  async (_req: AuthenticatedRequest, res: Response) => {
+    const applications = adminDb
+      ? (await adminDb.collection('workforceApplications').get()).docs.map((doc) => doc.data())
+      : Object.values(workforceApplicationsDb);
+    return res.json({ success: true, data: { applications } });
+  },
+);
+
+app.patch(
+  '/api/admin/workforce-applications/:id',
+  requireAuth,
+  requireRole(['admin', 'superadmin']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    const applicationId = req.params.id.trim();
+    const status = req.body?.status;
+    const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim().slice(0, 1000) : '';
+    const pricePerMinute = Number(req.body?.pricePerMinute);
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: 'Decisão inválida.' } });
+    }
+    if (status === 'approved' && (!Number.isFinite(pricePerMinute) || pricePerMinute <= 0 || pricePerMinute > 100)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_PRICE', message: 'Defina um valor por minuto entre 0,01 e 100.' } });
+    }
+
+    const reviewedAt = new Date().toISOString();
+    let application: WorkforceApplicationRecord | undefined;
+    if (adminDb) {
+      const reference = adminDb.collection('workforceApplications').doc(applicationId);
+      const snapshot = await reference.get();
+      if (snapshot.exists) application = snapshot.data() as WorkforceApplicationRecord;
+      if (application) await reference.update({ status, notes, reviewedAt, reviewedBy: req.user?.uid });
+    } else {
+      application = workforceApplicationsDb[applicationId];
+      if (application) workforceApplicationsDb[applicationId] = { ...application, status, notes, reviewedAt, reviewedBy: req.user?.uid };
+    }
+
+    if (!application) {
+      return res.status(404).json({ success: false, error: { code: 'APPLICATION_NOT_FOUND', message: 'Candidatura não encontrada.' } });
+    }
+
+    if (status === 'approved') {
+      const consultantId = `human_${applicationId.replace(/^candidate_/, '')}`;
+      const profile = {
+        id: consultantId,
+        name: application.professionalName,
+        title: application.specialties.join(' • ') || 'Especialista Oracular',
+        avatar: application.profilePhoto || '/brand/logo-oraculos.png?v=20260831',
+        bio: application.bio,
+        specialties: application.oracles,
+        authorizedOracles: application.oracles,
+        rating: 5,
+        totalReviews: 0,
+        totalConsultations: 0,
+        pricePerMinute,
+        status: 'offline',
+        experienceYears: application.experienceYears,
+        avgResponseTime: 'Novo profissional',
+        schedule: 'A combinar',
+        totalEarned: 0,
+        commissionRate: 0.7,
+        reviews: [],
+        isAI: false,
+        active: true,
+        applicationId,
+        email: application.email,
+        createdAt: reviewedAt,
+      };
+      if (adminDb) {
+        await adminDb.collection('consultantProfiles').doc(consultantId).set(profile, { merge: true });
+        const users = await adminDb.collection('users').where('email', '==', application.email).limit(1).get();
+        if (!users.empty) await users.docs[0].ref.update({ role: 'consultant', consultantId, updatedAt: reviewedAt });
+      } else {
+        consultantProfilesDb[consultantId] = profile;
+      }
+      consultantSettingsDb[consultantId] = { pricePerMinute, active: true };
+    }
+
+    return res.json({ success: true, data: { id: applicationId, status } });
+  },
+);
+
+app.get('/api/consultants/public', async (_req: Request, res: Response) => {
+  const settings = adminDb
+    ? (await adminDb.collection('consultantSettings').get()).docs.reduce<Record<string, { pricePerMinute: number; active: boolean }>>((result, doc) => {
+        result[doc.id] = doc.data() as { pricePerMinute: number; active: boolean };
+        return result;
+      }, {})
+    : consultantSettingsDb;
+  const approved = adminDb
+    ? (await adminDb.collection('consultantProfiles').where('active', '==', true).get()).docs.map((doc) => doc.data())
+    : Object.values(consultantProfilesDb).filter((profile) => profile.active === true);
+  return res.json({ success: true, data: { settings, approved } });
+});
+
+app.patch(
+  '/api/admin/consultants/:id/pricing',
+  requireAuth,
+  requireRole(['admin', 'superadmin']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    const consultantId = req.params.id.trim();
+    const pricePerMinute = Number(req.body?.pricePerMinute);
+    const active = req.body?.active !== false;
+    if (!consultantId || !Number.isFinite(pricePerMinute) || pricePerMinute <= 0 || pricePerMinute > 100) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_PRICING', message: 'Valor por minuto inválido.' } });
+    }
+    const setting = { pricePerMinute: Number(pricePerMinute.toFixed(2)), active, updatedAt: new Date().toISOString(), updatedBy: req.user?.uid };
+    if (adminDb) await adminDb.collection('consultantSettings').doc(consultantId).set(setting, { merge: true });
+    consultantSettingsDb[consultantId] = setting;
+    return res.json({ success: true, data: setting });
+  },
+);
+
+app.get(
+  '/api/consultants/me',
+  requireAuth,
+  requireRole(['consultant', 'employee']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    if (!adminDb || !req.user?.uid) {
+      return res.status(503).json({ success: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Painel profissional temporariamente indisponível.' } });
+    }
+    const userDocument = await adminDb.collection('users').doc(req.user.uid).get();
+    const userData = userDocument.data() || {};
+    let consultantId = typeof userData.consultantId === 'string' ? userData.consultantId : '';
+    let profileDocument = consultantId
+      ? await adminDb.collection('consultantProfiles').doc(consultantId).get()
+      : null;
+    if ((!profileDocument || !profileDocument.exists) && typeof userData.email === 'string') {
+      const profiles = await adminDb.collection('consultantProfiles').where('email', '==', userData.email).limit(1).get();
+      if (!profiles.empty) {
+        profileDocument = profiles.docs[0];
+        consultantId = profileDocument.id;
+      }
+    }
+    if (!profileDocument?.exists) {
+      return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Seu cadastro profissional ainda não foi vinculado. Contate o administrador.' } });
+    }
+    const sessionsSnapshot = await adminDb.collectionGroup('consultationSessions').where('consultantId', '==', consultantId).get();
+    const sessions = sessionsSnapshot.docs.map((doc) => ({
+      ...(doc.data() as ServerConsultationSession),
+      id: doc.id,
+    }));
+    const completed = sessions.filter((session) => session.status === 'completed');
+    const grossMinutes = completed.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
+    const commissionRate = Number(profileDocument.data()?.commissionRate || 0.7);
+    return res.json({
+      success: true,
+      data: {
+        profile: { id: profileDocument.id, ...profileDocument.data() },
+        sessions: completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))),
+        earnings: {
+          grossMinutes: Number(grossMinutes.toFixed(2)),
+          commissionRate,
+          payableMinutes: Number((grossMinutes * commissionRate).toFixed(2)),
+          paymentMethod: 'manual_weekly',
+        },
+      },
+    });
+  },
+);
+
+app.patch(
+  '/api/consultants/me/status',
+  requireAuth,
+  requireRole(['consultant', 'employee']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    if (!adminDb || !req.user?.uid) {
+      return res.status(503).json({ success: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Serviço temporariamente indisponível.' } });
+    }
+    const status = req.body?.status;
+    if (!['online', 'busy', 'offline'].includes(status)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: 'Disponibilidade inválida.' } });
+    }
+    const userDocument = await adminDb.collection('users').doc(req.user.uid).get();
+    const consultantId = userDocument.data()?.consultantId;
+    if (typeof consultantId !== 'string' || !consultantId) {
+      return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Perfil profissional não vinculado.' } });
+    }
+    await adminDb.collection('consultantProfiles').doc(consultantId).update({ status, updatedAt: new Date().toISOString() });
+    return res.json({ success: true, data: { status } });
+  },
+);
+
 interface ServerConsultationSession {
   id: string;
   userId: string;
@@ -3227,11 +3532,21 @@ app.post(
        * INITIAL_CONSULTANTS contém
        * consultores humanos e virtuais.
        */
-      const consultant =
+      let consultant =
         INITIAL_CONSULTANTS.find(
           (item) =>
             item.id === consultantId,
         );
+
+      if (!consultant && adminDb) {
+        const consultantDocument = await adminDb
+          .collection('consultantProfiles')
+          .doc(consultantId)
+          .get();
+        if (consultantDocument.exists) {
+          consultant = consultantDocument.data() as (typeof INITIAL_CONSULTANTS)[number];
+        }
+      }
 
       if (!consultant) {
         return res.status(404).json({
@@ -3245,10 +3560,35 @@ app.post(
         });
       }
 
-      const pricePerMinute =
-        Number(
-          consultant.pricePerMinute,
-        );
+      let pricePerMinute = Number(
+        consultant.pricePerMinute,
+      );
+
+      if (adminDb) {
+        const pricingDocument = await adminDb
+          .collection('consultantSettings')
+          .doc(consultantId)
+          .get();
+        if (pricingDocument.exists) {
+          const pricing = pricingDocument.data() || {};
+          if (pricing.active === false) {
+            return res.status(409).json({
+              success: false,
+              error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
+            });
+          }
+          pricePerMinute = Number(pricing.pricePerMinute);
+        }
+      } else if (consultantSettingsDb[consultantId]) {
+        const pricing = consultantSettingsDb[consultantId];
+        if (!pricing.active) {
+          return res.status(409).json({
+            success: false,
+            error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
+          });
+        }
+        pricePerMinute = pricing.pricePerMinute;
+      }
 
       if (
         !Number.isFinite(

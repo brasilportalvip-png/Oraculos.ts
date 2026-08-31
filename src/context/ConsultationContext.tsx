@@ -96,6 +96,36 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadPublicConsultants = async () => {
+      try {
+        const response = await fetch('/api/consultants/public');
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || cancelled) return;
+        const settings = body.data?.settings && typeof body.data.settings === 'object'
+          ? body.data.settings as Record<string, { pricePerMinute?: number; active?: boolean }>
+          : {};
+        const approved = Array.isArray(body.data?.approved)
+          ? body.data.approved as Consultant[]
+          : [];
+        setConsultants(() => {
+          const merged = [...INITIAL_CONSULTANTS, ...approved.filter((profile) => !INITIAL_CONSULTANTS.some((item) => item.id === profile.id))];
+          return merged
+            .filter((profile) => settings[profile.id]?.active !== false)
+            .map((profile) => ({
+              ...profile,
+              pricePerMinute: Number(settings[profile.id]?.pricePerMinute ?? profile.pricePerMinute),
+            }));
+        });
+      } catch (error) {
+        console.error('[ORACULOS.TS] Falha ao carregar profissionais publicados:', error);
+      }
+    };
+    void loadPublicConsultants();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (!isAuthenticated || !auth.currentUser) {
       setPastSessions([]);
       setTransactions([]);

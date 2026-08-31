@@ -12,6 +12,7 @@ export type PublicView =
   | 'legal'
   | 'howItWorks'
   | 'helpAndPrivacy'
+  | 'workWithUs'
   | 'clientDashboard'
   | 'consultantDashboard'
   | 'adminDashboard'
@@ -63,6 +64,7 @@ const STATIC_NAVIGATION: Record<string, NavigationTarget> = {
   blog: { path: '/blog', route: { view: 'blog' } },
   howItWorks: { path: '/como-funciona', route: { view: 'howItWorks' } },
   helpAndPrivacy: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
+  workWithUs: { path: '/trabalhe-conosco', route: { view: 'workWithUs' } },
   ajuda: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
   suporte: { path: '/ajuda-e-privacidade', route: { view: 'helpAndPrivacy' } },
   clientDashboard: { path: '/painel', route: { view: 'clientDashboard' } },
@@ -109,6 +111,8 @@ export function canonicalPathForRoute(route: ParsedRoute): string {
       return '/como-funciona';
     case 'helpAndPrivacy':
       return '/ajuda-e-privacidade';
+    case 'workWithUs':
+      return '/trabalhe-conosco';
     case 'clientDashboard':
       return '/painel';
     case 'consultantDashboard':
@@ -169,6 +173,7 @@ export function parseRouteLocation(pathname: string, hash = ''): ParsedRoute {
     return { view: 'helpAndPrivacy' };
   }
   if (rawPath === '/painel/consultor' || normalizedHash === 'consultantdashboard') return { view: 'consultantDashboard' };
+  if (rawPath === '/trabalhe-conosco') return { view: 'workWithUs' };
   if (rawPath === '/painel' || rawPath === '/carteira' || normalizedHash === 'clientdashboard') return { view: 'clientDashboard' };
   if (rawPath === '/admin' || normalizedHash === 'admindashboard') return { view: 'adminDashboard' };
   if (rawPath === '/' && (!normalizedHash || normalizedHash === 'showcase')) return { view: 'showcase' };
