@@ -73,12 +73,12 @@ describe('Contrato de implantação da Vercel', () => {
     );
   });
 
-  it('usa somente a entrada CommonJS empacotada para a API', () => {
+  it('usa uma entrada JavaScript detectável pela Vercel para a API', () => {
     expect(
       fs.existsSync(
         path.resolve(
           process.cwd(),
-          'api/index.cjs',
+          'api/index.js',
         ),
       ),
     ).toBe(true);
@@ -87,7 +87,7 @@ describe('Contrato de implantação da Vercel', () => {
       fs.existsSync(
         path.resolve(
           process.cwd(),
-          'api/index.ts',
+          'api/index.cjs',
         ),
       ),
     ).toBe(false);
@@ -95,13 +95,21 @@ describe('Contrato de implantação da Vercel', () => {
     const entrySource = fs.readFileSync(
       path.resolve(
         process.cwd(),
-        'api/index.cjs',
+        'api/index.js',
       ),
       'utf8',
     );
 
     expect(entrySource).toContain(
-      "require('../dist/serverless.cjs')",
+      "from '../dist/serverless.cjs'",
+    );
+
+    expect(entrySource).toContain(
+      'serverModule.default || serverModule',
+    );
+
+    expect(entrySource).toContain(
+      'export default app',
     );
   });
 

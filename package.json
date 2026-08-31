@@ -14,6 +14,7 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:assets": "node scripts/validate-assets.cjs",
     "smoke:deployment": "node scripts/smoke-deployment.cjs",
+    "smoke:production": "node scripts/smoke-production.cjs",
     "smoke:serverless": "node scripts/smoke-serverless.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run --exclude test/firestore-rules.test.ts",
