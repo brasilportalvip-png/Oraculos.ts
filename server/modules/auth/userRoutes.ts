@@ -77,12 +77,32 @@ userRoutes.post(
 
       createdUid = firebaseUser.uid;
 
+      const db = getFirestore(getApp());
+      const normalizedEmail = req.body.email.trim().toLowerCase();
+      const approvedProfiles = await db
+        .collection('consultantProfiles')
+        .where('email', '==', normalizedEmail)
+        .where('active', '==', true)
+        .limit(1)
+        .get();
+      const approvedProfile = approvedProfiles.empty
+        ? null
+        : approvedProfiles.docs[0];
+
       const profile =
         await createUserProfile(
           firebaseUser.uid,
           req.body,
-          'user',
+          approvedProfile ? 'consultant' : 'user',
         );
+
+      if (approvedProfile) {
+        await db.collection('users').doc(firebaseUser.uid).update({
+          consultantId: approvedProfile.id,
+          updatedAt: new Date().toISOString(),
+        });
+        (profile as UserProfile & { consultantId?: string }).consultantId = approvedProfile.id;
+      }
 
       const customToken =
         await adminAuth.createCustomToken(

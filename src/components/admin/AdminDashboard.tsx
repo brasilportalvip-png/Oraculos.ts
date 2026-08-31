@@ -50,7 +50,7 @@ interface AuditLog {
 export const AdminDashboard: React.FC = () => {
   const { consultants, transactions, pastSessions } = useConsultation();
   const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
-  const [platformFee, setPlatformFee] = useState('30');
+  const platformFee = '30';
 
   // AI Feature Toggles
   const [aiToggles, setAiToggles] = useState({
@@ -71,9 +71,8 @@ export const AdminDashboard: React.FC = () => {
   const [logFilter, setLogFilter] = useState('ALL');
 
   // Coupon Creation State
-  const [coupons, setCoupons] = useState([
-    { code: 'ORACULO10', bonus: 10, uses: 0, active: true },
-  ]);
+  const [coupons, setCoupons] = useState<Array<{ code: string; bonus: number; uses: number; active: boolean }>>([]);
+  const [couponMessage, setCouponMessage] = useState('');
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponBonus, setNewCouponBonus] = useState('10');
 
@@ -224,19 +223,41 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleAddCoupon = (e: React.FormEvent) => {
+  const loadCoupons = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) return;
+      const response = await fetch('/api/admin/coupons', { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível carregar os cupons.');
+      setCoupons((body.data?.coupons || []).map((coupon: any) => ({
+        code: String(coupon.code || ''), bonus: Number(coupon.value || 0),
+        uses: Number(coupon.currentUses || 0), active: coupon.active !== false,
+      })));
+    } catch (error) {
+      setCouponMessage(error instanceof Error ? error.message : 'Falha ao carregar cupons.');
+    }
+  };
+
+  useEffect(() => { if (activeTab === 'coupons') void loadCoupons(); }, [activeTab]);
+
+  const handleAddCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode) return;
-    setCoupons([
-      ...coupons,
-      {
-        code: newCouponCode.toUpperCase().trim(),
-        bonus: Number(newCouponBonus) || 10,
-        uses: 0,
-        active: true,
-      },
-    ]);
-    setNewCouponCode('');
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error('Sessão expirada. Entre novamente.');
+      const response = await fetch('/api/admin/coupons', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code: newCouponCode, type: 'bonus_fixed', value: Number(newCouponBonus), maxUses: 100, maxUsesPerUser: 1 }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível criar o cupom.');
+      setNewCouponCode(''); setCouponMessage('Cupom criado e persistido com sucesso.');
+      await loadCoupons();
+    } catch (error) {
+      setCouponMessage(error instanceof Error ? error.message : 'Falha ao criar cupom.');
+    }
   };
 
   const totalGrossRevenue = transactions
@@ -519,8 +540,8 @@ export const AdminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button className="px-3 py-1 bg-white/10 hover:bg-[#d4af37] hover:text-black text-white font-bold rounded-lg text-[11px] cursor-pointer">
-                          Aprovação
+                        <button onClick={() => setActiveTab('workforce')} className="px-3 py-1 bg-white/10 hover:bg-[#d4af37] hover:text-black text-white font-bold rounded-lg text-[11px] cursor-pointer">
+                          Gerenciar
                         </button>
                       </td>
                     </tr>
@@ -761,6 +782,7 @@ export const AdminDashboard: React.FC = () => {
               </p>
 
               <form onSubmit={handleAddCoupon} className="space-y-4 pt-2">
+                {couponMessage && <p role="status" className="text-xs text-amber-200">{couponMessage}</p>}
                 <div>
                   <label className="block text-xs text-gray-400 mb-1 font-semibold">Código do Cupom</label>
                   <input

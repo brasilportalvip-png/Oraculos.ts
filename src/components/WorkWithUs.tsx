@@ -66,7 +66,7 @@ export const WorkWithUs: React.FC = () => {
         <input required className={inputClass} placeholder="Estado" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
         <input required type="number" min="0" max="80" className={inputClass} placeholder="Anos de experiência" value={form.experienceYears} onChange={(e) => setForm({ ...form, experienceYears: e.target.value })} />
         <select className={inputClass} value={form.modality} onChange={(e) => setForm({ ...form, modality: e.target.value })}>
-          <option value="chat">Chat</option><option value="video">Vídeo</option><option value="both">Chat e vídeo</option>
+          <option value="chat">Chat Seguro</option>
         </select>
         <input className={`${inputClass} md:col-span-2`} placeholder="URL da foto profissional (opcional)" value={form.profilePhoto} onChange={(e) => setForm({ ...form, profilePhoto: e.target.value })} />
         <textarea required minLength={40} rows={5} className={`${inputClass} md:col-span-2`} placeholder="Conte sua experiência, formação e forma de atendimento" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />

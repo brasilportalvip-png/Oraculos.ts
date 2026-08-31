@@ -266,7 +266,7 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
           </p>
           <div className="pt-2 flex items-center gap-4 text-xs text-purple-300">
             <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" /> Tarifação por Minuto Real</span>
-            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-amber-400" aria-hidden="true" /> Chat ou Vídeo P2P</span>
+            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-amber-400" aria-hidden="true" /> Chat Seguro em tempo real</span>
           </div>
         </div>
       </div>
@@ -295,7 +295,7 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
         consultant={c}
         onSelect={() => onSelectConsultant(c)}
         onStartChat={() => onStartConsultation(c, oracleType, 'chat')}
-        onStartVideo={() => onStartConsultation(c, oracleType, 'video')}
+        onStartVideo={() => undefined}
       />
     ))
   ) : (

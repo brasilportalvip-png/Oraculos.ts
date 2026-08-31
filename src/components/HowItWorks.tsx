@@ -48,7 +48,7 @@ export const HowItWorks: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 gold-accent w-fit">
             <MessageSquare className="w-6 h-6" />
           </div>
-          <h3 className="font-serif text-2xl font-light text-white group-hover:text-[#d4af37] transition-colors">3. Inicie por Chat ou Vídeo</h3>
+          <h3 className="font-serif text-2xl font-light text-white group-hover:text-[#d4af37] transition-colors">3. Inicie pelo Chat Seguro</h3>
           <p className="text-xs text-gray-400 leading-relaxed font-light">
             Abra a sala de atendimento ao vivo. O cronômetro exibirá o tempo e o consumo de créditos minuto a minuto em tempo real com cobrança justa.
           </p>

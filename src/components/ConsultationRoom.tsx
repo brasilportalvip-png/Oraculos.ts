@@ -376,7 +376,7 @@ const [endConsultationError, setEndConsultationError] =
               Chat
             </button>
             <button
-              onClick={() => setMode('video')}
+              disabled
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
@@ -384,7 +384,7 @@ const [endConsultationError, setEndConsultationError] =
               }`}
             >
               <Video className="w-3.5 h-3.5" />
-              Vídeo
+              Vídeo em breve
             </button>
           </div>
 

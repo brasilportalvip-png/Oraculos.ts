@@ -4,7 +4,9 @@ import {
   app,
   consultantProfilesDb,
   consultantSettingsDb,
+  consultationSessionsDb,
   workforceApplicationsDb,
+  usersDb,
 } from '../server';
 import { VIRTUAL_PROFILES } from '../src/data/virtualProfiles';
 
@@ -77,5 +79,30 @@ describe('Gestão de profissionais em produção', () => {
     const avatars = VIRTUAL_PROFILES.map((profile) => profile.avatar);
     expect(new Set(avatars).size).toBe(VIRTUAL_PROFILES.length);
     expect(avatars.every((avatar) => avatar.startsWith('/consultants/'))).toBe(true);
+  });
+
+  it('persiste chat humano e impede leitura por quem não participa da consulta', async () => {
+    consultationSessionsDb['usr-client-1:chat-real'] = {
+      id: 'chat-real', userId: 'usr-client-1', consultantId: 'human_real',
+      consultantName: 'Mestra Real', pricePerMinute: 4, startedAt: new Date().toISOString(), status: 'active',
+    };
+    const sent = await request(app).post('/api/consultations/chat-real/messages')
+      .set('x-user-id', 'usr-client-1').send({ text: 'Olá, preciso de orientação.' });
+    expect(sent.status).toBe(201);
+    expect(consultationSessionsDb['usr-client-1:chat-real'].messages?.[0].text).toBe('Olá, preciso de orientação.');
+
+    usersDb['intruder-test'] = { ...usersDb['usr-client-1'], id: 'intruder-test', email: 'intruder@example.com' };
+    const forbidden = await request(app).get('/api/consultations/chat-real/messages').set('x-user-id', 'intruder-test');
+    expect(forbidden.status).toBe(403);
+    delete usersDb['intruder-test'];
+    delete consultationSessionsDb['usr-client-1:chat-real'];
+  });
+
+  it('não permite cobrança de uma videochamada sem conexão remota real', async () => {
+    const response = await request(app).post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({ consultationId: 'video-blocked', consultantId: 'c1', mode: 'video' });
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('VIDEO_NOT_AVAILABLE');
   });
 });

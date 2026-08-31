@@ -96,6 +96,32 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!activeSession || activeSession.status !== 'active') return;
+    const isVirtual = activeSession.consultantId.startsWith('ai_') || activeSession.consultantId.startsWith('c_ai_');
+    if (isVirtual) return;
+    let cancelled = false;
+    const refreshMessages = async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+        const response = await fetch(`/api/consultations/${encodeURIComponent(activeSession.id)}/messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || cancelled || !Array.isArray(body.data?.messages)) return;
+        setActiveSession((current) => current && current.id === activeSession.id
+          ? { ...current, messages: body.data.messages as ChatMessage[] }
+          : current);
+      } catch (error) {
+        console.warn('[ORACULOS.TS] Falha temporária ao sincronizar conversa:', error);
+      }
+    };
+    void refreshMessages();
+    const interval = window.setInterval(() => { void refreshMessages(); }, 2500);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [activeSession?.id, activeSession?.status, activeSession?.consultantId]);
+
+  useEffect(() => {
     let cancelled = false;
     const loadPublicConsultants = async () => {
       try {
@@ -1007,6 +1033,31 @@ const sendMessage = (text: string) => {
           },
         ),
   };
+
+  const isVirtual = activeSession.consultantId.startsWith('ai_') || activeSession.consultantId.startsWith('c_ai_');
+  if (!isVirtual) {
+    const sessionId = activeSession.id;
+    void (async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Sessão expirada. Entre novamente.');
+        const response = await fetch(`/api/consultations/${encodeURIComponent(sessionId)}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text: cleanText }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error?.message || 'Não foi possível enviar a mensagem.');
+        const persisted = body.data?.message as ChatMessage;
+        setActiveSession((current) => current && current.id === sessionId
+          ? { ...current, messages: [...current.messages.filter((item) => item.id !== persisted.id), persisted] }
+          : current);
+      } catch (error) {
+        console.error('[ORACULOS.TS] Falha ao enviar mensagem:', error);
+      }
+    })();
+    return;
+  }
 
   setActiveSession(
     (previousSession) => {

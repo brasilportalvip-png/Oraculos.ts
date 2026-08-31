@@ -225,11 +225,10 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     // O modal deve ter aberto com Mestre Gabriel Astros
     expect(getByText('Mestre Gabriel Astros')).toBeTruthy();
 
-    // Inicia a consulta por vídeo
-    fireEvent.click(getByText('Chamada de Vídeo'));
-
-    expect(handleStartFinal).toHaveBeenCalledTimes(1);
-    expect(handleStartFinal).toHaveBeenCalledWith('c2', 'astrologia', 'video');
+    // Vídeo não é oferecido até existir conexão P2P real.
+    const videoButton = getByText('Vídeo em breve').closest('button');
+    expect(videoButton?.disabled).toBe(true);
+    expect(handleStartFinal).not.toHaveBeenCalled();
 
     // 2. Simula Mobile (375x667)
     act(() => {

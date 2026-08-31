@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, RefreshCw, Star, Wallet, Wifi } from 'lucide-react';
+import { Clock, MessageSquare, RefreshCw, Send, Star, Wallet, Wifi } from 'lucide-react';
 import { auth } from '../../firebase';
 
 interface ProfessionalProfile { id: string; name: string; avatar: string; title: string; status: 'online' | 'busy' | 'offline'; pricePerMinute: number; rating: number; }
 interface ProfessionalSession { id: string; oracleType?: string; endedAt?: string; durationMinutes?: number; debitMinutes?: number; ratingGiven?: number; reviewText?: string; }
+interface ActiveProfessionalSession { id: string; oracleType?: string; startedAt?: string; messages?: Array<{ id: string; senderId: string; senderName: string; text: string; timestamp: string }>; }
 interface ProfessionalEarnings { grossMinutes: number; commissionRate: number; payableMinutes: number; paymentMethod: 'manual_weekly'; }
 
 export const ConsultantDashboard: React.FC = () => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [sessions, setSessions] = useState<ProfessionalSession[]>([]);
+  const [activeSessions, setActiveSessions] = useState<ActiveProfessionalSession[]>([]);
+  const [replyBySession, setReplyBySession] = useState<Record<string, string>>({});
   const [earnings, setEarnings] = useState<ProfessionalEarnings | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -19,18 +22,34 @@ export const ConsultantDashboard: React.FC = () => {
     return fetch(url, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
   };
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (background = false) => {
+    if (!background) setLoading(true);
     try {
       const response = await request('/api/consultants/me');
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message || 'Não foi possível carregar o painel profissional.');
-      setProfile(body.data.profile); setSessions(body.data.sessions || []); setEarnings(body.data.earnings); setMessage('');
+      setProfile(body.data.profile); setSessions(body.data.sessions || []); setActiveSessions(body.data.activeSessions || []); setEarnings(body.data.earnings); setMessage('');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao carregar painel.'); }
-    finally { setLoading(false); }
+    finally { if (!background) setLoading(false); }
   };
 
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const interval = window.setInterval(() => { void load(true); }, 5000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const sendReply = async (sessionId: string) => {
+    const text = (replyBySession[sessionId] || '').trim();
+    if (!text) return;
+    try {
+      const response = await request(`/api/consultations/${encodeURIComponent(sessionId)}/messages`, { method: 'POST', body: JSON.stringify({ text }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível enviar a resposta.');
+      setReplyBySession((current) => ({ ...current, [sessionId]: '' }));
+      await load(true);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao responder.'); }
+  };
 
   const updateStatus = async (status: ProfessionalProfile['status']) => {
     try {
@@ -63,6 +82,23 @@ export const ConsultantDashboard: React.FC = () => {
         <Metric icon={<Wifi />} label="Valor definido pelo admin" value={`${profile.pricePerMinute.toFixed(2)} min/min`} />
       </section>
       <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Pagamento manual semanal: o administrador confere este relatório e realiza o repasse fora da plataforma. Não existe saque automático.</div>
+      <section className="p-6 bg-[#150F26] border border-purple-900/40 rounded-3xl space-y-4">
+        <h2 className="font-bold text-amber-200 flex items-center gap-2"><MessageSquare className="w-5 h-5" /> Atendimentos ativos</h2>
+        {activeSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhum cliente aguardando atendimento.</p> : activeSessions.map((session) => (
+          <article key={session.id} className="p-4 bg-black/20 rounded-xl space-y-3">
+            <div className="flex justify-between text-sm"><strong className="text-white capitalize">{session.oracleType || 'Consulta'}</strong><span className="text-emerald-300">Em andamento</span></div>
+            <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl bg-black/25 p-3">
+              {(session.messages || []).length === 0 ? <p className="text-xs text-slate-400">Aguardando a primeira mensagem do cliente.</p> : (session.messages || []).map((item) => (
+                <div key={item.id} className="text-sm"><span className="font-bold text-purple-200">{item.senderName}:</span> <span className="text-slate-200">{item.text}</span> <span className="text-[10px] text-slate-500">{item.timestamp}</span></div>
+              ))}
+            </div>
+            <form onSubmit={(event) => { event.preventDefault(); void sendReply(session.id); }} className="flex gap-2">
+              <input value={replyBySession[session.id] || ''} onChange={(event) => setReplyBySession((current) => ({ ...current, [session.id]: event.target.value }))} placeholder="Responder ao cliente..." className="flex-1 rounded-xl border border-purple-900 bg-black/30 px-3 py-2 text-sm text-white" />
+              <button type="submit" className="rounded-xl bg-amber-400 px-4 text-black" aria-label="Enviar resposta"><Send className="w-4 h-4" /></button>
+            </form>
+          </article>
+        ))}
+      </section>
       <section className="p-6 bg-[#150F26] border border-purple-900/40 rounded-3xl space-y-4">
         <div className="flex justify-between items-center"><h2 className="font-bold text-amber-200">Histórico real de atendimentos</h2><button onClick={() => void load()} className="p-2 text-purple-200"><RefreshCw className="w-4 h-4" /></button></div>
         {sessions.length === 0 ? <p className="text-sm text-slate-400">Nenhum atendimento concluído.</p> : sessions.map((session) => (
