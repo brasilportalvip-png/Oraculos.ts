@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { UserCheck, DollarSign, Clock, Star, ToggleLeft, ToggleRight, ArrowUpRight, CheckCircle2, ShieldCheck, Edit3 } from 'lucide-react';
+import { UserCheck, DollarSign, Clock, Star, ToggleLeft, ToggleRight, ArrowUpRight, ShieldCheck, Edit3 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useConsultation } from '../../context/ConsultationContext';
 
 export const ConsultantDashboard: React.FC = () => {
   const { user, updateUserPix } = useAuth();
-  const { consultants, updateConsultantStatus, updateConsultantPrice, pastSessions, transactions, addTransaction } = useConsultation();
+  const { consultants, updateConsultantStatus, updateConsultantPrice, pastSessions, transactions } = useConsultation();
 
   // Current consultant object
   const consultantData = consultants.find((c) => c.id === 'c1') || consultants[0];
@@ -13,7 +13,7 @@ export const ConsultantDashboard: React.FC = () => {
   const [pixInput, setPixInput] = useState(user.pixKey || 'helena.luz@pix.com.br');
   const [newPrice, setNewPrice] = useState(consultantData.pricePerMinute.toString());
   const [payoutAmount, setPayoutAmount] = useState('500');
-  const [payoutSuccess, setPayoutSuccess] = useState(false);
+  const [payoutMessage, setPayoutMessage] = useState('');
 
   const consultantSessions = pastSessions.filter((s) => s.consultantId === consultantData.id);
   const consultantEarningsTx = transactions.filter((t) => t.userId === consultantData.id);
@@ -29,24 +29,25 @@ export const ConsultantDashboard: React.FC = () => {
     }
   };
 
-  const handleRequestPayout = () => {
+  const handleRequestPayout = async () => {
     const amt = parseFloat(payoutAmount);
-    if (amt <= 0 || amt > (consultantData.totalEarned || 0)) return;
+    if (amt <= 0 || amt > (consultantData.totalEarned || 0)) {
+      setPayoutMessage('Informe um valor válido dentro do saldo disponível.');
+      return;
+    }
 
-    addTransaction({
-      id: `payout_${Date.now()}`,
-      userId: consultantData.id,
-      userName: consultantData.name,
-      type: 'payout',
-      amount: amt,
-      method: 'bank_transfer',
-      status: 'completed',
-      date: new Date().toLocaleString('pt-BR'),
-      description: `Saque de comissões via PIX (${pixInput}) enviado para conta do consultor`,
-    });
+    const pixResult = await updateUserPix(pixInput);
 
-    setPayoutSuccess(true);
-    setTimeout(() => setPayoutSuccess(false), 3000);
+    if (!pixResult.success) {
+      setPayoutMessage(
+        pixResult.message || 'Não foi possível salvar a chave PIX.',
+      );
+      return;
+    }
+
+    setPayoutMessage(
+      'Chave PIX salva. O pagamento automático ainda não está habilitado; nenhum saque foi debitado ou marcado como concluído.',
+    );
   };
 
   return (
@@ -194,22 +195,13 @@ export const ConsultantDashboard: React.FC = () => {
         <div className="p-6 bg-[#150F26] border border-purple-900/40 rounded-3xl space-y-4">
           <h2 className="text-base font-bold text-amber-200">Solicitação de Saque PIX</h2>
 
-          {payoutSuccess ? (
-            <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 font-bold">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              Saque efetuado com sucesso via PIX para sua chave bancária!
-            </div>
-          ) : (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <div>
                 <label className="block text-[11px] uppercase font-bold text-purple-300 mb-1">Chave PIX Cadastrada</label>
                 <input
                   type="text"
                   value={pixInput}
-                  onChange={(e) => {
-                    setPixInput(e.target.value);
-                    updateUserPix(e.target.value);
-                  }}
+                  onChange={(e) => setPixInput(e.target.value)}
                   placeholder="Seu CPF, Email ou Chave PIX"
                   className="w-full px-3 py-2 bg-[#1F1638] border border-purple-800/50 rounded-xl text-xs text-white"
                 />
@@ -230,8 +222,12 @@ export const ConsultantDashboard: React.FC = () => {
                   Solicitar Saque
                 </button>
               </div>
-            </div>
-          )}
+              {payoutMessage && (
+                <p className="text-xs text-amber-300" role="status">
+                  {payoutMessage}
+                </p>
+              )}
+          </div>
         </div>
       </div>
 

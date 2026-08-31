@@ -57,9 +57,13 @@ addMinutes: (minutes: number) => void;
 deductMinutes: (minutes: number) => boolean;
 syncMinuteBalance: (minutes: number) => void;
   
-  toggleFavorite: (consultantId: string) => void;
+  toggleFavorite: (
+    consultantId: string,
+  ) => Promise<AuthResult>;
   isFavorite: (consultantId: string) => boolean;
-  updateUserPix: (pixKey: string) => void;
+  updateUserPix: (
+    pixKey: string,
+  ) => Promise<AuthResult>;
 
   registerUser: (
     data: Partial<UserProfile>,
@@ -638,27 +642,25 @@ const syncMinuteBalance = (
 
 
 
-  const toggleFavorite = (
+  const toggleFavorite = async (
     consultantId: string,
-  ) => {
-    setUser((previous) => {
-      const favorites = Array.isArray(
-        previous.favorites,
-      )
-        ? previous.favorites
-        : [];
+  ): Promise<AuthResult> => {
+    const favorites = Array.isArray(
+      user.favorites,
+    )
+      ? user.favorites
+      : [];
 
-      const exists =
-        favorites.includes(consultantId);
+    const nextFavorites = favorites.includes(
+      consultantId,
+    )
+      ? favorites.filter(
+          (id) => id !== consultantId,
+        )
+      : [...favorites, consultantId];
 
-      return {
-        ...previous,
-        favorites: exists
-          ? favorites.filter(
-              (id) => id !== consultantId,
-            )
-          : [...favorites, consultantId],
-      };
+    return updateProfile({
+      favorites: nextFavorites,
     });
   };
 
@@ -670,11 +672,12 @@ const syncMinuteBalance = (
       : false;
   };
 
-  const updateUserPix = (pixKey: string) => {
-    setUser((previous) => ({
-      ...previous,
-      pixKey,
-    }));
+  const updateUserPix = async (
+    pixKey: string,
+  ): Promise<AuthResult> => {
+    return updateProfile({
+      pixKey: pixKey.trim(),
+    });
   };
 
   return (

@@ -614,6 +614,11 @@ export async function updateUserProfile(
             )
               ? updatedUser.favorites
               : [],
+          pixKey:
+            typeof updatedUser.pixKey ===
+            'string'
+              ? updatedUser.pixKey.trim()
+              : '',
           updatedAt:
             updatedUser.updatedAt,
         },

@@ -46,6 +46,33 @@ sendMessage: (text: string) => void;
 
 const ConsultationContext = createContext<ConsultationContextType | undefined>(undefined);
 
+interface PersistedWalletTransaction {
+  id?: string;
+  userId?: string;
+  type?: FinancialTransaction['type'];
+  minutes?: number;
+  amount?: number;
+  status?: FinancialTransaction['status'];
+  createdAt?: string;
+  reason?: string;
+}
+
+interface PersistedConsultationSession {
+  id?: string;
+  userId?: string;
+  consultantId?: string;
+  consultantName?: string;
+  oracleType?: OracleType;
+  mode?: 'chat' | 'video';
+  startedAt?: string;
+  endedAt?: string;
+  durationMinutes?: number;
+  pricePerMinute?: number;
+  debitMinutes?: number;
+  ratingGiven?: number;
+  reviewText?: string;
+}
+
 // Sample Tarot Cards for live draws in chat
 const TAROT_CARDS = [
   { name: 'O Sol', meaning: 'Alegria, clareza, sucesso e vitalidade iluminando seus caminhos.', imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=200' },
@@ -59,6 +86,7 @@ const TAROT_CARDS = [
 export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
   user,
+  isAuthenticated,
   syncMinuteBalance,
 } = useAuth();
   const [activeSession, setActiveSession] = useState<ConsultationSession | null>(null);
@@ -66,6 +94,124 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [pastSessions, setPastSessions] = useState<ConsultationSession[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !auth.currentUser) {
+      setPastSessions([]);
+      setTransactions([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPersistedHistory = async () => {
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+
+        if (!idToken) return;
+
+        const headers = {
+          Authorization: `Bearer ${idToken}`,
+        };
+
+        const [walletResponse, sessionsResponse] =
+          await Promise.all([
+            fetch('/api/finance/wallet-history', { headers }),
+            fetch('/api/consultations/history', { headers }),
+          ]);
+
+        if (!walletResponse.ok || !sessionsResponse.ok) {
+          throw new Error('Falha ao carregar histórico persistido.');
+        }
+
+        const walletBody = await walletResponse.json();
+        const sessionsBody = await sessionsResponse.json();
+
+        if (cancelled) return;
+
+        const walletHistory = Array.isArray(
+          walletBody.data?.history,
+        )
+          ? (walletBody.data.history as PersistedWalletTransaction[])
+          : [];
+
+        setTransactions(
+          walletHistory.map((transaction) => ({
+            id: String(transaction.id || ''),
+            userId: String(transaction.userId || user.id),
+            userName: user.name,
+            type: transaction.type || 'admin_adjustment',
+            amount: Number(
+              transaction.minutes ?? transaction.amount ?? 0,
+            ),
+            method: 'wallet_balance',
+            status: transaction.status || 'completed',
+            date: new Date(
+              transaction.createdAt || Date.now(),
+            ).toLocaleString('pt-BR'),
+            description:
+              transaction.reason || 'Movimentação da carteira',
+          })),
+        );
+
+        const sessionHistory = Array.isArray(
+          sessionsBody.data?.history,
+        )
+          ? (sessionsBody.data.history as PersistedConsultationSession[])
+          : [];
+
+        setPastSessions(
+          sessionHistory.map((session) => {
+            const consultant = INITIAL_CONSULTANTS.find(
+              (item) => item.id === session.consultantId,
+            );
+            const durationMinutes = Math.max(
+              1,
+              Number(session.durationMinutes || 1),
+            );
+
+            return {
+              id: String(session.id || ''),
+              clientId: String(session.userId || user.id),
+              clientName: user.name,
+              consultantId: String(session.consultantId || ''),
+              consultantName:
+                session.consultantName || consultant?.name || 'Consultor',
+              consultantAvatar: consultant?.avatar || '',
+              oracleType: session.oracleType || 'tarot',
+              mode: session.mode || 'chat',
+              status: 'completed',
+              startTime: new Date(
+                session.startedAt || Date.now(),
+              ).toLocaleTimeString('pt-BR'),
+              endTime: new Date(
+                session.endedAt || Date.now(),
+              ).toLocaleTimeString('pt-BR'),
+              durationSeconds: durationMinutes * 60,
+              pricePerMinute: Number(session.pricePerMinute || 0),
+              totalCost: Number(session.debitMinutes || 0),
+              adminCommission: Number(session.debitMinutes || 0) * 0.3,
+              consultantEarnings: Number(session.debitMinutes || 0) * 0.7,
+              ratingGiven: session.ratingGiven,
+              reviewText: session.reviewText,
+              messages: [],
+            };
+          }),
+        );
+      } catch (error) {
+        console.error(
+          '[ORACULOS.TS] Não foi possível sincronizar os históricos:',
+          error,
+        );
+      }
+    };
+
+    void loadPersistedHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user.id, user.name]);
 
 
 
@@ -638,6 +784,8 @@ try {
           consultationId,
           consultantId:
             consultant.id,
+          oracleType: oracle,
+          mode,
         }),
       },
     );
@@ -949,6 +1097,8 @@ const endConsultation = async (
 
             consultationId:
               sessionToFinish.id,
+            rating,
+            reviewText,
           }),
         },
       );
