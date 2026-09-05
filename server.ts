@@ -3364,35 +3364,7 @@ app.patch(
       return res.status(400).json({ success: false, error: { code: 'INVALID_PRICING', message: 'Valor por minuto inválido.' } });
     }
     const setting = { pricePerMinute: Number(pricePerMinute.toFixed(2)), active, updatedAt: new Date().toISOString(), updatedBy: req.user?.uid };
-
-    if (adminDb) {
-      await adminDb
-        .collection('consultantSettings')
-        .doc(consultantId)
-        .set(setting, { merge: true });
-
-      const consultantProfileReference =
-        adminDb
-          .collection('consultantProfiles')
-          .doc(consultantId);
-
-      const consultantProfileSnapshot =
-        await consultantProfileReference.get();
-
-      if (consultantProfileSnapshot.exists) {
-        await consultantProfileReference.update({
-          pricePerMinute: setting.pricePerMinute,
-          updatedAt: setting.updatedAt,
-        });
-      }
-    } else if (consultantProfilesDb[consultantId]) {
-      consultantProfilesDb[consultantId] = {
-        ...consultantProfilesDb[consultantId],
-        pricePerMinute: setting.pricePerMinute,
-        updatedAt: setting.updatedAt,
-      };
-    }
-
+    if (adminDb) await adminDb.collection('consultantSettings').doc(consultantId).set(setting, { merge: true });
     consultantSettingsDb[consultantId] = setting;
     return res.json({ success: true, data: setting });
   },

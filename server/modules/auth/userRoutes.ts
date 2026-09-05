@@ -237,56 +237,10 @@ userRoutes.get(
         await userReference.get();
 
       if (userDocument.exists) {
-        const currentProfile =
-          userDocument.data() as UserProfile & {
-            consultantId?: string;
-          };
-
-        if (
-          userEmail &&
-          currentProfile.role !== 'consultant' &&
-          currentProfile.role !== 'employee' &&
-          currentProfile.role !== 'admin' &&
-          currentProfile.role !== 'superadmin'
-        ) {
-          const approvedProfiles = await db
-            .collection('consultantProfiles')
-            .where('email', '==', userEmail)
-            .where('active', '==', true)
-            .limit(1)
-            .get();
-
-          if (!approvedProfiles.empty) {
-            const approvedProfile =
-              approvedProfiles.docs[0];
-
-            const updatedAt =
-              new Date().toISOString();
-
-            await userReference.update({
-              role: 'consultant',
-              consultantId: approvedProfile.id,
-              updatedAt,
-            });
-
-            return res.status(200).json({
-              success: true,
-              data: {
-                ...currentProfile,
-                id: userDocument.id,
-                role: 'consultant',
-                consultantId: approvedProfile.id,
-                updatedAt,
-              },
-              linkedConsultant: true,
-            });
-          }
-        }
-
         return res.status(200).json({
           success: true,
           data: {
-            ...currentProfile,
+            ...userDocument.data(),
             id: userDocument.id,
           },
         });

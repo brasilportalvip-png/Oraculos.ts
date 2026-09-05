@@ -313,20 +313,20 @@ const [endConsultationError, setEndConsultationError] =
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0813] text-slate-100 overflow-hidden font-sans">
       {/* Top Header Control Bar */}
-      <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-[#150F26] border-b border-purple-900/50 shadow-lg min-w-0">
+      <header className="flex items-center justify-between px-4 py-3 bg-[#150F26] border-b border-purple-900/50 shadow-lg">
         {/* Consultant Info */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-3">
           <div className="relative">
             <img
               src={activeSession.consultantAvatar}
               alt={activeSession.consultantName}
-              className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-full object-cover border-2 border-amber-400 shadow-md"
+              className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shadow-md"
             />
             <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#150F26] animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-sm md:text-base text-amber-200 truncate max-w-[150px] sm:max-w-none">{activeSession.consultantName}</h2>
+              <h2 className="font-bold text-sm md:text-base text-amber-200">{activeSession.consultantName}</h2>
               {isVirtual ? (
                 <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                   Atendente Virtual
@@ -362,7 +362,7 @@ const [endConsultationError, setEndConsultationError] =
         </div>
 
         {/* Mode Switcher & Exit Button */}
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto min-w-0">
+        <div className="flex items-center gap-2">
           <div className="flex items-center p-1 bg-[#1F1638] rounded-xl border border-purple-900/60">
             <button
               onClick={() => setMode('chat')}
@@ -377,7 +377,7 @@ const [endConsultationError, setEndConsultationError] =
             </button>
             <button
               disabled
-              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -609,7 +609,7 @@ const [endConsultationError, setEndConsultationError] =
           </AnimatePresence>
 
           {/* Input Box */}
-          <form onSubmit={handleSend} className="p-2 sm:p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2 min-w-0">
+          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2">
             <input
               type="text"
               value={inputText}
