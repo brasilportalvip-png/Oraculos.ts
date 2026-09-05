@@ -1,9 +1,9 @@
 // ==============================================================================
 // ORACULOS.TS — Service Worker PWA de Produção
-// Versão: 2.7.1
+// Versão: 2.7.0
 // ==============================================================================
 
-const CACHE_NAME = 'oraculos-ts-v2.7.1';
+const CACHE_NAME = 'oraculos-ts-v2.7.0';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE_ASSETS = [

@@ -45,8 +45,6 @@ function MainAppContent() {
   const [currentRoute, setCurrentRoute] = useState<ParsedRoute>(parseLocation);
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
   const [selectedOracle, setSelectedOracle] = useState<OracleType | null>(null);
-  const [consultationStartPending, setConsultationStartPending] = useState(false);
-  const [consultationStartError, setConsultationStartError] = useState<string | null>(null);
 
   const navigateTo = (tabOrPath: string) => {
     const { path: targetPath, route: newRoute } = resolveNavigationTarget(tabOrPath);
@@ -82,48 +80,13 @@ function MainAppContent() {
     oracle: OracleType,
     mode: 'chat' | 'video'
   ) => {
-    if (consultationStartPending) return;
-
-    setConsultationStartPending(true);
-    setConsultationStartError(null);
-
-    void (async () => {
-      try {
-        const result = await startConsultation(consultant, oracle, mode);
-
-        if (!result.success) {
-          setConsultationStartError(
-            result.message || 'Não foi possível abrir o Chat Seguro.',
-          );
-        }
-      } catch (error) {
-        console.error('[ORACULOS.TS] Falha inesperada ao abrir o chat:', error);
-        setConsultationStartError('Falha de conexão ao abrir o Chat Seguro. Tente novamente.');
-      } finally {
-        setConsultationStartPending(false);
-      }
-    })();
+    startConsultation(consultant, oracle, mode);
   };
 
   return (
     <div className="min-h-screen bg-[#050508] text-gray-200 flex flex-col font-sans selection:bg-[#d4af37] selection:text-black">
       {/* Top Header Navigation */}
       <Header currentTab={currentRoute.view} setCurrentTab={navigateTo} />
-
-      {consultationStartPending && (
-        <div role="status" aria-live="polite" className="fixed left-1/2 top-24 z-[90] -translate-x-1/2 rounded-xl border border-amber-400/40 bg-[#150F26] px-4 py-3 text-sm font-bold text-amber-200 shadow-2xl">
-          Abrindo Chat Seguro...
-        </div>
-      )}
-
-      {consultationStartError && (
-        <div role="alert" className="fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[90] mx-auto flex max-w-xl items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-[#1b0d18] px-4 py-3 text-sm text-rose-100 shadow-2xl">
-          <span>{consultationStartError}</span>
-          <button type="button" onClick={() => setConsultationStartError(null)} className="shrink-0 rounded-lg bg-white/10 px-3 py-2 text-xs font-bold text-white">
-            Fechar
-          </button>
-        </div>
-      )}
 
       {/* Main Container with Suspense Fallback */}
       <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto px-3 sm:px-6 lg:px-8 pt-5 sm:pt-8 overflow-x-hidden">
