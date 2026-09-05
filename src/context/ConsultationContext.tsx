@@ -125,7 +125,12 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let cancelled = false;
     const loadPublicConsultants = async () => {
       try {
-        const response = await fetch('/api/consultants/public');
+        const response = await fetch('/api/consultants/public', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         const body = await response.json().catch(() => ({}));
         if (!response.ok || cancelled) return;
         const settings = body.data?.settings && typeof body.data.settings === 'object'
@@ -828,7 +833,7 @@ let serverStartedAt =
 
 try {
   const idToken =
-    await firebaseUser.getIdToken(true);
+    await firebaseUser.getIdToken();
 
   const response =
     await fetch(

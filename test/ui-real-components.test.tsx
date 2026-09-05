@@ -241,11 +241,9 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     fireEvent.click(astroCards[0]);
     expect(getByText('Mestre Gabriel Astros')).toBeTruthy();
 
-    // Fecha o modal via botão de fechar
-    const closeBtn = screen.getByLabelText('Fechar modal');
-    fireEvent.click(closeBtn);
-
-    // Confirma que o modal fechou
+    // No viewport de celular, o toque no chat deve disparar a abertura da consulta.
+    fireEvent.click(getByText('Iniciar Chat Agora'));
+    expect(handleStartFinal).toHaveBeenCalledWith('c2', 'astrologia', 'chat');
     expect(queryByText('Mestre Gabriel Astros')).toBeNull();
   });
 

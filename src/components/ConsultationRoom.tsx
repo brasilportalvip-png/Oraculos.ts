@@ -311,7 +311,7 @@ const [endConsultationError, setEndConsultationError] =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0813] text-slate-100 overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[80] h-[100dvh] flex flex-col bg-[#0B0813] text-slate-100 overflow-hidden font-sans">
       {/* Top Header Control Bar */}
       <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-[#150F26] border-b border-purple-900/50 shadow-lg min-w-0">
         {/* Consultant Info */}

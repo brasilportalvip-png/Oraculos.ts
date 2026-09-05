@@ -139,8 +139,9 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
+            type="button"
             onClick={() => onStartConsultation(consultant, (consultant.specialties[0] as OracleType) || 'tarot', 'chat')}
-            className="flex-1 py-3 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg transition-colors"
+            className="flex-1 touch-manipulation py-3 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
             Iniciar Consulta por Chat Seguro

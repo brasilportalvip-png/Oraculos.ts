@@ -48,7 +48,7 @@ interface AuditLog {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { consultants, transactions, pastSessions } = useConsultation();
+  const { consultants, transactions, pastSessions, updateConsultantPrice } = useConsultation();
   const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
   const platformFee = '30';
 
@@ -370,7 +370,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* TAB 0: SECURITY & PROTECTION CENTER */}
       {activeTab === 'securityCenter' && <SecurityProtectionCenter />}
-      {activeTab === 'workforce' && <AdminWorkforcePanel consultants={consultants} />}
+      {activeTab === 'workforce' && <AdminWorkforcePanel consultants={consultants} onPriceConfirmed={updateConsultantPrice} />}
 
       {/* TAB 1: OVERVIEW & FINANCE */}
       {activeTab === 'overview' && (
