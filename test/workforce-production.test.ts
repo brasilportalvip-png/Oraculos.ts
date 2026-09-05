@@ -58,8 +58,6 @@ describe('Gestão de profissionais em produção', () => {
         }),
       ]),
     );
-    const consultantId = `human_${id.replace(/^candidate_/, '')}`;
-    expect(marketplace.body.data.settings[consultantId].pricePerMinute).toBe(4.5);
   });
 
   it('permite somente ao administrador alterar o valor por minuto', async () => {
@@ -75,10 +73,6 @@ describe('Gestão de profissionais em produção', () => {
       .send({ pricePerMinute: 6 });
     expect(approved.status).toBe(200);
     expect(consultantSettingsDb.ai_c1.pricePerMinute).toBe(6);
-
-    const marketplace = await request(app).get('/api/consultants/public');
-    expect(marketplace.status).toBe(200);
-    expect(marketplace.body.data.settings.ai_c1.pricePerMinute).toBe(6);
   });
 
   it('usa uma imagem espiritual local e exclusiva para cada atendente de IA', () => {

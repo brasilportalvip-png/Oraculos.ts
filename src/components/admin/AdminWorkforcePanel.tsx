@@ -3,15 +3,7 @@ import { CheckCircle2, XCircle, RefreshCw, Save } from 'lucide-react';
 import type { CandidateApplication, Consultant } from '../../types';
 import { auth } from '../../firebase';
 
-interface AdminWorkforcePanelProps {
-  consultants: Consultant[];
-  onPriceConfirmed?: (consultantId: string, pricePerMinute: number) => void;
-}
-
-export const AdminWorkforcePanel: React.FC<AdminWorkforcePanelProps> = ({
-  consultants,
-  onPriceConfirmed,
-}) => {
+export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ consultants }) => {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
@@ -60,21 +52,8 @@ export const AdminWorkforcePanel: React.FC<AdminWorkforcePanelProps> = ({
       method: 'PATCH', body: JSON.stringify({ pricePerMinute, active: true }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok || !body.success) {
-      setMessage(body.error?.message || 'Falha ao atualizar valor.');
-      return;
-    }
-
-    const confirmedPrice = Number(body.data?.pricePerMinute);
-    if (!Number.isFinite(confirmedPrice) || confirmedPrice <= 0) {
-      setMessage('O servidor não confirmou o novo valor. Nenhuma alteração visual foi aplicada.');
-      return;
-    }
-
-    setPrices((current) => ({ ...current, [consultant.id]: confirmedPrice.toFixed(2) }));
-    onPriceConfirmed?.(consultant.id, confirmedPrice);
-    setMessage(`Valor de ${consultant.name} atualizado para ${confirmedPrice.toFixed(2)} min/min.`);
-    window.dispatchEvent(new Event('oraculos:consultants-updated'));
+    setMessage(response.ok ? `Valor de ${consultant.name} atualizado.` : body.error?.message || 'Falha ao atualizar valor.');
+    if (response.ok) window.dispatchEvent(new Event('oraculos:consultants-updated'));
   };
 
   return (

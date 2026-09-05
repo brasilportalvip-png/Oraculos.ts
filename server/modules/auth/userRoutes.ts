@@ -244,9 +244,10 @@ userRoutes.get(
 
         if (
           userEmail &&
+          currentProfile.role !== 'consultant' &&
+          currentProfile.role !== 'employee' &&
           currentProfile.role !== 'admin' &&
-          currentProfile.role !== 'superadmin' &&
-          currentProfile.role !== 'support'
+          currentProfile.role !== 'superadmin'
         ) {
           const approvedProfiles = await db
             .collection('consultantProfiles')
@@ -262,12 +263,8 @@ userRoutes.get(
             const updatedAt =
               new Date().toISOString();
 
-            const linkedRole = currentProfile.role === 'employee'
-              ? 'employee'
-              : 'consultant';
-
             await userReference.update({
-              role: linkedRole,
+              role: 'consultant',
               consultantId: approvedProfile.id,
               updatedAt,
             });
@@ -277,7 +274,7 @@ userRoutes.get(
               data: {
                 ...currentProfile,
                 id: userDocument.id,
-                role: linkedRole,
+                role: 'consultant',
                 consultantId: approvedProfile.id,
                 updatedAt,
               },
