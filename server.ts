@@ -3326,7 +3326,16 @@ app.patch(
         createdAt: reviewedAt,
       };
       if (adminDb) {
-        await adminDb.collection('consultantProfiles').doc(consultantId).set(profile, { merge: true });
+        const confirmedSetting = {
+          pricePerMinute: Number(pricePerMinute.toFixed(2)),
+          active: true,
+          updatedAt: reviewedAt,
+          updatedBy: req.user?.uid,
+        };
+        await Promise.all([
+          adminDb.collection('consultantProfiles').doc(consultantId).set(profile, { merge: true }),
+          adminDb.collection('consultantSettings').doc(consultantId).set(confirmedSetting, { merge: true }),
+        ]);
         const users = await adminDb.collection('users').where('email', '==', application.email).limit(1).get();
         if (!users.empty) await users.docs[0].ref.update({ role: 'consultant', consultantId, updatedAt: reviewedAt });
       } else {
@@ -3340,6 +3349,8 @@ app.patch(
 );
 
 app.get('/api/consultants/public', async (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
   const settings = adminDb
     ? (await adminDb.collection('consultantSettings').get()).docs.reduce<Record<string, { pricePerMinute: number; active: boolean }>>((result, doc) => {
         result[doc.id] = doc.data() as { pricePerMinute: number; active: boolean };
@@ -3408,15 +3419,26 @@ app.get(
     }
     const userDocument = await adminDb.collection('users').doc(req.user.uid).get();
     const userData = userDocument.data() || {};
+    const accountEmail = String(userData.email || req.user.email || '').trim().toLowerCase();
     let consultantId = typeof userData.consultantId === 'string' ? userData.consultantId : '';
     let profileDocument = consultantId
       ? await adminDb.collection('consultantProfiles').doc(consultantId).get()
       : null;
-    if ((!profileDocument || !profileDocument.exists) && typeof userData.email === 'string') {
-      const profiles = await adminDb.collection('consultantProfiles').where('email', '==', userData.email).limit(1).get();
+    if ((!profileDocument || !profileDocument.exists) && accountEmail) {
+      const profiles = await adminDb
+        .collection('consultantProfiles')
+        .where('email', '==', accountEmail)
+        .where('active', '==', true)
+        .limit(1)
+        .get();
       if (!profiles.empty) {
         profileDocument = profiles.docs[0];
         consultantId = profileDocument.id;
+        await userDocument.ref.set({
+          consultantId,
+          role: userData.role === 'employee' ? 'employee' : 'consultant',
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
       }
     }
     if (!profileDocument?.exists) {
@@ -3461,8 +3483,26 @@ app.patch(
       return res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: 'Disponibilidade inválida.' } });
     }
     const userDocument = await adminDb.collection('users').doc(req.user.uid).get();
-    const consultantId = userDocument.data()?.consultantId;
-    if (typeof consultantId !== 'string' || !consultantId) {
+    const userData = userDocument.data() || {};
+    const accountEmail = String(userData.email || req.user.email || '').trim().toLowerCase();
+    let consultantId = typeof userData.consultantId === 'string' ? userData.consultantId : '';
+    if (!consultantId && accountEmail) {
+      const profiles = await adminDb
+        .collection('consultantProfiles')
+        .where('email', '==', accountEmail)
+        .where('active', '==', true)
+        .limit(1)
+        .get();
+      if (!profiles.empty) {
+        consultantId = profiles.docs[0].id;
+        await userDocument.ref.set({
+          consultantId,
+          role: userData.role === 'employee' ? 'employee' : 'consultant',
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+    }
+    if (!consultantId) {
       return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Perfil profissional não vinculado.' } });
     }
     await adminDb.collection('consultantProfiles').doc(consultantId).update({ status, updatedAt: new Date().toISOString() });

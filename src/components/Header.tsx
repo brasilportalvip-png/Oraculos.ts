@@ -143,59 +143,60 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
               Especialistas
             </a>
 
-            <a
-              href={hrefFor('blog')}
-              onClick={(event) => handleInternalLink(event, 'blog')}
-              aria-current={currentTab === 'blog' ? 'page' : undefined}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
-                currentTab === 'blog'
-                  ? 'bg-[#d4af37] text-black font-bold shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Blog Místico
-            </a>
-
-            <a
-              href={hrefFor('howItWorks')}
-              onClick={(event) => handleInternalLink(event, 'howItWorks')}
-              aria-current={currentTab === 'howItWorks' ? 'page' : undefined}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
-                currentTab === 'howItWorks'
-                  ? 'bg-[#d4af37] text-black font-bold shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              Como Funciona
-            </a>
-
-            <a
-              href={hrefFor('helpAndPrivacy')}
-              onClick={(event) => handleInternalLink(event, 'helpAndPrivacy')}
-              aria-current={currentTab === 'helpAndPrivacy' ? 'page' : undefined}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
-                currentTab === 'helpAndPrivacy'
-                  ? 'bg-[#d4af37] text-black font-bold shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Ajuda & LGPD
-            </a>
-
-            <a
-              href={hrefFor('workWithUs')}
-              onClick={(event) => handleInternalLink(event, 'workWithUs')}
-              aria-current={currentTab === 'workWithUs' ? 'page' : undefined}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
-                currentTab === 'workWithUs' ? 'bg-[#d4af37] text-black font-bold shadow-md' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Trabalhe Conosco
-            </a>
+            <details className="relative group">
+              <summary
+                className={`list-none cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all ${
+                  ['blog', 'howItWorks', 'helpAndPrivacy', 'workWithUs'].includes(currentTab)
+                    ? 'bg-[#d4af37] text-black font-bold shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Menu className="w-3.5 h-3.5" />
+                Mais
+              </summary>
+              <div className="absolute right-0 top-full z-[70] mt-3 w-60 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0b1b] p-2 shadow-2xl">
+                <a
+                  href={hrefFor('blog')}
+                  onClick={(event) => {
+                    handleInternalLink(event, 'blog');
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-200 hover:bg-white/10"
+                >
+                  <BookOpen className="w-4 h-4 text-amber-400" /> Blog Místico
+                </a>
+                <a
+                  href={hrefFor('howItWorks')}
+                  onClick={(event) => {
+                    handleInternalLink(event, 'howItWorks');
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-200 hover:bg-white/10"
+                >
+                  <HelpCircle className="w-4 h-4 text-amber-400" /> Como Funciona
+                </a>
+                <a
+                  href={hrefFor('helpAndPrivacy')}
+                  onClick={(event) => {
+                    handleInternalLink(event, 'helpAndPrivacy');
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-200 hover:bg-white/10"
+                >
+                  <Lock className="w-4 h-4 text-amber-400" /> Ajuda & LGPD
+                </a>
+                <a
+                  href={hrefFor('workWithUs')}
+                  onClick={(event) => {
+                    handleInternalLink(event, 'workWithUs');
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-200 hover:bg-white/10"
+                >
+                  <UserPlus className="w-4 h-4 text-amber-400" /> Trabalhe Conosco
+                </a>
+              </div>
+            </details>
 
             {/* Role Panel Access Link */}
             {isAuthenticated &&
@@ -346,12 +347,13 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
             <button
               ref={mobileMenuButtonRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="xl:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
+              className="xl:hidden flex items-center gap-1.5 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
               aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-primary-navigation"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <span className="hidden sm:inline text-[11px] font-bold uppercase tracking-wide">{isMobileMenuOpen ? 'Fechar' : 'Mais'}</span>
             </button>
           </div>
         </div>

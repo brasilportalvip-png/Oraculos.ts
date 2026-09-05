@@ -146,9 +146,10 @@ export const ConsultantCard: React.FC<Props> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <button
+            type="button"
             onClick={() => onStartConsultation(consultant, chosenOracle, 'chat')}
             disabled={consultant.status === 'offline'}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-[#d4af37] hover:text-black py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full touch-manipulation flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-[#d4af37] hover:text-black py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Chat
