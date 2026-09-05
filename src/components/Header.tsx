@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           </a>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1.5 glass-card px-3 py-1.5 rounded-full border border-white/10 overflow-x-auto">
+          <nav className="hidden xl:flex items-center gap-1.5 glass-card px-3 py-1.5 rounded-full border border-white/10">
             <a
               href={hrefFor('showcase')}
               onClick={(event) => handleInternalLink(event, 'showcase')}
@@ -316,7 +316,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
               <a
                 href={hrefFor('consultantDashboard')}
                 onClick={(event) => handleInternalLink(event, 'consultantDashboard')}
-                className="lg:hidden flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-amber-400 text-black text-[11px] font-black whitespace-nowrap"
+                className="xl:hidden flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-amber-400 text-black text-[11px] font-black whitespace-nowrap"
                 aria-label="Abrir painel profissional"
               >
                 <UserCheck className="w-4 h-4" />
@@ -346,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
             <button
               ref={mobileMenuButtonRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
+              className="xl:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
               aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-primary-navigation"
@@ -361,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           <nav
             id="mobile-primary-navigation"
             aria-label="Navegação principal móvel"
-            className="lg:hidden fixed z-50 left-0 right-0 top-16 sm:top-20 bottom-0 bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-2 shadow-2xl animate-in slide-in-from-top duration-200 overflow-y-auto overscroll-contain"
+            className="xl:hidden fixed z-50 left-0 right-0 top-16 sm:top-20 bottom-0 bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-2 shadow-2xl animate-in slide-in-from-top duration-200 overflow-y-auto overscroll-contain"
           >
             <a
               href={hrefFor('showcase')}
