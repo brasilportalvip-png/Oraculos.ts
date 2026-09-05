@@ -798,194 +798,283 @@ return;
   };
 
   const startConsultation = async (
-  consultant: Consultant,
-  oracle: OracleType,
-  mode: 'chat' | 'video',
-
-
-): Promise<{
-  success: boolean;
-  message?: string;
-}> => {
-  const firebaseUser =
-    auth.currentUser;
-
-  if (!firebaseUser) {
-    return {
-      success: false,
-      message:
-        'Sua sessão expirou. Entre novamente para iniciar a consulta.',
-    };
-  }
-
-  const consultationId =
-    `sess_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
-
-  
-let serverPricePerMinute =
-  consultant.pricePerMinute;
-
-
-let serverStartedAt =
-  new Date().toISOString();
-
-try {
-  const idToken =
-    await firebaseUser.getIdToken();
-
-  const response =
-    await fetch(
-      '/api/finance/start-consultation',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':
-            'application/json',
-          Authorization:
-            `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          consultationId,
-          consultantId:
-            consultant.id,
-          oracleType: oracle,
-          mode,
-        }),
-      },
-    );
-
-  const body =
-    await response
-      .json()
-      .catch(() => ({}));
-
-  if (
-    !response.ok ||
-    !body.success
-  ) {
-    if (
-      body.error?.code ===
-      'INSUFFICIENT_FUNDS'
-    ) {
-      setIsRechargeModalOpen(true);
+    consultant: Consultant,
+    oracle: OracleType,
+    mode: 'chat' | 'video',
+  ): Promise<{
+    success: boolean;
+    message?: string;
+  }> => {
+    try {
+      await auth.authStateReady();
+    } catch (error) {
+      console.warn(
+        '[ORACULOS.TS] Não foi possível aguardar a restauração completa da autenticação:',
+        error,
+      );
     }
 
-    return {
-      success: false,
-      message:
-        body.error?.message ||
-        'Não foi possível iniciar a consulta com segurança.',
-    };
-  }
+    const firebaseUser = auth.currentUser;
 
-  const officialPrice =
-    Number(
-      body.data?.pricePerMinute,
-    );
+    if (!firebaseUser) {
+      return {
+        success: false,
+        message:
+          'Sua sessão ainda não terminou de carregar. Aguarde um instante e tente abrir o chat novamente.',
+      };
+    }
 
-  if (
-    !Number.isFinite(
-      officialPrice,
-    ) ||
-    officialPrice <= 0
-  ) {
-    return {
-      success: false,
-      message:
-        'O servidor retornou um preço inválido para esta consulta.',
-    };
-  }
+    const requestedConsultationId =
+      `sess_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
 
-  serverPricePerMinute =
-    officialPrice;
+    let serverData: Record<string, unknown> = {};
 
-  if (
-    typeof body.data?.startedAt ===
-      'string' &&
-    body.data.startedAt
-  ) {
-    serverStartedAt =
-      body.data.startedAt;
-  }
-} catch (error) {
-  console.error(
-    '[ORACULOS.TS] Falha ao registrar início da consulta:',
-    error,
-  );
+    try {
+      const idToken =
+        await firebaseUser.getIdToken();
 
-  return {
-    success: false,
-    message:
-      'Falha de conexão ao iniciar a consulta. Nenhuma sessão foi aberta.',
-  };
-}
+      const response =
+        await fetch(
+          '/api/finance/start-consultation',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type':
+                'application/json',
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+              consultationId:
+                requestedConsultationId,
+              consultantId:
+                consultant.id,
+              oracleType:
+                oracle,
+              mode,
+            }),
+          },
+        );
 
-const initialMessage: ChatMessage = {
+      const body =
+        await response
+          .json()
+          .catch(() => ({}));
 
+      if (
+        !response.ok ||
+        !body.success
+      ) {
+        if (
+          body.error?.code ===
+          'INSUFFICIENT_FUNDS'
+        ) {
+          setIsRechargeModalOpen(true);
+        }
 
+        return {
+          success: false,
+          message:
+            body.error?.message ||
+            'Não foi possível iniciar a consulta com segurança.',
+        };
+      }
+
+      serverData =
+        body.data &&
+        typeof body.data === 'object'
+          ? body.data as Record<string, unknown>
+          : {};
+    } catch (error) {
+      console.error(
+        '[ORACULOS.TS] Falha ao registrar início da consulta:',
+        error,
+      );
+
+      return {
+        success: false,
+        message:
+          'Falha de conexão ao iniciar a consulta. Nenhuma sessão foi aberta.',
+      };
+    }
+
+    const officialPrice =
+      Number(
+        serverData.pricePerMinute,
+      );
+
+    if (
+      !Number.isFinite(
+        officialPrice,
+      ) ||
+      officialPrice <= 0
+    ) {
+      return {
+        success: false,
+        message:
+          'O servidor retornou um preço inválido para esta consulta.',
+      };
+    }
+
+    const serverConsultationId =
+      typeof serverData.id === 'string' &&
+      serverData.id.trim()
+        ? serverData.id.trim()
+        : requestedConsultationId;
+
+    const serverConsultantId =
+      typeof serverData.consultantId === 'string' &&
+      serverData.consultantId.trim()
+        ? serverData.consultantId.trim()
+        : consultant.id;
+
+    const sessionConsultant =
+      consultants.find(
+        (item) =>
+          item.id ===
+          serverConsultantId,
+      ) || consultant;
+
+    const serverConsultantName =
+      typeof serverData.consultantName === 'string' &&
+      serverData.consultantName.trim()
+        ? serverData.consultantName.trim()
+        : sessionConsultant.name;
+
+    const serverStartedAt =
+      typeof serverData.startedAt === 'string' &&
+      serverData.startedAt
+        ? serverData.startedAt
+        : new Date().toISOString();
+
+    const serverOracle =
+      typeof serverData.oracleType === 'string' &&
+      serverData.oracleType
+        ? serverData.oracleType as OracleType
+        : oracle;
+
+    const serverMode: 'chat' | 'video' =
+      serverData.mode === 'video'
+        ? 'video'
+        : 'chat';
+
+    const persistedMessages =
+      Array.isArray(serverData.messages)
+        ? serverData.messages as ChatMessage[]
+        : [];
+
+    const initialMessage: ChatMessage = {
       id: `msg_${Date.now()}`,
       senderId: 'system',
       senderName: 'ORACULOS.TS',
-      
-
-text: `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
-
-
-timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text:
+        `Conexão espiritual iniciada com ${serverConsultantName}. ` +
+        `Atendimento por ${serverMode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. ` +
+        `Consumo: ${officialPrice.toFixed(2)} min do saldo por minuto de atendimento.`,
+      timestamp:
+        new Date().toLocaleTimeString(
+          [],
+          {
+            hour: '2-digit',
+            minute: '2-digit',
+          },
+        ),
       isSystem: true,
     };
 
     const welcomeConsultantMsg: ChatMessage = {
-      id: `msg_welcome_${Date.now()}`,
-      senderId: consultant.id,
-      senderName: consultant.name,
-      text: `Olá ${user.name}, seja muito bem-vindo(a)! Estou concentrada(o) nas energias do ${oracle.toUpperCase()}. Como posso te guiar hoje?`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      id:
+        `msg_welcome_${Date.now()}`,
+      senderId:
+        serverConsultantId,
+      senderName:
+        serverConsultantName,
+      text:
+        `Olá ${user.name}, seja muito bem-vindo(a)! ` +
+        `Estou concentrada(o) nas energias do ${String(serverOracle).toUpperCase()}. ` +
+        'Como posso te guiar hoje?',
+      timestamp:
+        new Date().toLocaleTimeString(
+          [],
+          {
+            hour: '2-digit',
+            minute: '2-digit',
+          },
+        ),
     };
 
     const newSession: ConsultationSession = {
-  id: consultationId,
-      clientId: user.id,
-      clientName: user.name,
-      consultantId: consultant.id,
-      consultantName: consultant.name,
-      consultantAvatar: consultant.avatar,
-      oracleType: oracle,
-      mode,
-      status: 'active',
+      id:
+        serverConsultationId,
+      clientId:
+        user.id,
+      clientName:
+        user.name,
+      consultantId:
+        serverConsultantId,
+      consultantName:
+        serverConsultantName,
+      consultantAvatar:
+        sessionConsultant.avatar,
+      oracleType:
+        serverOracle,
+      mode:
+        serverMode,
+      status:
+        'active',
       startTime:
-  new Date(
-    serverStartedAt,
-  ).toLocaleTimeString(
-    [],
-    {
-      hour: '2-digit',
-      minute: '2-digit',
-    },
-  ),
+        new Date(
+          serverStartedAt,
+        ).toLocaleTimeString(
+          [],
+          {
+            hour: '2-digit',
+            minute: '2-digit',
+          },
+        ),
       durationSeconds: 0,
       pricePerMinute:
-  serverPricePerMinute,
+        officialPrice,
       totalCost: 0,
       adminCommission: 0,
       consultantEarnings: 0,
-      messages: [initialMessage, welcomeConsultantMsg],
+      messages:
+        persistedMessages.length > 0
+          ? persistedMessages
+          : [
+              initialMessage,
+              welcomeConsultantMsg,
+            ],
     };
 
-    setActiveSession(newSession);
-
-    // Update consultant status to 'busy'
-    setConsultants((prev) =>
-      prev.map((c) => (c.id === consultant.id ? { ...c, status: 'busy' } : c))
+    setActiveSession(
+      newSession,
     );
 
-    return { success: true };
+    setConsultants(
+      (previous) =>
+        previous.map(
+          (item) =>
+            item.id ===
+            serverConsultantId
+              ? {
+                  ...item,
+                  status: 'busy',
+                }
+              : item,
+        ),
+    );
+
+    return {
+      success: true,
+      message:
+        serverData.resumed === true
+          ? 'Consulta ativa retomada.'
+          : undefined,
+    };
   };
-
-  
-
 
 
 const sendMessage = (text: string) => {

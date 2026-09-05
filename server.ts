@@ -3593,7 +3593,7 @@ app.post('/api/consultations/:id/messages', requireAuth, async (req: Authenticat
   return res.status(201).json({ success: true, data: { message } });
 });
 
-// Inicia uma consulta usando horário e preço
+// Inicia ou retoma uma consulta usando horário e preço
 // definidos exclusivamente pelo servidor.
 app.post(
   '/api/finance/start-consultation',
@@ -3619,7 +3619,8 @@ app.post(
           : '';
 
       const oracleType =
-        typeof req.body?.oracleType === 'string'
+        typeof req.body?.oracleType ===
+        'string'
           ? req.body.oracleType.trim()
           : '';
 
@@ -3633,7 +3634,8 @@ app.post(
           success: false,
           error: {
             code: 'VIDEO_NOT_AVAILABLE',
-            message: 'A videochamada está temporariamente indisponível. Inicie pelo Chat Seguro, que já está plenamente operacional.',
+            message:
+              'A videochamada está temporariamente indisponível. Inicie pelo Chat Seguro.',
           },
         });
       }
@@ -3678,24 +3680,137 @@ app.post(
         });
       }
 
+      const db = adminDb;
+
       /*
-       * Fonte oficial do preço.
-       * INITIAL_CONSULTANTS contém
-       * consultores humanos e virtuais.
+       * TESTE / FALLBACK LOCAL
+       * Retoma a sessão ativa antes de tentar
+       * criar outra, reproduzindo o comportamento
+       * esperado no celular após reload ou PWA.
+       */
+      if (
+        process.env.NODE_ENV ===
+          'test' ||
+        !db
+      ) {
+        const testUser =
+          usersDb[userId];
+
+        if (!testUser) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code:
+                'USER_NOT_FOUND',
+              message:
+                'Usuário não encontrado.',
+            },
+          });
+        }
+
+        if (
+          testUser.status ===
+          'blocked'
+        ) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code:
+                'USER_BLOCKED',
+              message:
+                'Esta conta está bloqueada para consultas.',
+            },
+          });
+        }
+
+        const requestedSession =
+          consultationSessionsDb[
+            `${userId}:${consultationId}`
+          ];
+
+        if (requestedSession) {
+          if (
+            requestedSession
+              .consultantId !==
+            consultantId
+          ) {
+            return res.status(409).json({
+              success: false,
+              error: {
+                code:
+                  'CONSULTATION_ID_CONFLICT',
+                message:
+                  'Esta consulta já está vinculada a outro consultor.',
+              },
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            data: {
+              ...requestedSession,
+              alreadyStarted:
+                true,
+              resumed:
+                requestedSession.status ===
+                'active',
+            },
+          });
+        }
+
+        const activeSession =
+          Object.values(
+            consultationSessionsDb,
+          ).find(
+            (session) =>
+              session.userId ===
+                userId &&
+              session.status ===
+                'active',
+          );
+
+        if (activeSession) {
+          return res.status(200).json({
+            success: true,
+            data: {
+              ...activeSession,
+              alreadyStarted: true,
+              resumed: true,
+            },
+          });
+        }
+      }
+
+      /*
+       * Fonte oficial do consultor e do preço.
        */
       let consultant =
         INITIAL_CONSULTANTS.find(
           (item) =>
-            item.id === consultantId,
+            item.id ===
+            consultantId,
         );
 
-      if (!consultant && adminDb) {
-        const consultantDocument = await adminDb
-          .collection('consultantProfiles')
-          .doc(consultantId)
-          .get();
-        if (consultantDocument.exists) {
-          consultant = consultantDocument.data() as (typeof INITIAL_CONSULTANTS)[number];
+      if (
+        !consultant &&
+        db
+      ) {
+        const consultantDocument =
+          await db
+            .collection(
+              'consultantProfiles',
+            )
+            .doc(
+              consultantId,
+            )
+            .get();
+
+        if (
+          consultantDocument.exists
+        ) {
+          consultant =
+            consultantDocument.data() as
+              (typeof INITIAL_CONSULTANTS)[number];
         }
       }
 
@@ -3711,34 +3826,73 @@ app.post(
         });
       }
 
-      let pricePerMinute = Number(
-        consultant.pricePerMinute,
-      );
+      let pricePerMinute =
+        Number(
+          consultant.pricePerMinute,
+        );
 
-      if (adminDb) {
-        const pricingDocument = await adminDb
-          .collection('consultantSettings')
-          .doc(consultantId)
-          .get();
-        if (pricingDocument.exists) {
-          const pricing = pricingDocument.data() || {};
-          if (pricing.active === false) {
+      if (db) {
+        const pricingDocument =
+          await db
+            .collection(
+              'consultantSettings',
+            )
+            .doc(
+              consultantId,
+            )
+            .get();
+
+        if (
+          pricingDocument.exists
+        ) {
+          const pricing =
+            pricingDocument.data() ||
+            {};
+
+          if (
+            pricing.active ===
+            false
+          ) {
             return res.status(409).json({
               success: false,
-              error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
+              error: {
+                code:
+                  'CONSULTANT_INACTIVE',
+                message:
+                  'Este profissional está indisponível.',
+              },
             });
           }
-          pricePerMinute = Number(pricing.pricePerMinute);
+
+          pricePerMinute =
+            Number(
+              pricing.pricePerMinute,
+            );
         }
-      } else if (consultantSettingsDb[consultantId]) {
-        const pricing = consultantSettingsDb[consultantId];
+      } else if (
+        consultantSettingsDb[
+          consultantId
+        ]
+      ) {
+        const pricing =
+          consultantSettingsDb[
+            consultantId
+          ];
+
         if (!pricing.active) {
           return res.status(409).json({
             success: false,
-            error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
+            error: {
+              code:
+                'CONSULTANT_INACTIVE',
+              message:
+                'Este profissional está indisponível.',
+            },
           });
         }
-        pricePerMinute = pricing.pricePerMinute;
+
+        pricePerMinute =
+          pricing.pricePerMinute;
       }
 
       if (
@@ -3758,85 +3912,13 @@ app.post(
         });
       }
 
-      /*
-       * Ambiente automatizado/local.
-       */
       if (
         process.env.NODE_ENV ===
           'test' ||
-        !adminDb
+        !db
       ) {
         const testUser =
           usersDb[userId];
-
-        if (!testUser) {
-          return res.status(404).json({
-            success: false,
-            error: {
-              code:
-                'USER_NOT_FOUND',
-              message:
-                'Usuário não encontrado.',
-            },
-          });
-        }
-
-        const sessionKey =
-          `${userId}:${consultationId}`;
-
-        const existingSession =
-          consultationSessionsDb[
-            sessionKey
-          ];
-
-        if (existingSession) {
-          if (
-            existingSession
-              .consultantId !==
-            consultantId
-          ) {
-            return res.status(409).json({
-              success: false,
-              error: {
-                code:
-                  'CONSULTATION_ID_CONFLICT',
-                message:
-                  'Esta consulta já está vinculada a outro consultor.',
-              },
-            });
-          }
-
-          return res.status(200).json({
-            success: true,
-            data: {
-              ...existingSession,
-              alreadyStarted: true,
-            },
-          });
-        }
-
-        const activeSession =
-          Object.values(
-            consultationSessionsDb,
-          ).find(
-            (session) =>
-              session.userId ===
-                userId &&
-              session.status ===
-                'active',
-          );
-
-        if (activeSession) {
-          return res.status(409).json({
-            success: false,
-            error: {
-              code:
-                'ACTIVE_CONSULTATION_EXISTS',
-              message:
-                'Já existe uma consulta ativa para este usuário.',
-            },
-          });
-        }
 
         const balanceBefore =
           Number(
@@ -3878,7 +3960,7 @@ app.post(
         };
 
         consultationSessionsDb[
-          sessionKey
+          `${userId}:${consultationId}`
         ] = newSession;
 
         return res.status(200).json({
@@ -3886,17 +3968,16 @@ app.post(
           data: {
             ...newSession,
             balanceBefore,
-            alreadyStarted: false,
+            alreadyStarted:
+              false,
+            resumed:
+              false,
           },
         });
       }
 
-      /*
-       * Produção:
-       * sessão persistida no Firestore.
-       */
       const userReference =
-        adminDb
+        db
           .collection('users')
           .doc(userId);
 
@@ -3905,50 +3986,26 @@ app.post(
           .collection(
             'consultationSessions',
           )
-          .doc(consultationId);
+          .doc(
+            consultationId,
+          );
 
       const result =
-        await adminDb.runTransaction(
+        await db.runTransaction(
           async (transaction) => {
             /*
-             * Todas as leituras acontecem
-             * antes das gravações.
+             * Todas as leituras vêm antes
+             * das gravações.
              */
             const userDocument =
               await transaction.get(
                 userReference,
               );
 
-            const sessionDocument =
+            const requestedSessionDocument =
               await transaction.get(
                 sessionReference,
               );
-
-            if (
-              sessionDocument.exists
-            ) {
-              const existingSession =
-                sessionDocument.data() ||
-                {};
-
-              if (
-                existingSession
-                  .consultantId !==
-                consultantId
-              ) {
-                throw new Error(
-                  'CONSULTATION_ID_CONFLICT',
-                );
-              }
-
-              return {
-                ...existingSession,
-                id:
-                  consultationId,
-                alreadyStarted:
-                  true,
-              };
-            }
 
             if (
               !userDocument.exists
@@ -3971,9 +4028,91 @@ app.post(
               );
             }
 
+            const activeConsultationId =
+              typeof userData
+                .activeConsultationId ===
+              'string'
+                ? userData
+                    .activeConsultationId
+                    .trim()
+                : '';
+
+            const activeSessionDocument =
+              activeConsultationId &&
+              activeConsultationId !==
+                consultationId
+                ? await transaction.get(
+                    userReference
+                      .collection(
+                        'consultationSessions',
+                      )
+                      .doc(
+                        activeConsultationId,
+                      ),
+                  )
+                : null;
+
+            if (
+              requestedSessionDocument
+                .exists
+            ) {
+              const requestedSession =
+                requestedSessionDocument
+                  .data() ||
+                {};
+
+              if (
+                requestedSession
+                  .consultantId !==
+                consultantId
+              ) {
+                throw new Error(
+                  'CONSULTATION_ID_CONFLICT',
+                );
+              }
+
+              return {
+                ...requestedSession,
+                id:
+                  consultationId,
+                alreadyStarted:
+                  true,
+                resumed:
+                  requestedSession.status ===
+                  'active',
+              };
+            }
+
+            if (
+              activeSessionDocument &&
+              activeSessionDocument
+                .exists
+            ) {
+              const activeSession =
+                activeSessionDocument
+                  .data() ||
+                {};
+
+              if (
+                activeSession.status ===
+                'active'
+              ) {
+                return {
+                  ...activeSession,
+                  id:
+                    activeConsultationId,
+                  alreadyStarted:
+                    true,
+                  resumed:
+                    true,
+                };
+              }
+            }
+
             const balanceBefore =
               Number(
-                userData.minuteBalance ??
+                userData
+                  .minuteBalance ??
                   userData.balance ??
                   0,
               );
@@ -3984,24 +4123,6 @@ app.post(
             ) {
               throw new Error(
                 'INSUFFICIENT_MINUTES',
-              );
-            }
-
-            const activeConsultationId =
-              typeof userData
-                .activeConsultationId ===
-              'string'
-                ? userData
-                    .activeConsultationId
-                : '';
-
-            if (
-              activeConsultationId &&
-              activeConsultationId !==
-                consultationId
-            ) {
-              throw new Error(
-                'ACTIVE_CONSULTATION_EXISTS',
               );
             }
 
@@ -4045,13 +4166,16 @@ app.post(
               balanceBefore,
               alreadyStarted:
                 false,
+              resumed:
+                false,
             };
           },
         );
 
       return res.status(200).json({
         success: true,
-        data: result,
+        data:
+          result,
       });
     } catch (error: unknown) {
       const message =
@@ -4106,21 +4230,6 @@ app.post(
 
       if (
         message ===
-        'ACTIVE_CONSULTATION_EXISTS'
-      ) {
-        return res.status(409).json({
-          success: false,
-          error: {
-            code:
-              'ACTIVE_CONSULTATION_EXISTS',
-            message:
-              'Já existe uma consulta ativa para este usuário.',
-          },
-        });
-      }
-
-      if (
-        message ===
         'CONSULTATION_ID_CONFLICT'
       ) {
         return res.status(409).json({
@@ -4135,7 +4244,7 @@ app.post(
       }
 
       console.error(
-        '[ORACULOS.TS] Erro ao iniciar consulta segura:',
+        '[ORACULOS.TS] Erro ao iniciar ou retomar consulta segura:',
         error,
       );
 
@@ -4145,7 +4254,7 @@ app.post(
           code:
             'CONSULTATION_START_FAILED',
           message:
-            'Não foi possível iniciar a consulta com segurança.',
+            'Não foi possível iniciar ou retomar a consulta com segurança.',
         },
       });
     }

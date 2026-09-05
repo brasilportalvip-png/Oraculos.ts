@@ -313,17 +313,6 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
               </div>
             )}
 
-            {isAuthenticated && (user.role === 'employee' || user.role === 'consultant') && (
-              <a
-                href={hrefFor('consultantDashboard')}
-                onClick={(event) => handleInternalLink(event, 'consultantDashboard')}
-                className="xl:hidden flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-amber-400 text-black text-[11px] font-black whitespace-nowrap"
-                aria-label="Abrir painel profissional"
-              >
-                <UserCheck className="w-4 h-4" />
-                <span className="hidden min-[360px]:inline">Painel</span>
-              </a>
-            )}
 
             {isAuthenticated && (
               <div className="hidden sm:flex items-center gap-2 p-1 glass-card rounded-full border border-white/10">
@@ -363,117 +352,148 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
           <nav
             id="mobile-primary-navigation"
             aria-label="Navegação principal móvel"
-            className="xl:hidden fixed z-50 left-0 right-0 top-16 sm:top-20 bottom-0 bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-2 shadow-2xl animate-in slide-in-from-top duration-200 overflow-y-auto overscroll-contain"
+            className="xl:hidden fixed z-[70] left-0 right-0 top-16 sm:top-20 bottom-0 bg-[#0a0714] border-b border-purple-900/40 px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl animate-in slide-in-from-top duration-200 overflow-y-auto overscroll-contain"
           >
-            <a
-              href={hrefFor('showcase')}
-              onClick={(event) => handleInternalLink(event, 'showcase')}
-              aria-current={currentTab === 'showcase' ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                currentTab === 'showcase' ? 'bg-[#d4af37] text-black font-bold' : 'text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              Marketplace
-            </a>
-
-            <a
-              href={hrefFor('oracles')}
-              onClick={(event) => handleInternalLink(event, 'oracles')}
-              aria-current={currentTab === 'oracles' ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                currentTab === 'oracles' ? 'bg-[#d4af37] text-black font-bold' : 'text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              Especialistas
-            </a>
-
-            <a
-              href={hrefFor('blog')}
-              onClick={(event) => handleInternalLink(event, 'blog')}
-              aria-current={currentTab === 'blog' ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                currentTab === 'blog' ? 'bg-[#d4af37] text-black font-bold' : 'text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              Blog Místico
-            </a>
-
-            <a
-              href={hrefFor('howItWorks')}
-              onClick={(event) => handleInternalLink(event, 'howItWorks')}
-              aria-current={currentTab === 'howItWorks' ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                currentTab === 'howItWorks' ? 'bg-[#d4af37] text-black font-bold' : 'text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              Como Funciona
-            </a>
-
-            <a
-              href={hrefFor('helpAndPrivacy')}
-              onClick={(event) => handleInternalLink(event, 'helpAndPrivacy')}
-              aria-current={currentTab === 'helpAndPrivacy' ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                currentTab === 'helpAndPrivacy' ? 'bg-[#d4af37] text-black font-bold' : 'text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              <Lock className="w-4 h-4" />
-              Ajuda & LGPD
-            </a>
-            <a
-              href={hrefFor('workWithUs')}
-              onClick={(event) => handleInternalLink(event, 'workWithUs')}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 bg-purple-500/10"
-            >
-              <UserPlus className="w-4 h-4" />
-              Trabalhe Conosco
-            </a>
-
-            {isAuthenticated && (user.role === 'user' || user.role === 'client') && (
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-2.5">
               <a
-                href={hrefFor('clientDashboard')}
-                onClick={(event) => handleInternalLink(event, 'clientDashboard')}
-                aria-current={currentTab === 'clientDashboard' ? 'page' : undefined}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                  currentTab === 'clientDashboard' ? 'bg-[#d4af37] text-black font-bold' : 'text-amber-300 bg-amber-500/10'
+                href={hrefFor('showcase')}
+                onClick={(event) => handleInternalLink(event, 'showcase')}
+                aria-current={currentTab === 'showcase' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[52px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold uppercase tracking-wider text-left transition-all ${
+                  currentTab === 'showcase'
+                    ? 'bg-[#d4af37] text-black font-bold'
+                    : 'text-gray-200 bg-white/[0.04]'
                 }`}
               >
-                <Wallet className="w-4 h-4" />
-                Minha Carteira ({user.minuteBalance ?? 0} min)
+                <Users className="w-5 h-5" />
+                Marketplace
               </a>
-            )}
 
-            {isAuthenticated && (user.role === 'employee' || user.role === 'consultant') && (
               <a
-                href={hrefFor('consultantDashboard')}
-                onClick={(event) => handleInternalLink(event, 'consultantDashboard')}
-                aria-current={currentTab === 'consultantDashboard' ? 'page' : undefined}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                  currentTab === 'consultantDashboard' ? 'bg-[#d4af37] text-black font-bold' : 'text-purple-300 bg-purple-500/10'
+                href={hrefFor('oracles')}
+                onClick={(event) => handleInternalLink(event, 'oracles')}
+                aria-current={currentTab === 'oracles' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[52px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold uppercase tracking-wider text-left transition-all ${
+                  currentTab === 'oracles'
+                    ? 'bg-[#d4af37] text-black font-bold'
+                    : 'text-gray-200 bg-white/[0.04]'
                 }`}
               >
-                <UserCheck className="w-4 h-4" />
-                Painel Profissional
+                <Compass className="w-5 h-5" />
+                Especialistas
               </a>
-            )}
 
-            {isAuthenticated && (user.role === 'admin' || user.role === 'superadmin') && (
               <a
-                href={hrefFor('adminDashboard')}
-                onClick={(event) => handleInternalLink(event, 'adminDashboard')}
-                aria-current={currentTab === 'adminDashboard' ? 'page' : undefined}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-left transition-all ${
-                  currentTab === 'adminDashboard' ? 'bg-[#d4af37] text-black font-bold' : 'text-emerald-300 bg-emerald-500/10'
+                href={hrefFor('workWithUs')}
+                onClick={(event) => handleInternalLink(event, 'workWithUs')}
+                aria-current={currentTab === 'workWithUs' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[54px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider text-left border ${
+                  currentTab === 'workWithUs'
+                    ? 'bg-[#d4af37] text-black border-[#d4af37]'
+                    : 'text-purple-100 bg-purple-500/15 border-purple-400/25'
                 }`}
               >
-                <ShieldCheck className="w-4 h-4" />
-                Painel Admin
+                <UserPlus className="w-5 h-5" />
+                Trabalhe Conosco
               </a>
-            )}
+
+              {isAuthenticated && (user.role === 'user' || user.role === 'client') && (
+                <a
+                  href={hrefFor('clientDashboard')}
+                  onClick={(event) => handleInternalLink(event, 'clientDashboard')}
+                  aria-current={currentTab === 'clientDashboard' ? 'page' : undefined}
+                  className={`touch-manipulation min-h-[58px] w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-black uppercase tracking-wider text-left border-2 ${
+                    currentTab === 'clientDashboard'
+                      ? 'bg-[#d4af37] text-black border-[#d4af37]'
+                      : 'text-amber-200 bg-amber-500/15 border-amber-400/35'
+                  }`}
+                >
+                  <Wallet className="w-5 h-5 shrink-0" />
+                  <span className="flex min-w-0 flex-col">
+                    <span>Painel do Usuário</span>
+                    <span className="text-[10px] font-semibold normal-case tracking-normal opacity-80">
+                      Carteira: {user.minuteBalance ?? 0} min
+                    </span>
+                  </span>
+                </a>
+              )}
+
+              {isAuthenticated && (user.role === 'employee' || user.role === 'consultant') && (
+                <a
+                  href={hrefFor('consultantDashboard')}
+                  onClick={(event) => handleInternalLink(event, 'consultantDashboard')}
+                  aria-current={currentTab === 'consultantDashboard' ? 'page' : undefined}
+                  className={`touch-manipulation min-h-[58px] w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-black uppercase tracking-wider text-left border-2 ${
+                    currentTab === 'consultantDashboard'
+                      ? 'bg-[#d4af37] text-black border-[#d4af37]'
+                      : 'text-purple-100 bg-purple-500/20 border-purple-400/40'
+                  }`}
+                >
+                  <UserCheck className="w-5 h-5 shrink-0" />
+                  Painel do Funcionário
+                </a>
+              )}
+
+              {isAuthenticated && (user.role === 'admin' || user.role === 'superadmin') && (
+                <a
+                  href={hrefFor('adminDashboard')}
+                  onClick={(event) => handleInternalLink(event, 'adminDashboard')}
+                  aria-current={currentTab === 'adminDashboard' ? 'page' : undefined}
+                  className={`touch-manipulation min-h-[58px] w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-black uppercase tracking-wider text-left border-2 ${
+                    currentTab === 'adminDashboard'
+                      ? 'bg-[#d4af37] text-black border-[#d4af37]'
+                      : 'text-emerald-100 bg-emerald-500/15 border-emerald-400/35'
+                  }`}
+                >
+                  <ShieldCheck className="w-5 h-5 shrink-0" />
+                  Painel Admin
+                </a>
+              )}
+
+              <div className="my-1 border-t border-white/10" />
+
+              <a
+                href={hrefFor('blog')}
+                onClick={(event) => handleInternalLink(event, 'blog')}
+                aria-current={currentTab === 'blog' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[50px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold uppercase tracking-wider text-left transition-all ${
+                  currentTab === 'blog'
+                    ? 'bg-[#d4af37] text-black font-bold'
+                    : 'text-gray-300 bg-white/[0.025]'
+                }`}
+              >
+                <BookOpen className="w-5 h-5" />
+                Blog Místico
+              </a>
+
+              <a
+                href={hrefFor('howItWorks')}
+                onClick={(event) => handleInternalLink(event, 'howItWorks')}
+                aria-current={currentTab === 'howItWorks' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[50px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold uppercase tracking-wider text-left transition-all ${
+                  currentTab === 'howItWorks'
+                    ? 'bg-[#d4af37] text-black font-bold'
+                    : 'text-gray-300 bg-white/[0.025]'
+                }`}
+              >
+                <HelpCircle className="w-5 h-5" />
+                Como Funciona
+              </a>
+
+              <a
+                href={hrefFor('helpAndPrivacy')}
+                onClick={(event) => handleInternalLink(event, 'helpAndPrivacy')}
+                aria-current={currentTab === 'helpAndPrivacy' ? 'page' : undefined}
+                className={`touch-manipulation min-h-[50px] w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold uppercase tracking-wider text-left transition-all ${
+                  currentTab === 'helpAndPrivacy'
+                    ? 'bg-[#d4af37] text-black font-bold'
+                    : 'text-gray-300 bg-white/[0.025]'
+                }`}
+              >
+                <Lock className="w-5 h-5" />
+                Ajuda & LGPD
+              </a>
+            </div>
           </nav>
         )}
       </header>
