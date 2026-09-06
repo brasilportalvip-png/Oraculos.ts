@@ -476,7 +476,7 @@ window.location.assign('/');
         {/* Chat Container */}
         <div className={`flex-1 flex flex-col bg-[#0B0813] ${mode === 'video' ? 'hidden md:flex border-l border-purple-900/40 md:w-[380px] lg:w-[420px]' : 'w-full'}`}>
           {/* Messages Stream */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5">
+          <div className="flex-1 min-h-0 p-4 overflow-y-scroll space-y-3.5">
             {activeSession.messages.map((msg) => {
               if (msg.isSystem) {
                 return (

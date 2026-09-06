@@ -184,42 +184,53 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           : [];
 
         setConsultants(() => {
-  const seenProfiles = new Set<string>();
+  const normalizeProfileName = (
+  value: unknown,
+) =>
+  typeof value === 'string'
+    ? value
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase('pt-BR')
+    : '';
 
-  const uniqueApproved = approved.filter((profile) => {
-  const profileId =
-    typeof profile?.id === 'string'
-      ? profile.id.trim()
-      : '';
+const seenProfileNames = new Set(
+  INITIAL_CONSULTANTS
+    .map((item) =>
+      normalizeProfileName(item.name),
+    )
+    .filter(Boolean),
+);
 
-  const profileName =
-    typeof profile?.name === 'string'
-      ? profile.name.trim()
-      : '';
+const uniqueApproved = approved.filter(
+  (profile) => {
+    const profileId =
+      typeof profile?.id === 'string'
+        ? profile.id.trim()
+        : '';
 
-  if (!profileId || !profileName) {
-    return false;
-  }
+    const profileName =
+      normalizeProfileName(
+        profile?.name,
+      );
 
-  const profileAvatar =
-    typeof profile.avatar === 'string'
-      ? profile.avatar.trim()
-      : '';
+    if (
+      !profileId ||
+      !profileName ||
+      seenProfileNames.has(
+        profileName,
+      )
+    ) {
+      return false;
+    }
 
-  const profileKey =
-    `${profileName.toLowerCase()}|${profileAvatar.toLowerCase()}`;
+    seenProfileNames.add(
+      profileName,
+    );
 
-  if (seenProfiles.has(profileKey)) {
-    return false;
-  }
-
-  seenProfiles.add(profileKey);
-
-  return !INITIAL_CONSULTANTS.some(
-    (item) => item.id === profileId,
-  );
-});
-
+    return true;
+  },
+);
   const merged = [
     ...INITIAL_CONSULTANTS,
     ...uniqueApproved,
