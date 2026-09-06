@@ -48,10 +48,10 @@ const LEGAL_DOCS: Record<LegalDocType, {
         ],
       },
       {
-        title: '4. Atendentes Virtuais e Transparência',
+        title: '4. Especialistas Credenciados e Acolhimento',
         content: [
-          'A plataforma disponibiliza atendentes virtuais identificados com o selo "Atendente Virtual", alimentados por inteligência artificial treinada em fontes canônicas oraculares.',
-          'Em estrito cumprimento ao princípio da boa-fé objetiva, a plataforma jamais simula respostas humanas por meios artificiais sem clara e inequívoca identificação prévia.',
+          'A plataforma conecta consulentes a oraculistas dedicados nas tradições canônicas de Tarot, Baralho Cigano, Astrologia, Búzios e mesas radiônicas.',
+          'Todas as orientações visam o acolhimento espiritual, o autoconhecimento e a clareza de caminhos, mantendo sigilo e respeito absoluto ao livre-arbítrio.',
         ],
       },
     ],

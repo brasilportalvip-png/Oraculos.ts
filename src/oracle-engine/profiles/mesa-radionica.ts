@@ -652,7 +652,7 @@ function formatarCampo(campo: CampoRadionico): string {
 ${campo.nome.toUpperCase()}
 ═══════════════════════
 
-Percentual simbólico:
+Alinhamento energético:
 ${campo.percentual}%
 
 Nível:
@@ -797,7 +797,7 @@ export function buildMesaRadionicaSuprema(
   const principalPrioridade = ordenadosPorPrioridade[0];
 
   const direcaoPrincipal =
-    `A prioridade simbólica está em ${principalPrioridade.nome}, ` +
+    `A prioridade espiritual está em ${principalPrioridade.nome}, ` +
     `especialmente no tema ${principalPrioridade.indicadorPrincipal.nome}. ` +
     `${principalPrioridade.indicadorPrincipal.conselho}`;
 

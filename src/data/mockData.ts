@@ -8,6 +8,7 @@ import type {
 import {
   VIRTUAL_CONSULTANTS_MAPPED,
 } from './virtualProfiles.js';
+import { getDailyBlogPosts } from './blogData.js';
 
 export const INITIAL_CONSULTANTS: Consultant[] = [
   ...VIRTUAL_CONSULTANTS_MAPPED,
@@ -15,7 +16,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c1',
     name: 'Helena da Luz',
     title: 'Taróloga e Mestra em Baralho Cigano',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/helena-da-luz.webp',
     bio: 'Mais de 15 anos guiando pessoas em decisões amorosas, carreira e autoconhecimento através das cartas sagradas do Tarot de Marseille e Lenormand. Atendimento acolhedor e direto ao ponto.',
     specialties: ['tarot', 'cigano', 'mesaradionica'],
     rating: 4.9,
@@ -51,7 +52,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c2',
     name: 'Mestre Gabriel Astros',
     title: 'Astrologia Cabalística & Sinastria Amorosa',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/mestre-gabriel-astros.webp',
     bio: 'Especialista em Mapa Astral, Revolução Solar e Sinastria de Casais. Ajudo você a entender os ciclos planetários e como usar o momento astrológico a seu favor no trabalho e no amor.',
     specialties: ['astrologia', 'numerologia', 'iching'],
     rating: 4.95,
@@ -79,7 +80,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c3',
     name: 'Mãe Serena de Oya',
     title: 'Sacerdotisa de Búzios, Ifá & Odus Ancestrais',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/mae-serena-humana.webp',
     bio: 'Praticante das tradições oraculares de matriz afro-brasileira com mais de 20 anos de sacerdócio. O jogo de Búzios e os Odus trazem respostas éticas e acolhedoras para clareza espiritual e orientação de vida.',
     specialties: ['buzios', 'ifa'],
     rating: 5.0,
@@ -107,7 +108,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c4',
     name: 'Clarice Mendonça',
     title: 'Litoterapeuta & Mestra em Mesa Radiônica',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/clarice-mendonca.webp',
     bio: 'Atendimento focado em harmonização energética pessoal, mesa radiônica e contemplação terapêutica com Cristais. Proporciona equilíbrio emocional e reconexão com sua paz interior.',
     specialties: ['cristais', 'mesaradionica', 'numerologia'],
     rating: 4.88,
@@ -135,7 +136,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c5',
     name: 'Sábio Liam Nordic',
     title: 'Mestre em Runas Nórdicas & I Ching',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/sabio-liam-nordic.webp',
     bio: 'Estudioso das tradições nórdicas e filosofias orientais. As Runas e o I Ching revelam as forças ocultas agindo sobre o seu momento presente e oferecem conselhos estratégicos de sabedoria.',
     specialties: ['runas', 'iching', 'tarot'],
     rating: 4.92,
@@ -163,7 +164,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     id: 'c6',
     name: 'Mística Vânia',
     title: 'Taróloga Intuitiva & Numeróloga da Alma',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400',
+    avatar: '/consultants/mistica-vania.webp',
     bio: 'Orientação com empatia e acolhimento espiritual. Utilizo a Numerologia para desvendar sua missão de vida e o Tarot para iluminar relacionamentos e finanças.',
     specialties: ['numerologia', 'tarot', 'cigano'],
     rating: 4.85,
@@ -189,87 +190,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
   },
 ];
 
-export const INITIAL_BLOG_POSTS: BlogPost[] = [
-  {
-    id: 'b1',
-    title: 'O Portal do Tarot em 2026: Entenda o Significado dos Arcanos Regentes',
-    slug: 'portal-do-tarot-2026',
-    summary: 'Descubra como os Arcanos do Tarot influenciam as energias coletivas e saiba como se preparar para as grandes escolhas do ano.',
-    content: `
-# O Portal do Tarot em 2026: Como os Arcanos Orientam seus Caminhos
-
-O Tarot não é apenas uma ferramenta de previsão do futuro, mas um poderoso espelho da mente subconsciente e dos arquétipos que regem nossas escolhas. Em 2026, as vibrações dos Arcanos Maiores nos convidam a um profundo alinhamento entre o que sentimos e o que manifestamos na matéria.
-
-## Os Três Pilares da Leitura de Tarot
-
-1. **Autoconhecimento Lúcido:** As cartas mostram as intenções ocultas e bloqueios emocionais.
-2. **Direcionamento Prático:** Em vez de previsões estáticas, o Tarot oferece aconselhamento para tomadas de decisão.
-3. **Harmonia nos Relacionamentos:** Entender a energia entre você e outra pessoa através do Tarot do Amor.
-
-### Como Aproveitar sua Consulta Online de Tarot
-Antes de iniciar sua sessão com um de nossos consultores credenciados no **ORACULOS.TS**, faça algumas respirações profundas, formule perguntas claras e mantenha sua mente aberta para ouvir a orientação dos oráculos.
-    `,
-    category: 'tarot',
-    author: 'Helena da Luz',
-    date: '26/07/2026',
-    readTime: '4 min',
-    coverImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800',
-    tags: ['Tarot', 'Espiritualidade', 'Arcanos', 'Autoconhecimento'],
-    views: 1240,
-  },
-  {
-    id: 'b2',
-    title: 'Baralho Cigano x Tarot Tradicional: Qual é a Diferença?',
-    slug: 'baralho-cigano-vs-tarot',
-    summary: 'Aprenda a escolher o oráculo ideal para o seu momento. Veja quando optar pela objetividade do Lenormand ou pela profundidade dos Arcanos.',
-    content: `
-# Baralho Cigano vs. Tarot Tradicional: Qual Oráculo Escolher?
-
-Muitos consulentes ficam em dúvida na hora de escolher seu atendimento espiritual. Embora ambos usem cartas, o **Baralho Cigano (Petit Lenormand)** e o **Tarot** possuem linguagens e abordagens distintas.
-
-## Baralho Cigano (Lenormand)
-- **Foco:** Questões do cotidiano, finanças, trabalho, cotidiano amoroso e respostas diretas (Sim/Não).
-- **Cartas:** 36 lâminas simbólicas e objetivas (O Sol, A Carta, A Chave, As Alianças).
-- **Indicado para:** Quem busca respostas claras e orientação para situações práticas do dia a dia.
-
-## Tarot Tradicional
-- **Foco:** Psicologia do indivíduo, jornada espiritual, causas profundas e transformações de vida.
-- **Cartas:** 78 cartas (22 Arcanos Maiores e 56 Arcanos Menores).
-- **Indicado para:** Análises profundas de personalidade, dilemas existenciais e evolução espiritual.
-    `,
-    category: 'cigano',
-    author: 'Mística Vânia',
-    date: '23/07/2026',
-    readTime: '5 min',
-    coverImage: 'https://images.unsplash.com/photo-1532012164546-f43b76a6d31d?auto=format&fit=crop&q=80&w=800',
-    tags: ['Baralho Cigano', 'Lenormand', 'Tarot', 'Dicas'],
-    views: 980,
-  },
-  {
-    id: 'b3',
-    title: 'Mesa Radiônica Quântica: Como Funciona a Limpeza Energética?',
-    slug: 'mesa-radionica-quantica',
-    summary: 'Entenda como o pêndulo e a régua radiestésica detectam e transmutam bloqueios em finanças, saúde energética e relacionamentos.',
-    content: `
-# Mesa Radiônica Quântica: A Ciência e a Espiritualidade das Frequências
-
-A Mesa Radiônica é um instrumento ilimitado de cura energética que combina os princípios da Radiestesia, Geometria Sagrada, Simbologia e Física Quântica.
-
-## Benefícios da Sessão de Mesa Radiônica:
-- Limpeza profunda de energias estagnadas ou externas.
-- Harmonização de Chakras e aura.
-- Destrava energética de negócios e prospeção financeira.
-- Rebalanceamento emocional para ansiedade e estresse.
-    `,
-    category: 'mesaradionica',
-    author: 'Aura Celeste',
-    date: '18/07/2026',
-    readTime: '6 min',
-    coverImage: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=800',
-    tags: ['Mesa Radiônica', 'Radiestesia', 'Limpeza Energética', 'Chakras'],
-    views: 1560,
-  },
-];
+export const INITIAL_BLOG_POSTS: BlogPost[] = getDailyBlogPosts();
 
 export const DEMO_USERS: Record<string, User> = {
   user: {
@@ -329,7 +250,7 @@ export const DEMO_USERS: Record<string, User> = {
     birthDataConsent: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
+    avatar: '/consultants/helena-da-luz.webp',
     favorites: [],
     pixKey: 'helena.luz@pix.com.br',
   },

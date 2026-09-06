@@ -4,6 +4,7 @@ import { Consultant, OracleType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useConsultation } from '../context/ConsultationContext';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
+import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../utils/avatarUtils';
 
 interface Props {
   consultant: Consultant;
@@ -62,8 +63,11 @@ export const ConsultantCard: React.FC<Props> = ({
             className="h-44 w-full rounded-xl overflow-hidden cursor-pointer relative bg-gray-900 border border-white/10"
           >
             <img
-              src={consultant.avatar}
+              src={getSafeConsultantAvatar(consultant.avatar, consultant.name)}
               alt={consultant.name}
+              referrerPolicy="no-referrer"
+              loading="lazy"
+              onError={(e) => handleAvatarError(e, getGenderAwareAvatarFallback(consultant.name))}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
@@ -146,9 +150,13 @@ export const ConsultantCard: React.FC<Props> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onStartConsultation(consultant, chosenOracle, 'chat')}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartConsultation(consultant, chosenOracle, 'chat');
+            }}
             disabled={consultant.status === 'offline'}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-[#d4af37] hover:text-black py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-md"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Chat

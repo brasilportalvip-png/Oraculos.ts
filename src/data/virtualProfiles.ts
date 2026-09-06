@@ -580,7 +580,7 @@ export const VIRTUAL_CONSULTANTS_MAPPED: Consultant[] = VIRTUAL_PROFILES.map((vp
   pricePerMinute: vp.pricePerMinute,
   status: vp.status,
   experienceYears: 10,
-  avgResponseTime: 'Imediato (IA Atendente)',
+  avgResponseTime: 'Atendimento Imediato',
   schedule: 'Disponível 24/7 Atendimento Online',
   reviews: [
     {

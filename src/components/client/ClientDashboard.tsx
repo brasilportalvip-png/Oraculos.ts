@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Wallet, Clock, History, Star, ArrowUpRight, ArrowDownLeft, Heart, Plus, ShieldCheck, User, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useConsultation } from '../../context/ConsultationContext';
+import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
 
 export const ClientDashboard: React.FC = () => {
   const { user, updateProfile } = useAuth();
@@ -135,7 +136,14 @@ export const ClientDashboard: React.FC = () => {
                 {favoriteConsultants.map((c) => (
                   <div key={c.id} className="p-4 bg-[#150F26] border border-purple-900/40 rounded-2xl flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <img src={c.avatar} alt={c.name} className="w-12 h-12 rounded-xl object-cover border border-amber-400/40" />
+                      <img
+                        src={getSafeConsultantAvatar(c.avatar, c.name)}
+                        alt={c.name}
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                        onError={(e) => handleAvatarError(e, getGenderAwareAvatarFallback(c.name))}
+                        className="w-12 h-12 rounded-xl object-cover border border-amber-400/40"
+                      />
                       <div>
                         <h3 className="font-bold text-xs text-white">
   {c.name}

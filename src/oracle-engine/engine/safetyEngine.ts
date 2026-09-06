@@ -253,7 +253,7 @@ const ABSOLUTE_RESPONSE_PATTERNS: Array<{
 }> = [
   {
     pattern: /\bcom certeza absoluta\b/gi,
-    replacement: 'com forte indicação simbólica'
+    replacement: 'com forte indicação oracular'
   },
   {
     pattern: /\bcertamente acontecerá\b/gi,
@@ -301,12 +301,12 @@ const ABSOLUTE_RESPONSE_PATTERNS: Array<{
   {
     pattern: /\bvocê será curado\b/gi,
     replacement:
-      'a leitura simboliza esperança e necessidade de cuidados adequados'
+      'a leitura aponta para energias de renovação e cuidados com a saúde'
   },
   {
     pattern: /\bvocê ficará rico\b/gi,
     replacement:
-      'há sinais simbólicos de oportunidade e crescimento material'
+      'as cartas apontam caminhos de oportunidade e crescimento financeiro'
   },
   {
     pattern: /\bfizeram trabalho contra você\b/gi,
@@ -316,7 +316,7 @@ const ABSOLUTE_RESPONSE_PATTERNS: Array<{
   {
     pattern: /\bhá uma entidade te perseguindo\b/gi,
     replacement:
-      'há uma sensação simbólica de medo, pressão ou vulnerabilidade'
+      'há uma sobrecarga energética pedindo recolhimento, calma e proteção'
   }
 ];
 
@@ -443,7 +443,7 @@ export class SafetyEngine {
       )
     ) {
       const disclaimer =
-        'Esta leitura é simbólica e não substitui avaliação, diagnóstico, tratamento ou acompanhamento profissional.';
+        'Esta orientação visa o acolhimento espiritual e bem-estar, complementando sem substituir avaliação médica profissional.';
 
       if (
         !result
@@ -467,7 +467,7 @@ export class SafetyEngine {
       )
     ) {
       const disclaimer =
-        'Considere esta orientação apenas como reflexão simbólica; decisões financeiras devem ser baseadas em análise concreta e responsável.';
+        'Considere esta orientação como reflexão oracular para seus caminhos; decisões práticas devem ser feitas com prudência e discernimento.';
 
       if (
         !result

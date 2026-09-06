@@ -187,25 +187,54 @@ const AuthContext =
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [user, setUser] =
-    useState<UserProfile>(guestUser);
+  const [user, setUser] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id && parsed.id !== 'guest') {
+          return normalizeUserProfile(parsed);
+        }
+      }
+    } catch {}
+    return guestUser;
+  });
 
-  const [isAuthenticated, setIsAuthenticated] =
-    useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Boolean(parsed && parsed.id && parsed.id !== 'guest');
+      }
+    } catch {}
+    return false;
+  });
 
-  const [authLoading, setAuthLoading] =
-    useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Safety watchdog: prevent infinite loading spinners on mobile networks
+  useEffect(() => {
+    const watchdog = window.setTimeout(() => {
+      setAuthLoading(false);
+    }, 2500);
+    return () => window.clearTimeout(watchdog);
+  }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      localStorage.setItem(
-        'oraculos_user',
-        JSON.stringify(user),
-      );
+    if (authLoading) return; // Do not wipe storage during initial authentication check
+    if (isAuthenticated && user.id !== 'guest') {
+      try {
+        localStorage.setItem('oraculos_user', JSON.stringify(user));
+        sessionStorage.setItem('oraculos_user', JSON.stringify(user));
+      } catch {}
     } else {
-      localStorage.removeItem('oraculos_user');
+      try {
+        localStorage.removeItem('oraculos_user');
+        sessionStorage.removeItem('oraculos_user');
+      } catch {}
     }
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, authLoading]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -565,11 +594,16 @@ const resetPassword = async (
     const newUser = DEMO_USERS[role];
 
     if (newUser) {
-      setUser(
-        normalizeUserProfile(
-          newUser as UserProfile,
-        ),
+      const normalized = normalizeUserProfile(
+        newUser as UserProfile,
       );
+      setUser(normalized);
+      setIsAuthenticated(true);
+      setAuthLoading(false);
+      try {
+        localStorage.setItem('oraculos_user', JSON.stringify(normalized));
+        sessionStorage.setItem('oraculos_user', JSON.stringify(normalized));
+      } catch {}
     }
   };
 

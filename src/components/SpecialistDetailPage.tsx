@@ -3,6 +3,7 @@ import { ArrowLeft, Star, ShieldCheck, Clock, MessageSquare, Video, Calendar, Sp
 import { Consultant, OracleType } from '../types';
 import { SEOHead } from './SEOHead';
 import { NotFoundPage } from './NotFoundPage';
+import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../utils/avatarUtils';
 
 interface SpecialistDetailPageProps {
   consultantId: string;
@@ -60,8 +61,11 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <div className="relative">
             <img
-              src={consultant.avatar}
+              src={getSafeConsultantAvatar(consultant.avatar, consultant.name)}
               alt={consultant.name}
+              referrerPolicy="no-referrer"
+              loading="lazy"
+              onError={(e) => handleAvatarError(e, getGenderAwareAvatarFallback(consultant.name))}
               className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover border-2 border-purple-500/40 shadow-xl"
             />
             <span
@@ -82,9 +86,10 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
               <h1 className="font-serif text-2xl sm:text-3xl font-light text-white">
                 {consultant.name}
               </h1>
-              {isVirtual && (
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-300 text-[10px] font-bold uppercase tracking-wider">
-                  Atendente Virtual IA
+              {consultant.status === 'online' && (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Atendimento Imediato
                 </span>
               )}
             </div>

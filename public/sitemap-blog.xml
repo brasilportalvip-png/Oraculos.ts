@@ -1,21 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://oraculos-ts.vercel.app/blog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/blog/portal-do-tarot-2026</loc>
-    <lastmod>2026-07-26T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/tarot-arcanos.svg</image:loc>
+      <image:title>O Portal do Tarot em 2026: Entenda o Significado dos Arcanos Regentes</image:title>
+      <image:caption>Previsões e arquétipos dos Arcanos do Tarot para 2026 com consultas ao vivo no ORACULOS.TS</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/blog/baralho-cigano-vs-tarot</loc>
-    <lastmod>2026-07-23T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/baralho-cigano.svg</image:loc>
+      <image:title>Baralho Cigano x Tarot Tradicional: Qual é a Diferença?</image:title>
+      <image:caption>Guia definitivo para escolher entre Baralho Cigano Lenormand e Tarot Tradicional</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/blog/mesa-radionica-quantica</loc>
-    <lastmod>2026-07-18T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/mesa-radionica.svg</image:loc>
+      <image:title>Mesa Radiônica Quântica: Como Funciona a Limpeza Energética?</image:title>
+      <image:caption>Desbloqueio de prosperidade e alinhamento de chakras com radiestesia quântica</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/blog/jogo-de-buzios-caminhos-orixas</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/jogo-buzios.svg</image:loc>
+      <image:title>Jogo de Búzios Online: O que os Orixás Revelam Sobre Seus Caminhos</image:title>
+      <image:caption>Como funciona a leitura dos 16 búzios sagrados (Merindilogun) e abertura de caminhos</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/blog/mapa-astral-revolucao-solar-guia</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/astrologia-mapa.svg</image:loc>
+      <image:title>Mapa Astral e Revolução Solar: Como Prever Tendências do Seu Ano</image:title>
+      <image:caption>Descubra como os trânsitos astrológicos e casas zodiacais apontam as melhores decisões</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/blog/limpeza-espiritual-banhos-ervas-protecao</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/blog/limpeza-espiritual.svg</image:loc>
+      <image:title>Limpeza Espiritual e Banhos de Ervas: Guia Completo para Blindar sua Energia</image:title>
+      <image:caption>Receitas consagradas e orientações mediúnicas para banimento de inveja e atração de prosperidade</image:caption>
+    </image:image>
   </url>
 </urlset>

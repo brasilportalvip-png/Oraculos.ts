@@ -5,6 +5,7 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ConsultantShowcase } from './components/showcase/ConsultantShowcase';
 import { ConsultantProfileModal } from './components/ConsultantProfileModal';
+import { MercadoPagoRechargeModal } from './components/MercadoPagoRechargeModal';
 import { FloatingSupport } from './components/FloatingSupport';
 import { SEOHead } from './components/SEOHead';
 import { Consultant, OracleType } from './types';
@@ -17,30 +18,72 @@ import {
   type ParsedRoute,
 } from './routing/routes';
 
+// Resilient lazy import with automatic retry on network or chunk updates
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (error) {
+      console.warn('Falha no carregamento do módulo dinâmico, tentando novamente...', error);
+      try {
+        return await factory();
+      } catch (retryError) {
+        const isChunkError =
+          retryError instanceof Error &&
+          (retryError.message.includes('Failed to fetch dynamically imported module') ||
+            retryError.message.includes('Importing a module script failed'));
+
+        if (isChunkError) {
+          const reloadKey = 'oraculos_chunk_reload';
+          if (!sessionStorage.getItem(reloadKey)) {
+            sessionStorage.setItem(reloadKey, 'true');
+            window.location.reload();
+          }
+        }
+        throw retryError;
+      }
+    }
+  });
+}
+
 // Lazy-loaded heavy views and dashboards
-const ClientDashboard = lazy(() => import('./components/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })));
-const ConsultantDashboard = lazy(() => import('./components/consultant/ConsultantDashboard').then((m) => ({ default: m.ConsultantDashboard })));
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
-const BlogSection = lazy(() => import('./components/blog/BlogSection').then((m) => ({ default: m.BlogSection })));
-const ConsultationRoom = lazy(() => import('./components/ConsultationRoom').then((m) => ({ default: m.ConsultationRoom })));
-const MercadoPagoRechargeModal = lazy(() => import('./components/MercadoPagoRechargeModal').then((m) => ({ default: m.MercadoPagoRechargeModal })));
-const OraclesDirectory = lazy(() => import('./components/OraclesDirectory').then((m) => ({ default: m.OraclesDirectory })));
-const HowItWorks = lazy(() => import('./components/HowItWorks').then((m) => ({ default: m.HowItWorks })));
-const HelpAndPrivacy = lazy(() => import('./components/showcase/HelpAndPrivacy').then((m) => ({ default: m.HelpAndPrivacy })));
-const LegalPage = lazy(() => import('./components/LegalPage').then((m) => ({ default: m.LegalPage })));
-const OracleDetailPage = lazy(() => import('./components/OracleDetailPage').then((m) => ({ default: m.OracleDetailPage })));
-const SpecialistDetailPage = lazy(() => import('./components/SpecialistDetailPage').then((m) => ({ default: m.SpecialistDetailPage })));
-const ArticleDetailPage = lazy(() => import('./components/blog/ArticleDetailPage').then((m) => ({ default: m.ArticleDetailPage })));
-const NotFoundPage = lazy(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const WorkWithUs = lazy(() => import('./components/WorkWithUs').then((m) => ({ default: m.WorkWithUs })));
+const ClientDashboard = lazyWithRetry(() => import('./components/client/ClientDashboard').then((m) => ({ default: m.ClientDashboard })));
+const ConsultantDashboard = lazyWithRetry(() => import('./components/consultant/ConsultantDashboard').then((m) => ({ default: m.ConsultantDashboard })));
+const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const BlogSection = lazyWithRetry(() => import('./components/blog/BlogSection').then((m) => ({ default: m.BlogSection })));
+const ConsultationRoom = lazyWithRetry(() => import('./components/ConsultationRoom').then((m) => ({ default: m.ConsultationRoom })));
+const OraclesDirectory = lazyWithRetry(() => import('./components/OraclesDirectory').then((m) => ({ default: m.OraclesDirectory })));
+const HowItWorks = lazyWithRetry(() => import('./components/HowItWorks').then((m) => ({ default: m.HowItWorks })));
+const HelpAndPrivacy = lazyWithRetry(() => import('./components/showcase/HelpAndPrivacy').then((m) => ({ default: m.HelpAndPrivacy })));
+const LegalPage = lazyWithRetry(() => import('./components/LegalPage').then((m) => ({ default: m.LegalPage })));
+const OracleDetailPage = lazyWithRetry(() => import('./components/OracleDetailPage').then((m) => ({ default: m.OracleDetailPage })));
+const SpecialistDetailPage = lazyWithRetry(() => import('./components/SpecialistDetailPage').then((m) => ({ default: m.SpecialistDetailPage })));
+const ArticleDetailPage = lazyWithRetry(() => import('./components/blog/ArticleDetailPage').then((m) => ({ default: m.ArticleDetailPage })));
+const NotFoundPage = lazyWithRetry(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const WorkWithUs = lazyWithRetry(() => import('./components/WorkWithUs').then((m) => ({ default: m.WorkWithUs })));
 
 function parseLocation(): ParsedRoute {
-  return parseRouteLocation(window.location.pathname, window.location.hash);
+  const fromLocation = parseRouteLocation(window.location.pathname, window.location.hash);
+  if (fromLocation.view !== 'showcase') {
+    return fromLocation;
+  }
+  try {
+    const saved = sessionStorage.getItem('oraculos_last_route');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed.view === 'string' && parsed.view !== 'showcase') {
+        return parsed as ParsedRoute;
+      }
+    }
+  } catch {}
+  return fromLocation;
 }
 
 function MainAppContent() {
-  const { user } = useAuth();
-  const { isRechargeModalOpen, setIsRechargeModalOpen, startConsultation, consultants } = useConsultation();
+  const { user, isAuthenticated } = useAuth();
+  const { isRechargeModalOpen, setIsRechargeModalOpen, startConsultation, consultants, activeSession } = useConsultation();
 
   const [currentRoute, setCurrentRoute] = useState<ParsedRoute>(parseLocation);
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
@@ -56,6 +99,18 @@ function MainAppContent() {
     }
     setCurrentRoute(newRoute);
   };
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('oraculos_chunk_reload');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('oraculos_last_route', JSON.stringify(currentRoute));
+    } catch {}
+  }, [currentRoute]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -75,12 +130,17 @@ function MainAppContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleStartConsultation = (
+  const handleStartConsultation = async (
     consultant: Consultant,
     oracle: OracleType,
     mode: 'chat' | 'video'
   ) => {
-    startConsultation(consultant, oracle, mode);
+    const result = await startConsultation(consultant, oracle, mode);
+    if (!result.success && result.message) {
+      if (result.message.includes('Saldo insuficiente') || result.message.includes('minutos')) {
+        setIsRechargeModalOpen(true);
+      }
+    }
   };
 
   return (
@@ -102,7 +162,7 @@ function MainAppContent() {
             <>
               <SEOHead
                 title="Consultas de Tarot, Baralho Cigano, Búzios e Astrologia ao Vivo"
-                description="Conecte-se com especialistas e atendentes virtuais em tempo real. Leituras autênticas de Tarot, Baralho Cigano, Astrologia, Búzios e mais com tarifação por minuto real."
+                description="Conecte-se com especialistas oraculares em tempo real. Leituras autênticas e acolhedoras de Tarot, Baralho Cigano, Astrologia, Búzios e mais com tarifação por minuto real."
                 canonicalPath="/"
               />
               <ConsultantShowcase
@@ -286,17 +346,19 @@ function MainAppContent() {
       )}
 
       {/* Mercado Pago Recharge Modal */}
-      <Suspense fallback={null}>
+      {isRechargeModalOpen && (
         <MercadoPagoRechargeModal
           isOpen={isRechargeModalOpen}
           onClose={() => setIsRechargeModalOpen(false)}
         />
-      </Suspense>
+      )}
 
       {/* Active Consultation Room */}
-      <Suspense fallback={null}>
-        <ConsultationRoom />
-      </Suspense>
+      {activeSession && (
+        <Suspense fallback={null}>
+          <ConsultationRoom />
+        </Suspense>
+      )}
 
       {/* Global Floating Support Button */}
       <FloatingSupport />
