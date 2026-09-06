@@ -184,8 +184,30 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           : [];
 
         setConsultants(() => {
-          const merged = [...INITIAL_CONSULTANTS, ...approved.filter((profile) => !INITIAL_CONSULTANTS.some((item) => item.id === profile.id))];
-          return merged
+  const seenProfiles = new Set<string>();
+
+  const uniqueApproved = approved.filter((profile) => {
+    const profileKey = `${profile.name
+      .trim()
+      .toLowerCase()}|${profile.avatar || ''}`;
+
+    if (seenProfiles.has(profileKey)) {
+      return false;
+    }
+
+    seenProfiles.add(profileKey);
+
+    return !INITIAL_CONSULTANTS.some(
+      (item) => item.id === profile.id,
+    );
+  });
+
+  const merged = [
+    ...INITIAL_CONSULTANTS,
+    ...uniqueApproved,
+  ];
+
+  return merged
             .filter((profile) => settings[profile.id]?.active !== false)
             .map((profile) => {
               const localOverride = localPricingOverrides[profile.id];

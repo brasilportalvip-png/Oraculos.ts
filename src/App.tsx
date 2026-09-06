@@ -131,17 +131,24 @@ function MainAppContent() {
   }, []);
 
   const handleStartConsultation = async (
-    consultant: Consultant,
-    oracle: OracleType,
-    mode: 'chat' | 'video'
-  ) => {
-    const result = await startConsultation(consultant, oracle, mode);
-    if (!result.success && result.message) {
-      if (result.message.includes('Saldo insuficiente') || result.message.includes('minutos')) {
-        setIsRechargeModalOpen(true);
-      }
+  consultant: Consultant,
+  oracle: OracleType,
+  mode: 'chat' | 'video'
+) => {
+  const result = await startConsultation(consultant, oracle, mode);
+
+  if (!result.success && result.message) {
+    if (
+      result.message.includes('Saldo insuficiente') ||
+      result.message.includes('minutos')
+    ) {
+      setIsRechargeModalOpen(true);
+      return;
     }
-  };
+
+    window.alert(result.message);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#050508] text-gray-200 flex flex-col font-sans selection:bg-[#d4af37] selection:text-black">
