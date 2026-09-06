@@ -187,20 +187,38 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const seenProfiles = new Set<string>();
 
   const uniqueApproved = approved.filter((profile) => {
-    const profileKey = `${profile.name
-      .trim()
-      .toLowerCase()}|${profile.avatar || ''}`;
+  const profileId =
+    typeof profile?.id === 'string'
+      ? profile.id.trim()
+      : '';
 
-    if (seenProfiles.has(profileKey)) {
-      return false;
-    }
+  const profileName =
+    typeof profile?.name === 'string'
+      ? profile.name.trim()
+      : '';
 
-    seenProfiles.add(profileKey);
+  if (!profileId || !profileName) {
+    return false;
+  }
 
-    return !INITIAL_CONSULTANTS.some(
-      (item) => item.id === profile.id,
-    );
-  });
+  const profileAvatar =
+    typeof profile.avatar === 'string'
+      ? profile.avatar.trim()
+      : '';
+
+  const profileKey =
+    `${profileName.toLowerCase()}|${profileAvatar.toLowerCase()}`;
+
+  if (seenProfiles.has(profileKey)) {
+    return false;
+  }
+
+  seenProfiles.add(profileKey);
+
+  return !INITIAL_CONSULTANTS.some(
+    (item) => item.id === profileId,
+  );
+});
 
   const merged = [
     ...INITIAL_CONSULTANTS,
