@@ -4169,14 +4169,48 @@ if (
       : {};
 
   if (
-    activeSessionDocument.exists &&
-    activeSessionData.status ===
-      'active'
+  activeSessionDocument.exists &&
+  activeSessionData.status ===
+    'active'
+) {
+  const activeMessages =
+    Array.isArray(
+      activeSessionData.messages,
+    )
+      ? activeSessionData.messages
+      : [];
+
+  const activeStartedAt =
+    typeof activeSessionData.startedAt ===
+    'string'
+      ? Date.parse(
+          activeSessionData.startedAt,
+        )
+      : NaN;
+
+  const isStaleUnopenedSession =
+    activeMessages.length === 0 &&
+    (
+      !Number.isFinite(
+        activeStartedAt,
+      ) ||
+      Date.now() -
+        activeStartedAt >=
+        2 * 60 * 1000
+    );
+
+  if (
+    !isStaleUnopenedSession
   ) {
     throw new Error(
       'ACTIVE_CONSULTATION_EXISTS',
     );
   }
+
+  transaction.delete(
+    activeSessionReference,
+  );
+}
 }
 
             const startedAt =
