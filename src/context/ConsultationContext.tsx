@@ -189,9 +189,12 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 ) =>
   typeof value === 'string'
     ? value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
         .trim()
         .replace(/\s+/g, ' ')
-        .toLocaleLowerCase('pt-BR')
+        .toLowerCase()
     : '';
 
 const seenProfileNames = new Set(
