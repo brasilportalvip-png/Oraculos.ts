@@ -4139,22 +4139,45 @@ app.post(
             }
 
             const activeConsultationId =
-              typeof userData
-                .activeConsultationId ===
-              'string'
-                ? userData
-                    .activeConsultationId
-                : '';
+  typeof userData
+    .activeConsultationId ===
+  'string'
+    ? userData
+        .activeConsultationId
+    : '';
 
-            if (
-              activeConsultationId &&
-              activeConsultationId !==
-                consultationId
-            ) {
-              throw new Error(
-                'ACTIVE_CONSULTATION_EXISTS',
-              );
-            }
+if (
+  activeConsultationId &&
+  activeConsultationId !==
+    consultationId
+) {
+  const activeSessionReference =
+    userReference
+      .collection(
+        'consultationSessions',
+      )
+      .doc(activeConsultationId);
+
+  const activeSessionDocument =
+    await transaction.get(
+      activeSessionReference,
+    );
+
+  const activeSessionData =
+    activeSessionDocument.exists
+      ? activeSessionDocument.data() || {}
+      : {};
+
+  if (
+    activeSessionDocument.exists &&
+    activeSessionData.status ===
+      'active'
+  ) {
+    throw new Error(
+      'ACTIVE_CONSULTATION_EXISTS',
+    );
+  }
+}
 
             const startedAt =
               new Date().toISOString();
