@@ -883,47 +883,73 @@ return;
     }
 
     const firebaseUser = auth.currentUser;
-    const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    let serverPricePerMinute = effectivePrice;
-    let serverStartedAt = new Date().toISOString();
+const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+let serverPricePerMinute = effectivePrice;
+let serverStartedAt = new Date().toISOString();
 
-    if (firebaseUser) {
-      try {
-        const idToken = await firebaseUser.getIdToken(true);
-        const response = await fetch('/api/finance/start-consultation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({
-            consultationId,
-            consultantId: consultant.id,
-            oracleType: oracle,
-            mode,
-          }),
-        });
+if (!firebaseUser) {
+  return {
+    success: false,
+    message: 'Sua sessão expirou. Entre novamente para iniciar a consulta.',
+  };
+}
 
-        const body = await response.json().catch(() => ({}));
-        if (response.ok && body.success) {
-          const officialPrice = Number(body.data?.pricePerMinute);
-          if (Number.isFinite(officialPrice) && officialPrice > 0) {
-            serverPricePerMinute = officialPrice;
-          }
-          if (typeof body.data?.startedAt === 'string' && body.data.startedAt) {
-            serverStartedAt = body.data.startedAt;
-          }
-        } else if (body.error?.code === 'INSUFFICIENT_FUNDS') {
-          setIsRechargeModalOpen(true);
-          return {
-            success: false,
-            message: body.error?.message || 'Saldo insuficiente.',
-          };
-        }
-      } catch (error) {
-        console.warn('[ORACULOS.TS] Conexão remota pendente, iniciando em modo resiliente:', error);
-      }
+try {
+  const idToken = await firebaseUser.getIdToken(true);
+
+  const response = await fetch('/api/finance/start-consultation', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      consultationId,
+      consultantId: consultant.id,
+      oracleType: oracle,
+      mode,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok || !body.success) {
+    if (body.error?.code === 'INSUFFICIENT_FUNDS') {
+      setIsRechargeModalOpen(true);
     }
+
+    return {
+      success: false,
+      message:
+        body.error?.message ||
+        'Não foi possível iniciar a consulta com segurança.',
+    };
+  }
+
+  const officialPrice = Number(body.data?.pricePerMinute);
+
+  if (Number.isFinite(officialPrice) && officialPrice > 0) {
+    serverPricePerMinute = officialPrice;
+  }
+
+  if (
+    typeof body.data?.startedAt === 'string' &&
+    body.data.startedAt
+  ) {
+    serverStartedAt = body.data.startedAt;
+  }
+} catch (error) {
+  console.error(
+    '[ORACULOS.TS] Falha ao registrar consulta no servidor:',
+    error,
+  );
+
+  return {
+    success: false,
+    message:
+      'Não foi possível conectar ao servidor para iniciar a consulta. Tente novamente.',
+  };
+}
 
 const initialMessage: ChatMessage = {
 
