@@ -218,17 +218,25 @@ const [endConsultationError, setEndConsultationError] =
   }
 
   if (localStreamRef.current) {
-    localStreamRef.current
-      .getTracks()
-      .forEach((track) =>
-        track.stop(),
-      );
+  localStreamRef.current
+    .getTracks()
+    .forEach((track) =>
+      track.stop(),
+    );
 
-    localStreamRef.current = null;
-  }
+  localStreamRef.current = null;
+}
 
-  setShowReviewModal(false);
-  setIsEndingConsultation(false);
+setShowReviewModal(false);
+setIsEndingConsultation(false);
+
+try {
+  sessionStorage.removeItem('oraculos_active_session');
+  localStorage.removeItem('oraculos_active_session');
+  sessionStorage.removeItem('oraculos_last_route');
+} catch {}
+
+window.location.assign('/');
 };
 
   const handleAskAiCopilot = async (e: React.FormEvent) => {
