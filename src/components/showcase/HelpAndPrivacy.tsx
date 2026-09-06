@@ -54,7 +54,7 @@ export const HelpAndPrivacy: React.FC = () => {
         setAiReply('A resposta do suporte não pôde ser carregada. Tente novamente.');
       }
     } catch {
-      setAiReply('Erro ao comunicar com o assistente de suporte por IA.');
+      setAiReply('Erro ao comunicar com o canal de atendimento. Tente novamente.');
     } finally {
       setLoadingAi(false);
     }
@@ -168,7 +168,7 @@ export const HelpAndPrivacy: React.FC = () => {
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-light text-white">Central de Ajuda & Privacidade</h1>
         <p className="text-xs sm:text-sm text-gray-400 font-light">
-          Tire dúvidas frequentes, consulte o assistente virtual ou gerencie suas preferências de privacidade.
+          Tire dúvidas frequentes, consulte nosso canal de ajuda ou gerencie suas preferências de privacidade.
         </p>
       </div>
 
@@ -188,7 +188,7 @@ export const HelpAndPrivacy: React.FC = () => {
             activeTab === 'support' ? 'bg-[#d4af37] text-black shadow-md' : 'glass-card text-gray-400 hover:text-white'
           }`}
         >
-          Assistente Virtual & Chamados
+          Central de Atendimento & Chamados
         </button>
         <button
           onClick={() => setActiveTab('lgpd')}
@@ -211,9 +211,9 @@ export const HelpAndPrivacy: React.FC = () => {
           </div>
 
           <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-            <h3 className="text-sm font-bold text-amber-300">Como funcionam os atendentes virtuais?</h3>
+            <h3 className="text-sm font-bold text-amber-300">Como são selecionados os nossos especialistas?</h3>
             <p className="text-xs text-gray-300 font-light leading-relaxed">
-              Atendentes virtuais são assistentes alimentados por inteligência artificial treinada em fontes canônicas dos 10 oráculos, disponíveis 24 horas por dia com tiragens e interpretações instantâneas.
+              Todos os nossos oraculistas passam por rigorosa avaliação de sabedoria oracular e acolhimento humano nas tradições do Tarot, Baralho Cigano, Astrologia e Búzios, garantindo uma conexão espiritual autêntica, segura e confidencial.
             </p>
           </div>
 
@@ -240,10 +240,10 @@ export const HelpAndPrivacy: React.FC = () => {
           <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 gold-accent" />
-              <h3 className="font-serif text-xl font-light text-white">Assistente de Suporte Virtual</h3>
+              <h3 className="font-serif text-xl font-light text-white">Canal Rápido de Dúvidas</h3>
             </div>
             <p className="text-xs text-gray-400 font-light">
-              Tire dúvidas instantâneas sobre recargas, cronômetro, salas de atendimento ou cadastro.
+              Tire dúvidas instantâneas sobre recargas, minutos de consulta, salas de atendimento ou cadastro.
             </p>
 
             <form onSubmit={handleAskSupportAi} className="space-y-3">
@@ -278,7 +278,7 @@ export const HelpAndPrivacy: React.FC = () => {
               <h3 className="font-serif text-xl font-light text-white">Abrir Chamado com a Equipe</h3>
             </div>
             <p className="text-xs text-gray-400 font-light">
-              Sua dúvida necessita de intervenção humana? Envie uma mensagem e receba um protocolo oficial.
+              Precisa de suporte personalizado com nossa ouvidoria? Envie uma mensagem e receba um protocolo oficial.
             </p>
 
             {ticketProtocol ? (

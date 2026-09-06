@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Clock, User, ArrowRight, X, Eye, Tag, RefreshCw, FileText, Search } from 'lucide-react';
+import { BookOpen, Sparkles, Clock, User, ArrowRight, X, Eye, Tag, RefreshCw, FileText, Search, ShieldCheck, MessageSquare, Flame } from 'lucide-react';
 import { INITIAL_BLOG_POSTS } from '../../data/mockData';
 import { BlogPost } from '../../types';
+import { getSafeBlogImage, handleBlogImageError } from '../../utils/blogImageUtils';
 
 export const BlogSection: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>(INITIAL_BLOG_POSTS);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // AI Generator Modal State
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
-  const [aiCategory, setAiCategory] = useState<'tarot' | 'cigano' | 'mesaradionica' | 'espiritualidade'>('tarot');
+  const [aiCategory, setAiCategory] = useState<'tarot' | 'cigano' | 'mesaradionica' | 'buzios' | 'astrologia' | 'limpeza' | 'espiritualidade'>('tarot');
   const [aiLoading, setAiLoading] = useState(false);
   const [generatedSeoData, setGeneratedSeoData] = useState<any>(null);
 
-  const filteredPosts = selectedCategory === 'all'
-    ? posts
-    : posts.filter((p) => p.category === selectedCategory);
+  const filteredPosts = posts.filter((p) => {
+    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesQuery = searchQuery.trim() === '' || 
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesQuery;
+  });
 
   const handleGenerateAiPost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,11 +50,11 @@ export const BlogSection: React.FC = () => {
           summary: data.summary,
           content: data.content,
           category: aiCategory,
-          author: 'IA Mestre Oracular (Gemini 3.6)',
-          date: 'Hoje',
+          author: 'Mestre Oracular & Sabedoria Ancestral',
+          date: 'Hoje (Publicação Diária)',
           readTime: data.readTime || '4 min',
-          coverImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800',
-          tags: data.keywords || ['tarot', 'espiritualidade', 'seo'],
+          coverImage: getSafeBlogImage(data.coverImage, aiCategory),
+          tags: data.keywords || [aiCategory, 'espiritualidade', 'oraculos', 'previsoes'],
           views: 1,
         };
         setPosts([newPost, ...posts]);
@@ -78,81 +85,130 @@ export const BlogSection: React.FC = () => {
             className="px-5 py-2.5 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer inline-flex items-center gap-2 shadow-lg"
           >
             <Sparkles className="w-4 h-4" />
-            Gerar Artigo com IA & Otimizar SEO
+            Publicar Novo Artigo & Otimizar SEO
           </button>
         </div>
       </div>
 
-      {/* Categories Filter */}
-      <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2">
-        {['all', 'tarot', 'cigano', 'mesaradionica'].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider capitalize transition-all cursor-pointer ${
-              selectedCategory === cat
-                ? 'bg-[#d4af37] text-black shadow-md'
-                : 'glass-card border border-white/10 text-gray-400 hover:text-white'
-            }`}
-          >
-            {cat === 'all' ? 'Todos os Artigos' : cat}
-          </button>
-        ))}
+      {/* Search & Categories Bar */}
+      <div className="space-y-4 max-w-4xl mx-auto">
+        <div className="relative max-w-md mx-auto">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Pesquisar artigos por tema, oráculo ou palavra-chave..."
+            className="w-full pl-10 pr-4 py-2.5 bg-black/50 border border-white/10 rounded-2xl text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4af37] transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          {[
+            { id: 'all', label: 'Todos os Artigos' },
+            { id: 'tarot', label: 'Tarot' },
+            { id: 'cigano', label: 'Baralho Cigano' },
+            { id: 'mesaradionica', label: 'Mesa Radiônica' },
+            { id: 'buzios', label: 'Jogo de Búzios' },
+            { id: 'astrologia', label: 'Astrologia' },
+            { id: 'limpeza', label: 'Limpeza Espiritual' },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
+                selectedCategory === cat.id
+                  ? 'bg-[#d4af37] text-black shadow-md'
+                  : 'glass-card border border-white/10 text-gray-400 hover:text-white hover:border-[#d4af37]/40'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Posts Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPosts.map((post) => (
-          <div
-            key={post.id}
-            onClick={() => setSelectedPost(post)}
-            className="group glass-card border border-white/10 hover:border-[#d4af37]/60 rounded-2xl overflow-hidden transition-all cursor-pointer flex flex-col justify-between hover:bg-white/[0.05]"
-          >
-            <div className="space-y-4">
-              {/* Cover Image */}
-              <div className="relative h-48 overflow-hidden bg-gray-900">
-                <img
-                  src={post.coverImage}
-                  alt={post.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-bold gold-accent uppercase rounded-full">
-                  {post.category}
-                </span>
-              </div>
-
-              {/* Title & Summary */}
-              <div className="p-5 space-y-3">
-                <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <User className="w-3 h-3 gold-accent" />
-                    {post.author}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-gray-500" />
-                    {post.readTime}
-                  </span>
+        {filteredPosts.map((post, index) => {
+          const isDailyFeature = index === 0 || post.date.includes('Hoje');
+          return (
+            <div
+              key={post.id}
+              onClick={() => setSelectedPost(post)}
+              className={`group glass-card border ${
+                isDailyFeature ? 'border-[#d4af37]/50 shadow-lg shadow-[#d4af37]/5' : 'border-white/10'
+              } hover:border-[#d4af37] rounded-2xl overflow-hidden transition-all cursor-pointer flex flex-col justify-between hover:bg-white/[0.05]`}
+            >
+              <div className="space-y-4">
+                {/* Cover Image - 100% Guaranteed */}
+                <div className="relative h-48 overflow-hidden bg-gray-950">
+                  <img
+                    src={getSafeBlogImage(post.coverImage, post.category)}
+                    alt={post.altText || post.title}
+                    onError={(e) => handleBlogImageError(e, post.category)}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent" />
+                  
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2.5 py-1 bg-black/80 backdrop-blur-md border border-white/15 text-[10px] font-bold gold-accent uppercase rounded-full">
+                      {post.category}
+                    </span>
+                    {isDailyFeature && (
+                      <span className="px-2.5 py-1 bg-amber-500 text-black text-[10px] font-extrabold uppercase rounded-full flex items-center gap-1 shadow-md">
+                        <Flame className="w-3 h-3 fill-current" />
+                        Post do Dia
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <h3 className="font-serif text-xl font-light text-white group-hover:text-[#d4af37] transition-colors line-clamp-2">
-                  {post.title}
-                </h3>
+                {/* Title & Summary */}
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3 gold-accent" />
+                      {post.author}
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-500" />
+                      {post.readTime}
+                    </span>
+                    <span>•</span>
+                    <span className="text-[10px] text-amber-300/80 font-mono">
+                      {post.date}
+                    </span>
+                  </div>
 
-                <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed font-light">
-                  {post.summary}
-                </p>
+                  <h3 className="font-serif text-xl font-light text-white group-hover:text-[#d4af37] transition-colors line-clamp-2">
+                    {post.title}
+                  </h3>
+
+                  <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed font-light">
+                    {post.summary}
+                  </p>
+                </div>
+              </div>
+
+              {/* Read More Footer */}
+              <div className="px-5 pb-5 pt-3 flex items-center justify-between border-t border-white/10 text-xs font-bold uppercase tracking-wider gold-accent group-hover:text-white">
+                <span>Ler Artigo Completo</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
-
-            {/* Read More Footer */}
-            <div className="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/10 text-xs font-bold uppercase tracking-wider gold-accent group-hover:text-white">
-              <span>Ler Artigo Completo</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* AI Post Generator Modal */}
@@ -169,10 +225,10 @@ export const BlogSection: React.FC = () => {
             <div className="space-y-1">
               <h3 className="font-serif text-2xl font-light text-white flex items-center gap-2">
                 <Sparkles className="w-5 h-5 gold-accent" />
-                Estúdio de Conteúdo IA & Metadados SEO
+                Estúdio de Redação Oracular & Metadados SEO
               </h3>
               <p className="text-xs text-gray-400 font-light">
-                Digite um tema e o modelo Gemini 3.6 criará o artigo completo junto com tags SEO e Schema.org.
+                Digite um tema e o artigo completo será redigido e estruturado com tags SEO e Schema.org.
               </p>
             </div>
 
@@ -249,23 +305,32 @@ export const BlogSection: React.FC = () => {
               <X className="w-5 h-5" />
             </button>
 
-            <img
-              src={selectedPost.coverImage}
-              alt={selectedPost.title}
-              className="w-full h-56 object-cover rounded-2xl border border-white/10"
-            />
+            <div className="relative h-64 overflow-hidden rounded-2xl border border-white/10 bg-gray-950">
+              <img
+                src={getSafeBlogImage(selectedPost.coverImage, selectedPost.category)}
+                alt={selectedPost.altText || selectedPost.title}
+                onError={(e) => handleBlogImageError(e, selectedPost.category)}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent" />
+            </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 bg-white/10 border border-white/10 gold-accent text-xs font-bold uppercase rounded-full">
-                {selectedPost.category}
-              </span>
-              <h2 className="font-serif text-3xl font-light text-white">{selectedPost.title}</h2>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-white/10 border border-white/10 gold-accent text-xs font-bold uppercase rounded-full">
+                  {selectedPost.category}
+                </span>
+                <span className="text-[11px] text-gray-400 font-mono">
+                  {selectedPost.readTime} de leitura
+                </span>
+              </div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-light text-white">{selectedPost.title}</h2>
               <div className="flex items-center gap-3 text-xs text-gray-400">
                 <span>Por {selectedPost.author}</span>
                 <span>•</span>
                 <span>{selectedPost.date}</span>
                 <span>•</span>
-                <span>{selectedPost.views} visualizações</span>
+                <span>{selectedPost.views} leituras</span>
               </div>
             </div>
 
@@ -275,7 +340,33 @@ export const BlogSection: React.FC = () => {
               ))}
             </div>
 
-            <div className="pt-4 border-t border-white/10 flex items-center gap-2">
+            {/* Direct Consultation CTA Banner */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-purple-900/30 to-amber-500/10 border border-[#d4af37]/40 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 text-[11px] font-bold gold-accent uppercase tracking-wider">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Atendimento Espiritual Sigiloso & Direto
+                  </div>
+                  <h4 className="font-serif text-lg text-white font-medium">
+                    Quer uma resposta clara para o seu caso pessoal?
+                  </h4>
+                  <p className="text-xs text-gray-300 font-light">
+                    Consulte nossos tarólogos e médiuns certificados no Chat ao Vivo ou Voz com até 50% de bônus na 1ª recarga.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="#consultores"
+                onClick={() => setSelectedPost(null)}
+                className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-lg cursor-pointer text-center"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Consultar Especialista em {selectedPost.category.toUpperCase()} Agora
+              </a>
+            </div>
+
+            <div className="pt-2 border-t border-white/10 flex items-center gap-2 flex-wrap">
               <Tag className="w-4 h-4 gold-accent" />
               {selectedPost.tags.map((tag) => (
                 <span key={tag} className="px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-300">

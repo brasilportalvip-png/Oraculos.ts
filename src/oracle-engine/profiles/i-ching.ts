@@ -39,7 +39,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'excesso de controle, orgulho e ação sem escuta.',
     conselho: 'agir com firmeza, responsabilidade e constância.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 2,
@@ -56,7 +56,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'passividade, submissão e falta de direção.',
     conselho: 'acolher, organizar e permitir que o processo amadureça.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 3,
@@ -73,7 +73,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'pressa, confusão e desistência prematura.',
     conselho: 'avançar com paciência, ajuda e planejamento.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 4,
@@ -90,7 +90,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'teimosia, ingenuidade e repetição de erros.',
     conselho: 'perguntar, estudar e aceitar limites do conhecimento.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 5,
@@ -107,7 +107,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'ansiedade, precipitação e tentativa de forçar resultados.',
     conselho: 'fortalecer recursos enquanto o momento certo não chega.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 6,
@@ -124,7 +124,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'escalada de confronto, orgulho e desgaste.',
     conselho: 'buscar mediação, fatos e limites justos.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 7,
@@ -141,7 +141,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'autoritarismo, desordem e uso indevido da força.',
     conselho: 'definir comando, estratégia e responsabilidade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 8,
@@ -158,7 +158,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'dependência, exclusão e alianças sem verdade.',
     conselho: 'aproximar-se de vínculos confiáveis e objetivos comuns.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 9,
@@ -175,7 +175,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'impaciência, controle sutil e avanço prematuro.',
     conselho: 'aperfeiçoar detalhes e acumular força.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 10,
@@ -192,7 +192,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'imprudência, provocação e falta de limites.',
     conselho: 'agir com consciência das consequências.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 11,
@@ -209,7 +209,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'acomodação e confiança excessiva.',
     conselho: 'cooperar e manter o equilíbrio entre forças.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 12,
@@ -226,7 +226,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'isolamento, rigidez e insistência improdutiva.',
     conselho: 'preservar integridade e esperar mudança de ciclo.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 13,
@@ -243,7 +243,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'facções, competição e exclusão.',
     conselho: 'agir com transparência e espírito coletivo.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 14,
@@ -260,7 +260,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'vaidade, desperdício e domínio.',
     conselho: 'administrar poder e recursos com humildade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 15,
@@ -277,7 +277,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'autodepreciação ou falsa modéstia.',
     conselho: 'reduzir excessos e agir sem ostentação.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 16,
@@ -294,7 +294,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'euforia, ilusão e falta de continuidade.',
     conselho: 'transformar entusiasmo em ação organizada.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 17,
@@ -311,7 +311,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'conformismo, dependência e direção alheia.',
     conselho: 'seguir o que é correto sem perder discernimento.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 18,
@@ -328,7 +328,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'culpa, repetição e recusa de reparar.',
     conselho: 'investigar causas e restaurar o que foi negligenciado.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 19,
@@ -345,7 +345,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'controle, invasão e entusiasmo sem medida.',
     conselho: 'chegar com abertura, presença e responsabilidade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 20,
@@ -362,7 +362,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'passividade, julgamento distante e indecisão.',
     conselho: 'recuar para enxergar o conjunto.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 21,
@@ -379,7 +379,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'punição excessiva, dureza e impulsividade.',
     conselho: 'agir com clareza e medida para resolver o bloqueio.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 22,
@@ -396,7 +396,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'superficialidade, aparência e vaidade.',
     conselho: 'cuidar da apresentação sem ocultar a essência.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 23,
@@ -413,7 +413,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'negação, apego e colapso prolongado.',
     conselho: 'retirar apoio do que não se sustenta e preservar o essencial.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 24,
@@ -430,7 +430,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'repetição automática e retorno ao mesmo erro.',
     conselho: 'retomar o caminho correto com simplicidade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 25,
@@ -447,7 +447,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'imprudência, ingenuidade e intenção escondida.',
     conselho: 'agir sem artifício e responder ao real.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 26,
@@ -464,7 +464,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'repressão, rigidez e retenção excessiva.',
     conselho: 'preparar-se profundamente antes de agir.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 27,
@@ -481,7 +481,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'excessos, carência e nutrição inadequada.',
     conselho: 'observar o que entra e o que sai de sua vida.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 28,
@@ -498,7 +498,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'colapso, exagero e peso insustentável.',
     conselho: 'reforçar a estrutura e agir com coragem.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 29,
@@ -515,7 +515,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'medo, repetição de risco e perda de direção.',
     conselho: 'manter coerência e atravessar com atenção.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 30,
@@ -532,7 +532,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'apego, vaidade e brilho sem substância.',
     conselho: 'cultivar lucidez e vínculo com o que ilumina.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 31,
@@ -549,7 +549,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'sedução manipulativa e dependência emocional.',
     conselho: 'aproximar-se com receptividade e respeito.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 32,
@@ -566,7 +566,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'rotina vazia, teimosia e instabilidade.',
     conselho: 'manter o que é correto sem endurecer.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 33,
@@ -583,7 +583,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'fuga, covardia e isolamento improdutivo.',
     conselho: 'afastar-se com dignidade para proteger força.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 34,
@@ -600,7 +600,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'arrogância, imposição e excesso.',
     conselho: 'usar poder com justiça e autocontrole.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 35,
@@ -617,7 +617,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'vaidade, pressa e dependência de aprovação.',
     conselho: 'apresentar-se com clareza e constância.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 36,
@@ -634,7 +634,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'autocensura, medo e apagamento pessoal.',
     conselho: 'preservar valores sem exposição imprudente.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 37,
@@ -651,7 +651,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'controle doméstico, rigidez e padrões herdados.',
     conselho: 'definir responsabilidades e cultivar respeito.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 38,
@@ -668,7 +668,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'polarização, hostilidade e afastamento.',
     conselho: 'buscar pontos de encontro sem negar diferenças.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 39,
@@ -685,7 +685,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'insistência cega, isolamento e frustração.',
     conselho: 'mudar a rota, pedir apoio e rever estratégia.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 40,
@@ -702,7 +702,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'relaxamento prematuro e repetição do problema.',
     conselho: 'resolver rapidamente o que já pode ser liberado.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 41,
@@ -719,7 +719,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'perda sem propósito, privação e ressentimento.',
     conselho: 'retirar excessos para fortalecer o essencial.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 42,
@@ -736,7 +736,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'ganância, expansão sem base e desperdício.',
     conselho: 'investir no que amplia valor coletivo.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 43,
@@ -753,7 +753,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'agressividade, exposição e radicalismo.',
     conselho: 'falar com clareza e agir sem violência.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 44,
@@ -770,7 +770,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'sedução perigosa, invasão e perda de limites.',
     conselho: 'reconhecer rapidamente a natureza do que chega.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 45,
@@ -787,7 +787,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'multidão sem propósito, disputa e dependência.',
     conselho: 'organizar pessoas em torno de um centro verdadeiro.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 46,
@@ -804,7 +804,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'ambição apressada e desgaste.',
     conselho: 'avançar passo a passo com apoio adequado.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 47,
@@ -821,7 +821,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'desânimo, isolamento e vitimismo.',
     conselho: 'preservar verdade interior e reorganizar recursos.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 48,
@@ -838,7 +838,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'recurso inacessível, negligência e desperdício.',
     conselho: 'cuidar da fonte que sustenta a todos.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 49,
@@ -855,7 +855,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'rebeldia, ruptura prematura e caos.',
     conselho: 'mudar no momento certo com legitimidade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 50,
@@ -872,7 +872,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'instabilidade, forma sem conteúdo e má preparação.',
     conselho: 'transformar matéria bruta em valor elevado.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 51,
@@ -889,7 +889,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'pânico, impulsividade e repetição de sustos.',
     conselho: 'recuperar presença e responder com consciência.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 52,
@@ -906,7 +906,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'estagnação, repressão e isolamento.',
     conselho: 'aquietar-se no momento correto.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 53,
@@ -923,7 +923,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'pressa, comparação e ansiedade.',
     conselho: 'respeitar sequência, tempo e preparação.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 54,
@@ -940,7 +940,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'dependência, precipitação e acordos desiguais.',
     conselho: 'compreender limites e agir sem ilusão.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 55,
@@ -957,7 +957,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'excesso, saturação e medo do declínio.',
     conselho: 'usar o auge com clareza e responsabilidade.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 56,
@@ -974,7 +974,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'instabilidade, solidão e imprudência.',
     conselho: 'agir com respeito e não criar raízes prematuras.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 57,
@@ -991,7 +991,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'indecisão, submissão e influência invisível.',
     conselho: 'avançar de forma sutil e constante.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 58,
@@ -1008,7 +1008,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'superficialidade, sedução e fala vazia.',
     conselho: 'trocar com sinceridade e leveza.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 59,
@@ -1025,7 +1025,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'dispersão, fuga e perda de foco.',
     conselho: 'desfazer rigidez e reunir o que importa.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 60,
@@ -1042,7 +1042,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'restrição excessiva, rigidez e sufocamento.',
     conselho: 'estabelecer regras úteis e proporcionais.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 61,
@@ -1059,7 +1059,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'ingenuidade, autoengano e confiança sem critério.',
     conselho: 'alinhar palavra, intenção e ação.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 62,
@@ -1076,7 +1076,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'minúcia excessiva, ansiedade e ambição inadequada.',
     conselho: 'corrigir pequenas coisas e evitar grandes riscos.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 63,
@@ -1093,7 +1093,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'relaxamento, desordem e perda do que foi conquistado.',
     conselho: 'vigiar detalhes depois do sucesso.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   },
   {
     numero: 64,
@@ -1110,7 +1110,7 @@ const HEXAGRAMAS: HexagramaIChing[] = [
     sombra: 'precipitação, confusão e abandono no último passo.',
     conselho: 'manter atenção até completar a passagem.',
     alerta: 'Evite transformar esta orientação em certeza absoluta ou agir sem observar o contexto.',
-    tempo: 'O tempo é simbólico e depende da maturação indicada pelo conjunto da leitura.'
+    tempo: 'O tempo depende do ciclo natural de maturação e das escolhas tomadas ao longo do caminho.'
   }
 ];
 function normalizar(texto:string):string{return String(texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}

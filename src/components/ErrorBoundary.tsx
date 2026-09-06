@@ -24,6 +24,20 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[ORACULOS.TS UI ErrorBoundary]:', error, errorInfo);
+
+    // Auto-recover from stale dynamic module imports after dev server restart or deployment
+    const isChunkError =
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.name === 'ChunkLoadError';
+
+    if (isChunkError) {
+      const reloadKey = 'oraculos_chunk_reload';
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, 'true');
+        window.location.reload();
+      }
+    }
   }
 
   handleReload = (): void => {

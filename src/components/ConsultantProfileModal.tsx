@@ -4,6 +4,7 @@ import { X, Star, MessageSquare, Video, Shield, Clock, Calendar, Sparkles } from
 import { Consultant, OracleType } from '../types';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 import { oracleTypeFromSlug } from '../routing/routes';
+import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../utils/avatarUtils';
 
 interface Props {
   consultant: Consultant | null;
@@ -89,8 +90,11 @@ export const ConsultantProfileModal: React.FC<Props> = ({
             {/* Consultant Main Info Header */}
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
               <img
-                src={consultant.avatar}
+                src={getSafeConsultantAvatar(consultant.avatar, consultant.name)}
                 alt={consultant.name}
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                onError={(e) => handleAvatarError(e, getGenderAwareAvatarFallback(consultant.name))}
                 className="w-24 h-24 rounded-2xl object-cover border-4 border-[#150F26] shadow-xl"
               />
               <div className="flex-1 space-y-1">

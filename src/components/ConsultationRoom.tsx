@@ -239,7 +239,7 @@ const [endConsultationError, setEndConsultationError] =
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) {
       setAiLoading(false);
-      setAiInterpretation('Sua sessão expirou ou você não está autenticado. Por favor, faça login novamente para consultar a IA.');
+      setAiInterpretation('Sua sessão expirou ou você não está autenticado. Por favor, faça login novamente para acessar a leitura.');
       return;
     }
 
@@ -286,8 +286,8 @@ const [endConsultationError, setEndConsultationError] =
         );
       }
     } catch (err) {
-      console.error('Erro ao consultar o copiloto oracular:', err);
-      setAiInterpretation('Erro de conexão com a Inteligência Artificial Gemini.');
+      console.error('Erro ao consultar a interpretação oracular:', err);
+      setAiInterpretation('Não foi possível conectar com os oráculos no momento. Tente novamente em instantes.');
     } finally {
       setAiLoading(false);
     }
@@ -327,15 +327,9 @@ const [endConsultationError, setEndConsultationError] =
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-sm md:text-base text-amber-200">{activeSession.consultantName}</h2>
-              {isVirtual ? (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  Atendente Virtual
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Consultor Especialista
-                </span>
-              )}
+              <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                Consultor Especialista
+              </span>
               <span className="hidden xs:inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {oracleInfo?.name || activeSession.oracleType}
               </span>
@@ -398,18 +392,11 @@ const [endConsultationError, setEndConsultationError] =
         </div>
       </header>
 
-      {/* Transparency Banner */}
-      {isVirtual ? (
-        <div className="px-4 py-1.5 bg-cyan-950/50 border-b border-cyan-800/40 text-center text-xs text-cyan-200 flex items-center justify-center gap-2">
-          <Info className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-          <span>Esta sessão é conduzida por um sistema de orientação virtual inteligente ORACULOS.TS.</span>
-        </div>
-      ) : (
-        <div className="px-4 py-1.5 bg-purple-950/50 border-b border-purple-800/40 text-center text-xs text-purple-200 flex items-center justify-center gap-2">
-          <Info className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-          <span>Atendimento direto em tempo real com consultor oracular credenciado.</span>
-        </div>
-      )}
+      {/* Room Protection Banner */}
+      <div className="px-4 py-1.5 bg-purple-950/50 border-b border-purple-800/40 text-center text-xs text-purple-200 flex items-center justify-center gap-2">
+        <Info className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+        <span>Atendimento confidencial e em tempo real com especialista oracular credenciado.</span>
+      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
@@ -558,7 +545,7 @@ const [endConsultationError, setEndConsultationError] =
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-full font-semibold transition-colors cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-              Copiloto Oracular IA
+              Interpretação Complementar
             </button>
           </div>
 

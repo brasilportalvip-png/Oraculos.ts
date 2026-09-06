@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgLimp" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e0b36"/>
+      <stop offset="50%" stop-color="#2a0e4e"/>
+      <stop offset="100%" stop-color="#0e041c"/>
+    </linearGradient>
+    <linearGradient id="violetFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#d4af37"/>
+      <stop offset="100%" stop-color="#996515"/>
+    </linearGradient>
+    <radialGradient id="glowLimp" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#a855f7" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bgLimp)"/>
+  <circle cx="600" cy="315" r="380" fill="url(#glowLimp)"/>
+
+  <!-- Auric Shield Rings -->
+  <circle cx="600" cy="300" r="230" fill="none" stroke="url(#gold)" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.6"/>
+  <circle cx="600" cy="300" r="190" fill="none" stroke="#c084fc" stroke-width="2" opacity="0.4"/>
+  <circle cx="600" cy="300" r="150" fill="none" stroke="#e9d5ff" stroke-width="1.5" opacity="0.3"/>
+
+  <!-- Sacred Violet Flame of Transmutation & Saint Germain -->
+  <g transform="translate(600, 310)">
+    <!-- Outer Flame -->
+    <path d="M0,140 C-80,100 -110,-20 -20,-110 C-10,-40 20,-60 0,-150 C70,-70 110,20 60,110 C30,130 15,138 0,140 Z" fill="url(#violetFlame)" opacity="0.75"/>
+    <!-- Inner Flame -->
+    <path d="M0,130 C-45,90 -65,0 -10,-65 C-5,-20 12,-35 0,-100 C45,-45 65,10 35,75 C20,90 10,105 0,130 Z" fill="#ffffff" opacity="0.9"/>
+    <!-- Central Pure Golden Spark -->
+    <circle cx="0" cy="40" r="12" fill="url(#gold)"/>
+  </g>
+
+  <!-- Sacred Quartz Crystals on Sides -->
+  <g transform="translate(430, 350) rotate(-20)" fill="#f3e8ff" stroke="url(#gold)" stroke-width="2" opacity="0.9">
+    <polygon points="0,-70 22,-20 18,60 -18,60 -22,-20"/>
+  </g>
+  <g transform="translate(770, 350) rotate(20)" fill="#f3e8ff" stroke="url(#gold)" stroke-width="2" opacity="0.9">
+    <polygon points="0,-70 22,-20 18,60 -18,60 -22,-20"/>
+  </g>
+
+  <text x="600" y="535" fill="#fef08a" font-family="serif" font-size="22" font-weight="300" text-anchor="middle" letter-spacing="4">LIMPEZA ESPIRITUAL &amp; DESOBSESSÃO</text>
+  <text x="600" y="565" fill="#c084fc" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="3">BLINDAGEM ÁURICA &amp; TRANSMUTAÇÃO ENERGÉTICA</text>
+  <text x="600" y="600" fill="#d4af37" font-family="serif" font-size="16" font-weight="300" text-anchor="middle" letter-spacing="6">ORACULOS.TS • HARMONIZAÇÃO</text>
+</svg>

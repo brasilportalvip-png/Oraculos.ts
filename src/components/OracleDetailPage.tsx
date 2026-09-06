@@ -276,10 +276,10 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
         <div className="flex items-center justify-between border-b border-purple-900/40 pb-4">
           <div>
             <h2 className="font-serif text-2xl font-light text-white">
-              Especialistas e Atendentes Disponíveis em {oracleConfig.name}
+              Especialistas Disponíveis em {oracleConfig.name}
             </h2>
             <p className="text-xs text-gray-400">
-              Escolha seu consultor credenciado ou atendente virtual com sabedoria canônica.
+              Escolha seu oraculista credenciado para um atendimento acolhedor e profundo.
             </p>
           </div>
           <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold rounded-full">

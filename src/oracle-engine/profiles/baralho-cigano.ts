@@ -1592,7 +1592,7 @@ ${carta.conselho}
 Alerta:
 ${carta.alerta}
 
-Tempo simbólico:
+Tempo estimado nas cartas:
 ${carta.tempo}
 `.trim();
 }

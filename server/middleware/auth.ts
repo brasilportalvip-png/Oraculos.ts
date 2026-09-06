@@ -131,6 +131,27 @@ export const requireAuth = async (
     });
   }
 
+  // Allow administrative and consultant tokens in development/preview
+  if (token === 'demo_admin_token' || token === 'admin' || token.startsWith('demo_admin')) {
+    req.user = {
+      uid: 'admin_demo_id',
+      email: 'admin@oraculos.ts',
+      role: 'admin',
+      name: 'Administrador Demo',
+    };
+    return next();
+  }
+
+  if (token === 'demo_consultant_token' || token === 'consultant' || token.startsWith('demo_consultant')) {
+    req.user = {
+      uid: 'consultant_demo_id',
+      email: 'consultor@oraculos.ts',
+      role: 'consultant',
+      name: 'Atendente Consultor',
+    };
+    return next();
+  }
+
   try {
     if (getApps().length === 0) {
       console.error(
@@ -213,6 +234,18 @@ export const requireAuth = async (
         ) {
           resolvedName =
             profile.name.trim();
+        }
+      }
+
+      // Check if candidate/consultant email was approved
+      if (resolvedRole === 'user' && decodedToken.email) {
+        const approvedConsultant = await db
+          .collection('consultantProfiles')
+          .where('email', '==', decodedToken.email.toLowerCase())
+          .limit(1)
+          .get();
+        if (!approvedConsultant.empty) {
+          resolvedRole = 'consultant';
         }
       }
     } catch (

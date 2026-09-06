@@ -1104,7 +1104,7 @@ ${cristal.cor}
 Elemento:
 ${cristal.elemento}
 
-Chakra simbólico:
+Chakra regente:
 ${cristal.chakra}
 
 Vibração:
@@ -1128,7 +1128,7 @@ ${cristal.conselho}
 Alerta:
 ${cristal.alerta}
 
-Uso simbólico:
+Uso energético recomendado:
 ${cristal.usoSimbolico}
 `.trim();
 }

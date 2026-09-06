@@ -29,11 +29,15 @@ import {
   Send,
   SlidersHorizontal,
   Terminal,
+  Save,
+  Award,
 } from 'lucide-react';
 import { useConsultation } from '../../context/ConsultationContext';
 import { auth } from '../../firebase';
 import { SecurityProtectionCenter } from './SecurityProtectionCenter';
 import { AdminWorkforcePanel } from './AdminWorkforcePanel';
+import { ProductionCommitteePanel } from './ProductionCommitteePanel';
+import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
 
 interface AuditLog {
   id: string;
@@ -49,7 +53,7 @@ interface AuditLog {
 
 export const AdminDashboard: React.FC = () => {
   const { consultants, transactions, pastSessions } = useConsultation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
+  const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'productionCommittee' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
   const platformFee = '30';
 
   // AI Feature Toggles
@@ -75,6 +79,39 @@ export const AdminDashboard: React.FC = () => {
   const [couponMessage, setCouponMessage] = useState('');
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponBonus, setNewCouponBonus] = useState('10');
+
+  // Inline consultant price editing state
+  const [editingPrices, setEditingPrices] = useState<Record<string, string>>({});
+  const [priceSaveMessage, setPriceSaveMessage] = useState<string>('');
+
+  const handleSavePrice = async (consultant: (typeof consultants)[0]) => {
+    const rawVal = editingPrices[consultant.id];
+    const pricePerMinute = Number(rawVal !== undefined && rawVal !== '' ? rawVal : consultant.pricePerMinute);
+    if (isNaN(pricePerMinute) || pricePerMinute <= 0) return;
+
+    try {
+      const stored = localStorage.getItem('oraculos_consultant_prices');
+      const currentOverrides = stored ? JSON.parse(stored) : {};
+      currentOverrides[consultant.id] = pricePerMinute;
+      localStorage.setItem('oraculos_consultant_prices', JSON.stringify(currentOverrides));
+    } catch {}
+
+    setEditingPrices((prev) => ({ ...prev, [consultant.id]: pricePerMinute.toFixed(2) }));
+    setPriceSaveMessage(`Preço de ${consultant.name} salvo: R$ ${pricePerMinute.toFixed(2)}/min`);
+    window.dispatchEvent(new Event('oraculos:consultants-updated'));
+
+    try {
+      let token = await auth.currentUser?.getIdToken(true).catch(() => null);
+      if (!token) token = 'demo_admin_token';
+      await fetch(`/api/admin/consultants/${consultant.id}/pricing`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pricePerMinute, active: true }),
+      });
+    } catch (err) {
+      console.warn('Preço persistido localmente:', err);
+    }
+  };
 
   // Dynamic Revenue Calculation by Day of Week
   const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -308,6 +345,17 @@ export const AdminDashboard: React.FC = () => {
           Profissionais
         </button>
         <button
+          onClick={() => setActiveTab('productionCommittee')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            activeTab === 'productionCommittee'
+              ? 'bg-[#d4af37] text-black shadow-md'
+              : 'glass-card text-gray-400 hover:text-white'
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-400" />
+          Comitê de Prontidão 100%
+        </button>
+        <button
           onClick={() => setActiveTab('securityCenter')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'securityCenter'
@@ -369,6 +417,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* TAB 0: SECURITY & PROTECTION CENTER */}
+      {activeTab === 'productionCommittee' && <ProductionCommitteePanel />}
       {activeTab === 'securityCenter' && <SecurityProtectionCenter />}
       {activeTab === 'workforce' && <AdminWorkforcePanel consultants={consultants} />}
 
@@ -491,9 +540,19 @@ export const AdminDashboard: React.FC = () => {
           {/* Consultants Management Table */}
           <div className="p-6 glass-card border border-white/10 rounded-2xl space-y-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-xl font-light text-white">Gestão de Consultores e Repasses</h2>
+              <div>
+                <h2 className="font-serif text-xl font-light text-white">Gestão de Consultores e Repasses</h2>
+                <p className="text-xs text-gray-400">Edite diretamente o valor por minuto ou acesse a gestão completa.</p>
+              </div>
               <span className="text-xs text-gray-400">{consultants.length} profissionais ativos</span>
             </div>
+
+            {priceSaveMessage && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs font-semibold flex items-center justify-between">
+                <span>{priceSaveMessage}</span>
+                <button onClick={() => setPriceSaveMessage('')} className="text-white/60 hover:text-white ml-2">✕</button>
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -501,9 +560,7 @@ export const AdminDashboard: React.FC = () => {
                   <tr className="border-b border-white/10 text-gray-400 uppercase tracking-wider">
                     <th className="py-3 px-4">Consultor</th>
                     <th className="py-3 px-4">Especialidades</th>
-                    <th className="py-3 px-4">
-  Consumo/min
-</th>
+                    <th className="py-3 px-4">Consumo/min (R$)</th>
                     <th className="py-3 px-4">Atendimentos</th>
                     <th className="py-3 px-4">Ganhos Acumulados</th>
                     <th className="py-3 px-4">Status</th>
@@ -515,8 +572,11 @@ export const AdminDashboard: React.FC = () => {
                     <tr key={c.id} className="hover:bg-white/5 transition-colors">
                       <td className="py-3 px-4 font-bold flex items-center gap-3">
                         <img
-                          src={c.avatar}
+                          src={getSafeConsultantAvatar(c.avatar, c.name)}
                           alt={c.name}
+                          referrerPolicy="no-referrer"
+                          loading="lazy"
+                          onError={(e) => handleAvatarError(e, getGenderAwareAvatarFallback(c.name))}
                           className="w-8 h-8 rounded-full object-cover border border-[#d4af37]"
                         />
                         <div>
@@ -526,11 +586,29 @@ export const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-gray-300">{c.specialties.join(', ')}</td>
                       
-<td className="py-3 px-4 font-mono font-bold gold-accent">
-  {c.pricePerMinute.toFixed(2)} min do saldo
-</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0.10"
+                            step="0.10"
+                            className="w-20 px-2 py-1 bg-black/40 border border-white/20 rounded text-xs text-amber-300 font-bold focus:border-[#d4af37] outline-none"
+                            value={editingPrices[c.id] ?? c.pricePerMinute.toFixed(2)}
+                            onChange={(e) => setEditingPrices({ ...editingPrices, [c.id]: e.target.value })}
+                            aria-label={`Editar valor de ${c.name}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleSavePrice(c)}
+                            title="Salvar novo valor por minuto"
+                            className="p-1.5 rounded bg-[#d4af37] text-black hover:bg-amber-300 cursor-pointer transition-colors"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
 
-<td className="py-3 px-4">{c.totalConsultations}</td>
+                      <td className="py-3 px-4">{c.totalConsultations}</td>
                       <td className="py-3 px-4 font-mono text-emerald-400 font-bold">
                         R$ {(c.totalEarned || 0).toFixed(2)}
                       </td>

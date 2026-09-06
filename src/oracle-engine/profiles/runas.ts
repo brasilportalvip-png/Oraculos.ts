@@ -1483,7 +1483,7 @@ ${item.runa.conselho}
 Alerta:
 ${item.runa.alerta}
 
-Tempo simbólico:
+Tempo de manifestação:
 ${item.runa.tempo}
 `.trim();
 }

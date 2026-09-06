@@ -43,7 +43,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Plataforma tecnológica de consultas oraculares e orientação pessoal online em tempo real. Conectando consulentes a especialistas e atendentes virtuais com rigor ético, transparência e segurança.
+              Plataforma sagrada de consultas oraculares e orientação pessoal online em tempo real. Conectando consulentes aos mais experientes especialistas em Tarot, Baralho Cigano, Astrologia e Búzios com acolhimento, sigilo e respeito.
             </p>
             <div className="pt-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 text-[11px] font-mono text-amber-300 rounded-full">

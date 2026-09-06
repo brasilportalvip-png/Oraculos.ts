@@ -89,8 +89,48 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   isAuthenticated,
   syncMinuteBalance,
 } = useAuth();
-  const [activeSession, setActiveSession] = useState<ConsultationSession | null>(null);
-  const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
+  const [activeSession, setActiveSession] = useState<ConsultationSession | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('oraculos_active_session') || localStorage.getItem('oraculos_active_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id && parsed.status === 'active') {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  // Preserve active consultation session across orientation changes and page refreshes
+  useEffect(() => {
+    if (activeSession && activeSession.status === 'active') {
+      try {
+        sessionStorage.setItem('oraculos_active_session', JSON.stringify(activeSession));
+        localStorage.setItem('oraculos_active_session', JSON.stringify(activeSession));
+      } catch {}
+    } else if (activeSession === null) {
+      try {
+        sessionStorage.removeItem('oraculos_active_session');
+        localStorage.removeItem('oraculos_active_session');
+      } catch {}
+    }
+  }, [activeSession]);
+
+  const [consultants, setConsultants] = useState<Consultant[]>(() => {
+    // Read initial prices from localStorage if any
+    try {
+      const stored = localStorage.getItem('oraculos_consultant_prices');
+      if (stored) {
+        const overrides = JSON.parse(stored);
+        return INITIAL_CONSULTANTS.map((c) => ({
+          ...c,
+          pricePerMinute: overrides[c.id] !== undefined ? Number(overrides[c.id]) : c.pricePerMinute,
+        }));
+      }
+    } catch {}
+    return INITIAL_CONSULTANTS;
+  });
   const [pastSessions, setPastSessions] = useState<ConsultationSession[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
@@ -125,23 +165,39 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let cancelled = false;
     const loadPublicConsultants = async () => {
       try {
+        // Read local overrides saved by admin
+        let localPricingOverrides: Record<string, number> = {};
+        try {
+          const raw = localStorage.getItem('oraculos_consultant_prices');
+          if (raw) localPricingOverrides = JSON.parse(raw);
+        } catch {}
+
         const response = await fetch('/api/consultants/public');
         const body = await response.json().catch(() => ({}));
-        if (!response.ok || cancelled) return;
-        const settings = body.data?.settings && typeof body.data.settings === 'object'
+        if (cancelled) return;
+
+        const settings = response.ok && body.data?.settings && typeof body.data.settings === 'object'
           ? body.data.settings as Record<string, { pricePerMinute?: number; active?: boolean }>
           : {};
-        const approved = Array.isArray(body.data?.approved)
+        const approved = response.ok && Array.isArray(body.data?.approved)
           ? body.data.approved as Consultant[]
           : [];
+
         setConsultants(() => {
           const merged = [...INITIAL_CONSULTANTS, ...approved.filter((profile) => !INITIAL_CONSULTANTS.some((item) => item.id === profile.id))];
           return merged
             .filter((profile) => settings[profile.id]?.active !== false)
-            .map((profile) => ({
-              ...profile,
-              pricePerMinute: Number(settings[profile.id]?.pricePerMinute ?? profile.pricePerMinute),
-            }));
+            .map((profile) => {
+              const localOverride = localPricingOverrides[profile.id];
+              const remoteSetting = settings[profile.id]?.pricePerMinute;
+              const finalPrice = typeof localOverride === 'number' && localOverride > 0
+                ? localOverride
+                : (remoteSetting !== undefined ? Number(remoteSetting) : profile.pricePerMinute);
+              return {
+                ...profile,
+                pricePerMinute: Number(finalPrice),
+              };
+            });
         });
       } catch (error) {
         console.error('[ORACULOS.TS] Falha ao carregar profissionais publicados:', error);
@@ -793,129 +849,81 @@ return;
   };
 
   const startConsultation = async (
-  consultant: Consultant,
-  oracle: OracleType,
-  mode: 'chat' | 'video',
-
-
-): Promise<{
-  success: boolean;
-  message?: string;
-}> => {
-  const firebaseUser =
-    auth.currentUser;
-
-  if (!firebaseUser) {
-    return {
-      success: false,
-      message:
-        'Sua sessão expirou. Entre novamente para iniciar a consulta.',
-    };
-  }
-
-  const consultationId =
-    `sess_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
-
-  
-let serverPricePerMinute =
-  consultant.pricePerMinute;
-
-
-let serverStartedAt =
-  new Date().toISOString();
-
-try {
-  const idToken =
-    await firebaseUser.getIdToken(true);
-
-  const response =
-    await fetch(
-      '/api/finance/start-consultation',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':
-            'application/json',
-          Authorization:
-            `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          consultationId,
-          consultantId:
-            consultant.id,
-          oracleType: oracle,
-          mode,
-        }),
-      },
-    );
-
-  const body =
-    await response
-      .json()
-      .catch(() => ({}));
-
-  if (
-    !response.ok ||
-    !body.success
-  ) {
-    if (
-      body.error?.code ===
-      'INSUFFICIENT_FUNDS'
-    ) {
-      setIsRechargeModalOpen(true);
+    consultant: Consultant,
+    oracle: OracleType,
+    mode: 'chat' | 'video',
+  ): Promise<{
+    success: boolean;
+    message?: string;
+  }> => {
+    // If not authenticated or guest, open auth modal immediately
+    if (!isAuthenticated || !user || user.id === 'guest') {
+      try {
+        sessionStorage.setItem(
+          'oraculos_pending_consultation',
+          JSON.stringify({ consultantId: consultant.id, oracle, mode })
+        );
+      } catch {}
+      window.dispatchEvent(new CustomEvent('oraculos:open-auth'));
+      return {
+        success: false,
+        message: 'Entre na sua conta para iniciar a consulta.',
+      };
     }
 
-    return {
-      success: false,
-      message:
-        body.error?.message ||
-        'Não foi possível iniciar a consulta com segurança.',
-    };
-  }
+    const effectivePrice = Number(consultant.pricePerMinute || 3.5);
+    const balance = Number(user.minuteBalance ?? 0);
 
-  const officialPrice =
-    Number(
-      body.data?.pricePerMinute,
-    );
+    if (balance < effectivePrice && balance <= 0) {
+      setIsRechargeModalOpen(true);
+      return {
+        success: false,
+        message: 'Saldo insuficiente. Recarregue minutos para conversar com este especialista.',
+      };
+    }
 
-  if (
-    !Number.isFinite(
-      officialPrice,
-    ) ||
-    officialPrice <= 0
-  ) {
-    return {
-      success: false,
-      message:
-        'O servidor retornou um preço inválido para esta consulta.',
-    };
-  }
+    const firebaseUser = auth.currentUser;
+    const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    let serverPricePerMinute = effectivePrice;
+    let serverStartedAt = new Date().toISOString();
 
-  serverPricePerMinute =
-    officialPrice;
+    if (firebaseUser) {
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const response = await fetch('/api/finance/start-consultation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            consultationId,
+            consultantId: consultant.id,
+            oracleType: oracle,
+            mode,
+          }),
+        });
 
-  if (
-    typeof body.data?.startedAt ===
-      'string' &&
-    body.data.startedAt
-  ) {
-    serverStartedAt =
-      body.data.startedAt;
-  }
-} catch (error) {
-  console.error(
-    '[ORACULOS.TS] Falha ao registrar início da consulta:',
-    error,
-  );
-
-  return {
-    success: false,
-    message:
-      'Falha de conexão ao iniciar a consulta. Nenhuma sessão foi aberta.',
-  };
-}
+        const body = await response.json().catch(() => ({}));
+        if (response.ok && body.success) {
+          const officialPrice = Number(body.data?.pricePerMinute);
+          if (Number.isFinite(officialPrice) && officialPrice > 0) {
+            serverPricePerMinute = officialPrice;
+          }
+          if (typeof body.data?.startedAt === 'string' && body.data.startedAt) {
+            serverStartedAt = body.data.startedAt;
+          }
+        } else if (body.error?.code === 'INSUFFICIENT_FUNDS') {
+          setIsRechargeModalOpen(true);
+          return {
+            success: false,
+            message: body.error?.message || 'Saldo insuficiente.',
+          };
+        }
+      } catch (error) {
+        console.warn('[ORACULOS.TS] Conexão remota pendente, iniciando em modo resiliente:', error);
+      }
+    }
 
 const initialMessage: ChatMessage = {
 
