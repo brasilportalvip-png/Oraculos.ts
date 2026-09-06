@@ -319,7 +319,7 @@ window.location.assign('/');
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0813] text-slate-100 overflow-hidden font-sans">
+    <div className="fixed inset-x-0 top-0 h-[100dvh] z-50 flex flex-col bg-[#0B0813] text-slate-100 overflow-hidden font-sans">
       {/* Top Header Control Bar */}
       <header className="flex items-center justify-between px-4 py-3 bg-[#150F26] border-b border-purple-900/50 shadow-lg">
         {/* Consultant Info */}
@@ -398,7 +398,29 @@ window.location.assign('/');
             <span className="hidden sm:inline">Encerrar</span>
           </button>
         </div>
-      </header>
+            </header>
+
+      {/* Mobile Timer & Balance Counter */}
+      <div className="sm:hidden flex items-center justify-between gap-2 px-3 py-2 bg-[#1F1638] border-b border-purple-800/40 text-[11px]">
+        <div className="flex items-center gap-1 text-emerald-400 font-mono font-bold">
+          <Clock className="w-3.5 h-3.5" />
+          <span>{formattedTime}</span>
+        </div>
+
+        <div className="text-slate-300">
+          Consumo:{' '}
+          <strong className="text-amber-300">
+            {consumedWalletMinutes.toFixed(2)} min
+          </strong>
+        </div>
+
+        <div className="flex items-center gap-1 text-purple-200">
+          <Wallet className="w-3.5 h-3.5 text-amber-400" />
+          <span>
+            Saldo: {remainingWalletMinutes.toFixed(2)} min
+          </span>
+        </div>
+      </div>
 
       {/* Room Protection Banner */}
       <div className="px-4 py-1.5 bg-purple-950/50 border-b border-purple-800/40 text-center text-xs text-purple-200 flex items-center justify-center gap-2">
@@ -407,7 +429,7 @@ window.location.assign('/');
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
         {/* Video Mode Container */}
         {mode === 'video' && (
           <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-4">
@@ -604,7 +626,10 @@ window.location.assign('/');
           </AnimatePresence>
 
           {/* Input Box */}
-          <form onSubmit={handleSend} className="p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2">
+          <form
+  onSubmit={handleSend}
+  className="px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-3 bg-[#150F26] border-t border-purple-900/50 flex items-center gap-2"
+>
             <input
               type="text"
               value={inputText}
