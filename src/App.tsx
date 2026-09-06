@@ -6,7 +6,7 @@ import { Footer } from './components/Footer';
 import { ConsultantShowcase } from './components/showcase/ConsultantShowcase';
 import { ConsultantProfileModal } from './components/ConsultantProfileModal';
 import { MercadoPagoRechargeModal } from './components/MercadoPagoRechargeModal';
-import { FloatingSupport } from './components/FloatingSupport';
+
 import { SEOHead } from './components/SEOHead';
 import { Consultant, OracleType } from './types';
 import { LegalDocType } from './components/LegalPage';
@@ -367,8 +367,7 @@ function MainAppContent() {
         </Suspense>
       )}
 
-      {/* Global Floating Support Button */}
-      <FloatingSupport />
+     
     </div>
   );
 }
