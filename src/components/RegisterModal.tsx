@@ -210,8 +210,8 @@ const [resetMessage, setResetMessage] =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 backdrop-blur-sm px-3 py-[max(0.75rem,env(safe-area-inset-top))] sm:p-4 overflow-y-auto overscroll-contain">
-      <div className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-purple-500/30 p-4 sm:p-6 text-white shadow-2xl my-2 sm:my-8 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-purple-500/30 p-6 text-white shadow-2xl my-8">
         <button
           type="button"
           onClick={onClose}

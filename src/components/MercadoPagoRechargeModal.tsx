@@ -318,7 +318,7 @@ export const MercadoPagoRechargeModal: React.FC<Props> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto overscroll-contain bg-black/80 px-3 py-[max(0.75rem,env(safe-area-inset-top))] sm:p-4 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md"
         role="presentation"
         onMouseDown={(event) => {
           if (
@@ -349,9 +349,9 @@ export const MercadoPagoRechargeModal: React.FC<Props> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="mercado-pago-title"
-          className="relative my-2 sm:my-8 w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-amber-500/30 bg-[#150F26] text-slate-100 shadow-2xl"
+          className="relative my-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-amber-500/30 bg-[#150F26] text-slate-100 shadow-2xl"
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-purple-900/40 bg-gradient-to-r from-purple-950 to-[#150F26] p-4 sm:p-5">
+          <div className="flex items-center justify-between border-b border-purple-900/40 bg-gradient-to-r from-purple-950/60 to-[#150F26] p-5">
             <div className="flex items-center gap-3">
               <img
                 src="/brand/logo-oraculos.png"
@@ -387,7 +387,7 @@ export const MercadoPagoRechargeModal: React.FC<Props> = ({
             </button>
           </div>
 
-          <div className="space-y-5 p-4 sm:space-y-6 sm:p-6">
+          <div className="space-y-6 p-6">
             {error && (
               <div
                 role="alert"
