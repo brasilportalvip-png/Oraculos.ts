@@ -8,9 +8,8 @@ import './index.css';
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js?v=2.8.1', { updateViaCache: 'none' })
-      .then(async (reg) => {
-        await reg.update();
+      .register('/sw.js')
+      .then((reg) => {
         console.log('[ORACULOS.TS] Service Worker registrado:', reg.scope);
       })
       .catch((err) => {
