@@ -129,7 +129,7 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Especialidades Oraculares</span>
             <div className="flex flex-wrap gap-2">
-              {(Array.isArray(consultant.specialties) && consultant.specialties.length > 0 ? consultant.specialties : (consultant.allowedOracles || [])).map((spec) => (
+              {consultant.specialties.map((spec) => (
                 <span
                   key={spec}
                   className="px-3 py-1 bg-purple-950/60 border border-purple-700/50 rounded-full text-xs text-purple-200"
@@ -144,7 +144,7 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
-            onClick={() => onStartConsultation(consultant, ((Array.isArray(consultant.specialties) && consultant.specialties.length > 0 ? consultant.specialties[0] : consultant.allowedOracles?.[0]) as OracleType) || 'tarot', 'chat')}
+            onClick={() => onStartConsultation(consultant, (consultant.specialties[0] as OracleType) || 'tarot', 'chat')}
             className="flex-1 py-3 bg-[#d4af37] hover:bg-[#b8952b] text-black font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
