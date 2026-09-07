@@ -3712,6 +3712,53 @@ async function findConsultationSession(consultationId: string) {
   return { session: snapshot.docs[0].data() as ServerConsultationSession, reference: snapshot.docs[0].ref, key: snapshot.docs[0].ref.path };
 }
 
+app.get('/api/finance/active-consultation', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.uid;
+  if (!userId) {
+    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Usuário não autenticado.' } });
+  }
+
+  if (!adminDb) {
+    const activeSession = Object.values(consultationSessionsDb).find(
+      (session) => session.userId === userId && session.status === 'active',
+    );
+    return res.json({ success: true, data: { activeSession: activeSession || null } });
+  }
+
+  try {
+    const userReference = adminDb.collection('users').doc(userId);
+    const userDocument = await userReference.get();
+    const activeConsultationId = typeof userDocument.data()?.activeConsultationId === 'string'
+      ? String(userDocument.data()?.activeConsultationId).trim()
+      : '';
+
+    if (!activeConsultationId) {
+      return res.json({ success: true, data: { activeSession: null } });
+    }
+
+    const sessionDocument = await userReference
+      .collection('consultationSessions')
+      .doc(activeConsultationId)
+      .get();
+    const session = sessionDocument.exists
+      ? sessionDocument.data() as ServerConsultationSession
+      : null;
+
+    if (!session || session.status !== 'active') {
+      await userReference.update({ activeConsultationId: null, updatedAt: new Date().toISOString() });
+      return res.json({ success: true, data: { activeSession: null } });
+    }
+
+    return res.json({ success: true, data: { activeSession: session } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao recuperar consulta ativa:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'ACTIVE_CONSULTATION_LOOKUP_FAILED', message: 'Não foi possível recuperar a consulta ativa.' },
+    });
+  }
+});
+
 app.get('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const found = await findConsultationSession(req.params.id.trim());
   if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });

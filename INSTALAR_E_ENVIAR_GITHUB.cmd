@@ -10,8 +10,8 @@ call npm install || (echo ERRO ao instalar dependencias.& pause & exit /b 1)
 call npm run lint || (echo ERRO na validacao TypeScript.& pause & exit /b 1)
 call npm test -- --pool=threads --maxWorkers=1 || (echo ERRO nos testes.& pause & exit /b 1)
 call npm run build || (echo ERRO no build de producao.& pause & exit /b 1)
-git push -u origin fix/mobile-visual-validado || (echo ERRO ao enviar para o GitHub.& pause & exit /b 1)
-start "" "https://github.com/brasilportalvip-png/Oraculos.ts/compare/main...fix/mobile-visual-validado?expand=1"
+git push -u origin fix/retomar-consulta-e-atualizar-cache || (echo ERRO ao enviar para o GitHub.& pause & exit /b 1)
+start "" "https://github.com/brasilportalvip-png/Oraculos.ts/compare/main...fix/retomar-consulta-e-atualizar-cache?expand=1"
 echo.
 echo PRONTO. O GitHub foi aberto. Clique em Create pull request.
 pause

@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useCallback,
 } from 'react';
 import { Consultant, ConsultationSession, ChatMessage, OracleType, FinancialTransaction } from '../types';
 import { useAuth } from './AuthContext';
@@ -101,6 +102,69 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch {}
     return null;
   });
+
+  const resumeActiveConsultation = useCallback(async (): Promise<boolean> => {
+    if (!isAuthenticated || !user || user.id === 'guest' || !auth.currentUser) {
+      return false;
+    }
+
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/finance/active-consultation', {
+        headers: { Authorization: `Bearer ${idToken}` },
+        cache: 'no-store',
+      });
+      const body = await response.json().catch(() => ({}));
+      const session = body.data?.activeSession;
+
+      if (!response.ok || !body.success || !session?.id) {
+        return false;
+      }
+
+      const consultant = INITIAL_CONSULTANTS.find((item) => item.id === session.consultantId);
+      const startedAt = new Date(String(session.startedAt || ''));
+      const durationSeconds = Number.isFinite(startedAt.getTime())
+        ? Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000))
+        : 0;
+      const messages = Array.isArray(session.messages) ? session.messages : [];
+
+      setActiveSession({
+        id: String(session.id),
+        clientId: user.id,
+        clientName: user.name,
+        consultantId: String(session.consultantId || ''),
+        consultantName: String(session.consultantName || consultant?.name || 'Especialista'),
+        consultantAvatar: consultant?.avatar || '/brand/logo-oraculos.png',
+        oracleType: (session.oracleType || 'tarot') as OracleType,
+        mode: session.mode === 'video' ? 'video' : 'chat',
+        status: 'active',
+        startTime: Number.isFinite(startedAt.getTime())
+          ? startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        durationSeconds,
+        pricePerMinute: Number(session.pricePerMinute || consultant?.pricePerMinute || 0),
+        totalCost: 0,
+        adminCommission: 0,
+        consultantEarnings: 0,
+        messages,
+      });
+      return true;
+    } catch (error) {
+      console.warn('[ORACULOS.TS] Não foi possível retomar a consulta ativa:', error);
+      return false;
+    }
+  }, [isAuthenticated, user?.id, user?.name]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || user.id === 'guest') return;
+
+    if (activeSession) {
+      if (activeSession.clientId !== user.id) setActiveSession(null);
+      return;
+    }
+
+    void resumeActiveConsultation();
+  }, [isAuthenticated, user?.id, activeSession?.id, activeSession?.clientId, resumeActiveConsultation]);
 
   // Preserve active consultation session across orientation changes and page refreshes
   useEffect(() => {
@@ -970,6 +1034,13 @@ try {
   if (!response.ok || !body.success) {
     if (body.error?.code === 'INSUFFICIENT_FUNDS') {
       setIsRechargeModalOpen(true);
+    }
+
+    if (body.error?.code === 'ACTIVE_CONSULTATION_EXISTS') {
+      const resumed = await resumeActiveConsultation();
+      if (resumed) {
+        return { success: true, message: 'Consulta ativa retomada.' };
+      }
     }
 
     return {
