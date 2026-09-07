@@ -6,7 +6,7 @@ import { Footer } from './components/Footer';
 import { ConsultantShowcase } from './components/showcase/ConsultantShowcase';
 import { ConsultantProfileModal } from './components/ConsultantProfileModal';
 import { MercadoPagoRechargeModal } from './components/MercadoPagoRechargeModal';
-
+import { FloatingSupport } from './components/FloatingSupport';
 import { SEOHead } from './components/SEOHead';
 import { Consultant, OracleType } from './types';
 import { LegalDocType } from './components/LegalPage';
@@ -131,24 +131,17 @@ function MainAppContent() {
   }, []);
 
   const handleStartConsultation = async (
-  consultant: Consultant,
-  oracle: OracleType,
-  mode: 'chat' | 'video'
-) => {
-  const result = await startConsultation(consultant, oracle, mode);
-
-  if (!result.success && result.message) {
-    if (
-      result.message.includes('Saldo insuficiente') ||
-      result.message.includes('minutos')
-    ) {
-      setIsRechargeModalOpen(true);
-      return;
+    consultant: Consultant,
+    oracle: OracleType,
+    mode: 'chat' | 'video'
+  ) => {
+    const result = await startConsultation(consultant, oracle, mode);
+    if (!result.success && result.message) {
+      if (result.message.includes('Saldo insuficiente') || result.message.includes('minutos')) {
+        setIsRechargeModalOpen(true);
+      }
     }
-
-    window.alert(result.message);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-[#050508] text-gray-200 flex flex-col font-sans selection:bg-[#d4af37] selection:text-black">
@@ -367,7 +360,8 @@ function MainAppContent() {
         </Suspense>
       )}
 
-     
+      {/* Global Floating Support Button (hidden during active consultation) */}
+      {!activeSession && <FloatingSupport />}
     </div>
   );
 }

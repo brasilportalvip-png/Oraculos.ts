@@ -3559,13 +3559,43 @@ app.get(
         pricePerMinute: 3.5,
         commissionRate: 0.7,
       };
+
+      const consultantId = inMemoryProfile.id;
+      const allSessions = Object.values(consultationSessionsDb).filter(
+        (s) => s.consultantId === consultantId || consultantId === 'consultant_demo' || !s.consultantId.startsWith('ai_')
+      );
+      const completed = allSessions.filter((s) => s.status === 'completed');
+      const activeOrRequested = allSessions.filter((s) => s.status === 'active' || s.status === 'requested');
+      const grossMinutes = completed.reduce((total, session) => total + Number((session as any).debitMinutes || 0), 0);
+      const commissionRate = Number((inMemoryProfile as any).commissionRate || 0.7);
+
+      const pricePerMin = Number(inMemoryProfile.pricePerMinute || 3.5);
+      const totalDurationMinutes = completed.reduce((total, session) => total + Number((session as any).durationMinutes || (session as any).debitMinutes || 0), 0);
+      const grossAmountBrl = Number((grossMinutes * (pricePerMin / 3.5)).toFixed(2));
+      const siteOwnerAmountBrl = Number((grossAmountBrl * 0.30).toFixed(2));
+      const payableAmountBrl = Number((grossAmountBrl * 0.70).toFixed(2));
+
       return res.json({
         success: true,
         data: {
           profile: inMemoryProfile,
-          sessions: [],
-          activeSessions: [],
-          earnings: { grossMinutes: 0, commissionRate: 0.7, payableMinutes: 0, paymentMethod: 'manual_weekly' },
+          sessions: completed.sort((a, b) => String((b as any).endedAt || '').localeCompare(String((a as any).endedAt || ''))),
+          activeSessions: activeOrRequested.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
+          earnings: {
+            totalConsultations: completed.length,
+            totalDurationMinutes: Math.round(totalDurationMinutes),
+            grossMinutes: Number(grossMinutes.toFixed(2)),
+            grossAmountBrl,
+            siteOwnerCommissionRate: 0.30,
+            siteOwnerAmountBrl,
+            commissionRate: 0.70,
+            consultantCommissionRate: 0.70,
+            payableMinutes: Number((grossMinutes * 0.70).toFixed(2)),
+            payableAmountBrl,
+            paymentMethod: 'manual_weekly',
+            payoutSchedule: 'weekly',
+            payoutDay: 'Toda Sexta-feira',
+          },
         },
       });
     }
@@ -3587,8 +3617,9 @@ app.get(
       const apps = await adminDb.collection('workforceApplications').where('email', '==', userEmail).limit(1).get();
       if (!apps.empty && ['submitted', 'approved'].includes(String(apps.docs[0].data()?.status))) {
         const appData = apps.docs[0].data() as Record<string, any>;
+        const generatedId = `human_${apps.docs[0].id.replace(/^candidate_/, '')}`;
         const fallbackProfile = {
-          id: `human_${apps.docs[0].id.replace(/^candidate_/, '')}`,
+          id: generatedId,
           name: appData.professionalName || appData.fullName,
           title: (appData.specialties as string[])?.join(' • ') || 'Especialista Oracular',
           avatar: appData.profilePhoto || '/brand/logo-oraculos.png?v=20260831',
@@ -3599,13 +3630,38 @@ app.get(
           experienceYears: appData.experienceYears || 5,
           schedule: 'Segunda a Sexta, 09h às 22h',
         };
+        const allSessions = Object.values(consultationSessionsDb).filter(
+          (s) => s.consultantId === generatedId || s.consultantName === fallbackProfile.name || !s.consultantId.startsWith('ai_')
+        );
+        const completed = allSessions.filter((s) => s.status === 'completed');
+        const activeOrRequested = allSessions.filter((s) => s.status === 'active' || s.status === 'requested');
+        const grossMinutes = completed.reduce((total, session) => total + Number((session as any).debitMinutes || 0), 0);
+        const totalDurationMinutes = completed.reduce((total, session) => total + Number((session as any).durationMinutes || (session as any).debitMinutes || 0), 0);
+        const grossAmountBrl = Number(grossMinutes.toFixed(2));
+        const siteOwnerAmountBrl = Number((grossAmountBrl * 0.30).toFixed(2));
+        const payableAmountBrl = Number((grossAmountBrl * 0.70).toFixed(2));
+
         return res.json({
           success: true,
           data: {
             profile: fallbackProfile,
-            sessions: [],
-            activeSessions: [],
-            earnings: { grossMinutes: 0, commissionRate: 0.7, payableMinutes: 0, paymentMethod: 'manual_weekly' },
+            sessions: completed.sort((a, b) => String((b as any).endedAt || '').localeCompare(String((a as any).endedAt || ''))),
+            activeSessions: activeOrRequested.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
+            earnings: {
+              totalConsultations: completed.length,
+              totalDurationMinutes: Math.round(totalDurationMinutes),
+              grossMinutes: Number(grossMinutes.toFixed(2)),
+              grossAmountBrl,
+              siteOwnerCommissionRate: 0.30,
+              siteOwnerAmountBrl,
+              commissionRate: 0.70,
+              consultantCommissionRate: 0.70,
+              payableMinutes: Number((grossMinutes * 0.70).toFixed(2)),
+              payableAmountBrl,
+              paymentMethod: 'manual_weekly',
+              payoutSchedule: 'weekly',
+              payoutDay: 'Toda Sexta-feira',
+            },
           },
         });
       }
@@ -3619,9 +3675,13 @@ app.get(
       id: doc.id,
     }));
     const completed = sessions.filter((session) => session.status === 'completed');
-    const active = sessions.filter((session) => session.status === 'active');
+    const active = sessions.filter((session) => session.status === 'active' || session.status === 'requested');
     const grossMinutes = completed.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
-    const commissionRate = Number(profileDocument.data()?.commissionRate || 0.7);
+    const totalDurationMinutes = completed.reduce((total, session) => total + Number(session.durationMinutes || session.debitMinutes || 0), 0);
+    const grossAmountBrl = Number(grossMinutes.toFixed(2));
+    const siteOwnerAmountBrl = Number((grossAmountBrl * 0.30).toFixed(2));
+    const payableAmountBrl = Number((grossAmountBrl * 0.70).toFixed(2));
+
     return res.json({
       success: true,
       data: {
@@ -3629,10 +3689,19 @@ app.get(
         sessions: completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))),
         activeSessions: active.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
         earnings: {
+          totalConsultations: completed.length,
+          totalDurationMinutes: Math.round(totalDurationMinutes),
           grossMinutes: Number(grossMinutes.toFixed(2)),
-          commissionRate,
-          payableMinutes: Number((grossMinutes * commissionRate).toFixed(2)),
+          grossAmountBrl,
+          siteOwnerCommissionRate: 0.30,
+          siteOwnerAmountBrl,
+          commissionRate: 0.70,
+          consultantCommissionRate: 0.70,
+          payableMinutes: Number((grossMinutes * 0.70).toFixed(2)),
+          payableAmountBrl,
           paymentMethod: 'manual_weekly',
+          payoutSchedule: 'weekly',
+          payoutDay: 'Toda Sexta-feira',
         },
       },
     });
@@ -3661,6 +3730,27 @@ app.patch(
   },
 );
 
+app.patch(
+  '/api/consultants/me/pix',
+  requireAuth,
+  requireRole(['consultant', 'employee']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { pixKeyType, pixKey, bankName } = req.body || {};
+    if (!pixKey || typeof pixKey !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Informe uma chave PIX válida para repasse.' } });
+    }
+    if (adminDb && req.user?.uid) {
+      await adminDb.collection('users').doc(req.user.uid).set({
+        pixKeyType: pixKeyType || 'cpf',
+        pixKey: pixKey.trim(),
+        bankName: bankName || '',
+        pixUpdatedAt: new Date().toISOString(),
+      }, { merge: true }).catch(() => {});
+    }
+    return res.json({ success: true, message: 'Chave PIX para repasse semanal salva com sucesso.' });
+  },
+);
+
 interface ServerConsultationSession {
   id: string;
   userId: string;
@@ -3670,7 +3760,7 @@ interface ServerConsultationSession {
   startedAt: string;
   oracleType?: string;
   mode?: 'chat' | 'video';
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'requested' | 'rejected';
   endedAt?: string;
   durationMinutes?: number;
     debitMinutes?: number;
@@ -3712,61 +3802,18 @@ async function findConsultationSession(consultationId: string) {
   return { session: snapshot.docs[0].data() as ServerConsultationSession, reference: snapshot.docs[0].ref, key: snapshot.docs[0].ref.path };
 }
 
-app.get('/api/finance/active-consultation', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user?.uid;
-  if (!userId) {
-    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Usuário não autenticado.' } });
-  }
-
-  if (!adminDb) {
-    const activeSession = Object.values(consultationSessionsDb).find(
-      (session) => session.userId === userId && session.status === 'active',
-    );
-    return res.json({ success: true, data: { activeSession: activeSession || null } });
-  }
-
-  try {
-    const userReference = adminDb.collection('users').doc(userId);
-    const userDocument = await userReference.get();
-    const activeConsultationId = typeof userDocument.data()?.activeConsultationId === 'string'
-      ? String(userDocument.data()?.activeConsultationId).trim()
-      : '';
-
-    if (!activeConsultationId) {
-      return res.json({ success: true, data: { activeSession: null } });
-    }
-
-    const sessionDocument = await userReference
-      .collection('consultationSessions')
-      .doc(activeConsultationId)
-      .get();
-    const session = sessionDocument.exists
-      ? sessionDocument.data() as ServerConsultationSession
-      : null;
-
-    if (!session || session.status !== 'active') {
-      await userReference.update({ activeConsultationId: null, updatedAt: new Date().toISOString() });
-      return res.json({ success: true, data: { activeSession: null } });
-    }
-
-    return res.json({ success: true, data: { activeSession: session } });
-  } catch (error) {
-    console.error('[ORACULOS.TS] Falha ao recuperar consulta ativa:', error);
-    return res.status(500).json({
-      success: false,
-      error: { code: 'ACTIVE_CONSULTATION_LOOKUP_FAILED', message: 'Não foi possível recuperar a consulta ativa.' },
-    });
-  }
-});
-
 app.get('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const found = await findConsultationSession(req.params.id.trim());
   if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
-  const consultantId = await resolveConsultantId(req.user.uid);
-  if (found.session.userId !== req.user.uid && found.session.consultantId !== consultantId) {
-    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não participa desta consulta.' } });
-  }
-  return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
+  const requesterIsClient = found.session.userId === req.user.uid;
+ const requesterIsConsultant = req.user.role === 'consultant';
+ const requesterIsPrivilegedStaff = ['support', 'admin', 'superadmin'].includes(req.user.role);
+
+ if (!requesterIsClient && !requesterIsConsultant && !requesterIsPrivilegedStaff) {
+ return res.status(403).json({ success: false, error: { code: 'CONSULTATION_FORBIDDEN', message: 'Você não participa desta consulta.' } });
+ }
+
+ return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
 });
 
 app.post('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -3774,21 +3821,78 @@ app.post('/api/consultations/:id/messages', requireAuth, async (req: Authenticat
   if (!text) return res.status(400).json({ success: false, error: { code: 'INVALID_MESSAGE', message: 'Digite uma mensagem válida.' } });
   const found = await findConsultationSession(req.params.id.trim());
   if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
-  if (found.session.status !== 'active') return res.status(409).json({ success: false, error: { code: 'CONSULTATION_CLOSED', message: 'Esta consulta já foi encerrada.' } });
-  const consultantId = await resolveConsultantId(req.user.uid);
-  if (found.session.userId !== req.user.uid && found.session.consultantId !== consultantId) {
-    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não participa desta consulta.' } });
-  }
+  if (found.session.status !== 'active') return res.status(409).json({ success: false, error: { code: 'CONSULTATION_CLOSED', message: 'Esta consulta não está em andamento ativo.' } });
+
   const now = new Date();
+  const isClient = found.session.userId === req.user.uid;
+  const senderName = isClient
+    ? (req.user.name || 'Cliente')
+    : (found.session.consultantName || req.user.name || 'Consultor Especialista');
+
   const message: ServerConsultationMessage = {
-    id: `msg_${crypto.randomUUID()}`, senderId: req.user.uid,
-    senderName: req.user.name || (found.session.userId === req.user.uid ? 'Cliente' : found.session.consultantName),
-    text, timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), createdAt: now.toISOString(),
+    id: `msg_${crypto.randomUUID()}`,
+    senderId: req.user.uid,
+    senderName,
+    text,
+    timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    createdAt: now.toISOString(),
   };
+
   const messages = [...(found.session.messages || []), message].slice(-500);
   if (adminDb && found.reference) await found.reference.update({ messages, updatedAt: now.toISOString() });
   else consultationSessionsDb[found.key] = { ...found.session, messages };
-  return res.status(201).json({ success: true, data: { message } });
+  return res.status(201).json({ success: true, data: { message, status: found.session.status } });
+});
+
+app.post('/api/consultations/:id/accept', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const found = await findConsultationSession(req.params.id.trim());
+  if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
+
+  const now = new Date();
+  const acceptMsg: ServerConsultationMessage = {
+    id: `msg_${crypto.randomUUID()}`,
+    senderId: 'system',
+    senderName: 'ORACULOS.TS',
+    text: `Atendimento aceito por ${found.session.consultantName}! Consulta iniciada em tempo real com atendimento manual.`,
+    timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    createdAt: now.toISOString(),
+  };
+
+  const messages = [...(found.session.messages || []), acceptMsg];
+  const updatedSession = {
+    ...found.session,
+    status: 'active' as const,
+    startedAt: now.toISOString(),
+    messages,
+  };
+
+  if (adminDb && found.reference) {
+    await found.reference.update({ status: 'active', startedAt: now.toISOString(), messages, updatedAt: now.toISOString() });
+  } else {
+    consultationSessionsDb[found.key] = updatedSession;
+  }
+
+  return res.json({ success: true, data: { status: 'active', session: updatedSession } });
+});
+
+app.post('/api/consultations/:id/reject', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const found = await findConsultationSession(req.params.id.trim());
+  if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
+
+  const now = new Date();
+  const updatedSession = {
+    ...found.session,
+    status: 'rejected' as any,
+    endedAt: now.toISOString(),
+  };
+
+  if (adminDb && found.reference) {
+    await found.reference.update({ status: 'rejected', endedAt: now.toISOString(), updatedAt: now.toISOString() });
+  } else {
+    consultationSessionsDb[found.key] = updatedSession;
+  }
+
+  return res.json({ success: true, data: { status: 'rejected' } });
 });
 
 // Inicia uma consulta usando horário e preço
@@ -4059,6 +4163,9 @@ app.post(
         const startedAt =
           new Date().toISOString();
 
+        const isVirtual = Boolean((consultant as any).isAI === true || consultantId.startsWith('ai_') || consultantId.startsWith('c_ai_'));
+        const initialStatus: ServerConsultationSession['status'] = isVirtual ? 'active' : 'requested';
+
         const newSession:
           ServerConsultationSession = {
           id:
@@ -4072,7 +4179,7 @@ app.post(
           oracleType,
           mode,
           status:
-            'active',
+            initialStatus,
         };
 
         consultationSessionsDb[
@@ -4186,82 +4293,28 @@ app.post(
             }
 
             const activeConsultationId =
-  typeof userData
-    .activeConsultationId ===
-  'string'
-    ? userData
-        .activeConsultationId
-    : '';
+              typeof userData
+                .activeConsultationId ===
+              'string'
+                ? userData
+                    .activeConsultationId
+                : '';
 
-if (
-  activeConsultationId &&
-  activeConsultationId !==
-    consultationId
-) {
-  const activeSessionReference =
-    userReference
-      .collection(
-        'consultationSessions',
-      )
-      .doc(activeConsultationId);
-
-  const activeSessionDocument =
-    await transaction.get(
-      activeSessionReference,
-    );
-
-  const activeSessionData =
-    activeSessionDocument.exists
-      ? activeSessionDocument.data() || {}
-      : {};
-
-  if (
-  activeSessionDocument.exists &&
-  activeSessionData.status ===
-    'active'
-) {
-  const activeMessages =
-    Array.isArray(
-      activeSessionData.messages,
-    )
-      ? activeSessionData.messages
-      : [];
-
-  const activeStartedAt =
-    typeof activeSessionData.startedAt ===
-    'string'
-      ? Date.parse(
-          activeSessionData.startedAt,
-        )
-      : NaN;
-
-  const isStaleUnopenedSession =
-    activeMessages.length === 0 &&
-    (
-      !Number.isFinite(
-        activeStartedAt,
-      ) ||
-      Date.now() -
-        activeStartedAt >=
-        2 * 60 * 1000
-    );
-
-  if (
-    !isStaleUnopenedSession
-  ) {
-    throw new Error(
-      'ACTIVE_CONSULTATION_EXISTS',
-    );
-  }
-
-  transaction.delete(
-    activeSessionReference,
-  );
-}
-}
+            if (
+              activeConsultationId &&
+              activeConsultationId !==
+                consultationId
+            ) {
+              throw new Error(
+                'ACTIVE_CONSULTATION_EXISTS',
+              );
+            }
 
             const startedAt =
               new Date().toISOString();
+
+            const isVirtual = Boolean((consultant as any).isAI === true || consultantId.startsWith('ai_') || consultantId.startsWith('c_ai_'));
+            const initialStatus = isVirtual ? 'active' : 'requested';
 
             const newSession = {
               id:
@@ -4275,7 +4328,7 @@ if (
               oracleType,
               mode,
               status:
-                'active',
+                initialStatus,
               createdAt:
                 startedAt,
             };

@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { MessageCircle, Send, HelpCircle, X, ShieldCheck } from 'lucide-react';
+import { useConsultation } from '../context/ConsultationContext';
 
 export const FloatingSupport: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { activeSession } = useConsultation();
+
+  if (activeSession) return null;
 
   const whatsappUrl = 'https://chat.whatsapp.com/JqXdWPrCVxz1NC9dXyMdso';
   const telegramUrl = 'https://t.me/+EOUhr0Xa2_00NDQ5';
 
   return (
-    <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-3">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {/* Support Menu Drawer */}
       {isOpen && (
-        <div className="bg-[#0f0f18] border border-[#d4af37]/30 rounded-2xl p-4 sm:p-5 shadow-2xl w-80 max-w-full max-h-[calc(100dvh-6rem)] overflow-y-auto backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200 text-gray-200">
+        <div className="bg-[#0f0f18] border border-[#d4af37]/30 rounded-2xl p-5 shadow-2xl w-80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200 text-gray-200">
           <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#d4af37]" />
