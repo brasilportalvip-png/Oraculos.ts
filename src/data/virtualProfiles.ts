@@ -174,7 +174,7 @@ export const VIRTUAL_PROFILES: VirtualConsultantProfile[] = [
   },
   {
     id: 'ai_c7',
-    name: 'Rafael Áurea',
+    name: 'Gabriel Áurea',
     title: 'Numerologia Pitagórica & Cabala de Negócios',
     avatar: '/consultants/gabriel-aurea.webp',
     bio: 'Mapeamento do ano pessoal, dias de sorte, compatibilidade de nomes e orientação para novos empreendimentos.',

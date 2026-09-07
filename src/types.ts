@@ -127,7 +127,7 @@ export interface ConsultationSession {
   consultantAvatar: string;
   oracleType: OracleType;
   mode: 'chat' | 'video';
-  status: 'requested' | 'accepted' | 'waiting' | 'active' | 'reconnecting' | 'completed' | 'canceled' | 'rejected' | 'interrupted' | 'refunded' | 'disputed';
+  status: 'requested' | 'accepted' | 'waiting' | 'active' | 'reconnecting' | 'completed' | 'canceled' | 'interrupted' | 'refunded' | 'disputed';
   startTime: string;
   endTime?: string;
   durationSeconds: number;

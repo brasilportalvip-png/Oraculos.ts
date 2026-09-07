@@ -87,9 +87,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 {footerLink('reembolso', <><Lock className="w-3.5 h-3.5 text-purple-400" />Política de Cancelamento & Reembolso</>, 'flex items-center gap-1.5 hover:text-amber-300 transition')}
               </li>
-              <li>
-                {footerLink('ajuda', <><HelpCircle className="w-3.5 h-3.5 text-purple-400" />Central de Ajuda & DPO</>, 'flex items-center gap-1.5 hover:text-amber-300 transition')}
-              </li>
+             {footerLink('ajuda', <><HelpCircle className="w-3.5 h-3.5 text-purple-400" />Central de Ajuda & DPO</>, 'flex items-center gap-1.5 hover:text-amber-300 transition')}
             </ul>
           </div>
 

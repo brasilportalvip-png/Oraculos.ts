@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useCallback,
 } from 'react';
 import { Consultant, ConsultationSession, ChatMessage, OracleType, FinancialTransaction } from '../types';
 import { useAuth } from './AuthContext';
@@ -42,10 +43,6 @@ sendMessage: (text: string) => void;
   addTransaction: (tx: FinancialTransaction) => void;
   updateConsultantStatus: (consultantId: string, status: 'online' | 'busy' | 'offline') => void;
   updateConsultantPrice: (consultantId: string, newPrice: number) => void;
-  forceExitConsultation: () => void;
-  cancelConsultationRequest: () => Promise<void>;
-  acceptConsultation: (sessionId: string) => Promise<{ success: boolean; message?: string }>;
-  rejectConsultation: (sessionId: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const ConsultationContext = createContext<ConsultationContextType | undefined>(undefined);
@@ -105,6 +102,69 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch {}
     return null;
   });
+
+  const resumeActiveConsultation = useCallback(async (): Promise<boolean> => {
+    if (!isAuthenticated || !user || user.id === 'guest' || !auth.currentUser) {
+      return false;
+    }
+
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/finance/active-consultation', {
+        headers: { Authorization: `Bearer ${idToken}` },
+        cache: 'no-store',
+      });
+      const body = await response.json().catch(() => ({}));
+      const session = body.data?.activeSession;
+
+      if (!response.ok || !body.success || !session?.id) {
+        return false;
+      }
+
+      const consultant = INITIAL_CONSULTANTS.find((item) => item.id === session.consultantId);
+      const startedAt = new Date(String(session.startedAt || ''));
+      const durationSeconds = Number.isFinite(startedAt.getTime())
+        ? Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000))
+        : 0;
+      const messages = Array.isArray(session.messages) ? session.messages : [];
+
+      setActiveSession({
+        id: String(session.id),
+        clientId: user.id,
+        clientName: user.name,
+        consultantId: String(session.consultantId || ''),
+        consultantName: String(session.consultantName || consultant?.name || 'Especialista'),
+        consultantAvatar: consultant?.avatar || '/brand/logo-oraculos.png',
+        oracleType: (session.oracleType || 'tarot') as OracleType,
+        mode: session.mode === 'video' ? 'video' : 'chat',
+        status: 'active',
+        startTime: Number.isFinite(startedAt.getTime())
+          ? startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        durationSeconds,
+        pricePerMinute: Number(session.pricePerMinute || consultant?.pricePerMinute || 0),
+        totalCost: 0,
+        adminCommission: 0,
+        consultantEarnings: 0,
+        messages,
+      });
+      return true;
+    } catch (error) {
+      console.warn('[ORACULOS.TS] Não foi possível retomar a consulta ativa:', error);
+      return false;
+    }
+  }, [isAuthenticated, user?.id, user?.name]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || user.id === 'guest') return;
+
+    if (activeSession) {
+      if (activeSession.clientId !== user.id) setActiveSession(null);
+      return;
+    }
+
+    void resumeActiveConsultation();
+  }, [isAuthenticated, user?.id, activeSession?.id, activeSession?.clientId, resumeActiveConsultation]);
 
   // Preserve active consultation session across orientation changes and page refreshes
   useEffect(() => {
@@ -188,8 +248,62 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           : [];
 
         setConsultants(() => {
-          const merged = [...INITIAL_CONSULTANTS, ...approved.filter((profile) => !INITIAL_CONSULTANTS.some((item) => item.id === profile.id))];
-          return merged
+  const normalizeProfileName = (
+  value: unknown,
+) =>
+  typeof value === 'string'
+    ? value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+    : '';
+
+const seenProfileNames = new Set(
+  INITIAL_CONSULTANTS
+    .map((item) =>
+      normalizeProfileName(item.name),
+    )
+    .filter(Boolean),
+);
+
+const uniqueApproved = approved.filter(
+  (profile) => {
+    const profileId =
+      typeof profile?.id === 'string'
+        ? profile.id.trim()
+        : '';
+
+    const profileName =
+      normalizeProfileName(
+        profile?.name,
+      );
+
+    if (
+      !profileId ||
+      !profileName ||
+      seenProfileNames.has(
+        profileName,
+      )
+    ) {
+      return false;
+    }
+
+    seenProfileNames.add(
+      profileName,
+    );
+
+    return true;
+  },
+);
+  const merged = [
+    ...INITIAL_CONSULTANTS,
+    ...uniqueApproved,
+  ];
+
+  return merged
             .filter((profile) => settings[profile.id]?.active !== false)
             .map((profile) => {
               const localOverride = localPricingOverrides[profile.id];
@@ -887,58 +1001,93 @@ return;
     }
 
     const firebaseUser = auth.currentUser;
-    const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    let serverPricePerMinute = effectivePrice;
-    let serverStartedAt = new Date().toISOString();
+const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+let serverPricePerMinute = effectivePrice;
+let serverStartedAt = new Date().toISOString();
 
-    if (firebaseUser) {
-      try {
-        const idToken = await firebaseUser.getIdToken(true);
-        const response = await fetch('/api/finance/start-consultation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({
-            consultationId,
-            consultantId: consultant.id,
-            oracleType: oracle,
-            mode,
-          }),
-        });
+if (!firebaseUser) {
+  return {
+    success: false,
+    message: 'Sua sessão expirou. Entre novamente para iniciar a consulta.',
+  };
+}
 
-        const body = await response.json().catch(() => ({}));
-        if (response.ok && body.success) {
-          const officialPrice = Number(body.data?.pricePerMinute);
-          if (Number.isFinite(officialPrice) && officialPrice > 0) {
-            serverPricePerMinute = officialPrice;
-          }
-          if (typeof body.data?.startedAt === 'string' && body.data.startedAt) {
-            serverStartedAt = body.data.startedAt;
-          }
-        } else if (body.error?.code === 'INSUFFICIENT_FUNDS') {
-          setIsRechargeModalOpen(true);
-          return {
-            success: false,
-            message: body.error?.message || 'Saldo insuficiente.',
-          };
-        }
-      } catch (error) {
-        console.warn('[ORACULOS.TS] Conexão remota pendente, iniciando em modo resiliente:', error);
+try {
+  const idToken = await firebaseUser.getIdToken(true);
+
+  const response = await fetch('/api/finance/start-consultation', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      consultationId,
+      consultantId: consultant.id,
+      oracleType: oracle,
+      mode,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok || !body.success) {
+    if (body.error?.code === 'INSUFFICIENT_FUNDS') {
+      setIsRechargeModalOpen(true);
+    }
+
+    if (body.error?.code === 'ACTIVE_CONSULTATION_EXISTS') {
+      const resumed = await resumeActiveConsultation();
+      if (resumed) {
+        return { success: true, message: 'Consulta ativa retomada.' };
       }
     }
 
-    const isVirtual = Boolean(consultant.isAI === true || consultant.id.startsWith('ai_') || consultant.id.startsWith('c_ai_'));
+    return {
+      success: false,
+      message:
+        body.error?.message ||
+        'Não foi possível iniciar a consulta com segurança.',
+    };
+  }
 
-    const initialMessage: ChatMessage = {
+  const officialPrice = Number(body.data?.pricePerMinute);
+
+  if (Number.isFinite(officialPrice) && officialPrice > 0) {
+    serverPricePerMinute = officialPrice;
+  }
+
+  if (
+    typeof body.data?.startedAt === 'string' &&
+    body.data.startedAt
+  ) {
+    serverStartedAt = body.data.startedAt;
+  }
+} catch (error) {
+  console.error(
+    '[ORACULOS.TS] Falha ao registrar consulta no servidor:',
+    error,
+  );
+
+  return {
+    success: false,
+    message:
+      'Não foi possível conectar ao servidor para iniciar a consulta. Tente novamente.',
+  };
+}
+
+const initialMessage: ChatMessage = {
+
+
       id: `msg_${Date.now()}`,
       senderId: 'system',
       senderName: 'ORACULOS.TS',
-      text: isVirtual
-        ? `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`
-        : `Chamando ${consultant.name}... Aguardando o especialista aceitar a chamada. A contagem de tempo e a tarifação só iniciarão após o aceite.`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      
+
+text: `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
+
+
+timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSystem: true,
     };
 
@@ -950,10 +1099,8 @@ return;
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const initialStatus = isVirtual ? 'active' : 'requested';
-
     const newSession: ConsultationSession = {
-      id: consultationId,
+  id: consultationId,
       clientId: user.id,
       clientName: user.name,
       consultantId: consultant.id,
@@ -961,29 +1108,27 @@ return;
       consultantAvatar: consultant.avatar,
       oracleType: oracle,
       mode,
-      status: initialStatus,
-      startTime: new Date(serverStartedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'active',
+      startTime:
+  new Date(
+    serverStartedAt,
+  ).toLocaleTimeString(
+    [],
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+  ),
       durationSeconds: 0,
-      pricePerMinute: serverPricePerMinute,
+      pricePerMinute:
+  serverPricePerMinute,
       totalCost: 0,
       adminCommission: 0,
       consultantEarnings: 0,
-      messages: isVirtual ? [initialMessage, welcomeConsultantMsg] : [initialMessage],
+      messages: [initialMessage, welcomeConsultantMsg],
     };
 
     setActiveSession(newSession);
-
-    if (!isVirtual) {
-      try {
-        localStorage.setItem('oraculos_pending_call', JSON.stringify(newSession));
-        window.dispatchEvent(new CustomEvent('oraculos:incoming-consultation', { detail: newSession }));
-        if (typeof BroadcastChannel !== 'undefined') {
-          const ch = new BroadcastChannel('oraculos_consultations_channel');
-          ch.postMessage({ type: 'incoming_consultation', session: newSession });
-          ch.close();
-        }
-      } catch {}
-    }
 
     // Update consultant status to 'busy'
     setConsultants((prev) =>
@@ -1048,46 +1193,26 @@ const sendMessage = (text: string) => {
         ),
   };
 
-  const isVirtual = Boolean(activeSession.consultantId.startsWith('ai_') || activeSession.consultantId.startsWith('c_ai_'));
+  const isVirtual = activeSession.consultantId.startsWith('ai_') || activeSession.consultantId.startsWith('c_ai_');
   if (!isVirtual) {
     const sessionId = activeSession.id;
-    // Optimistic update
-    setActiveSession((current) => current && current.id === sessionId
-      ? { ...current, messages: [...current.messages, userMessage] }
-      : current);
-
-    // Broadcast across windows/tabs
-    try {
-      if (typeof BroadcastChannel !== 'undefined') {
-        const ch = new BroadcastChannel('oraculos_consultations_channel');
-        ch.postMessage({ type: 'new_message', sessionId, message: userMessage });
-        ch.close();
-      }
-      window.dispatchEvent(new CustomEvent('oraculos:chat-message', { detail: { sessionId, message: userMessage } }));
-    } catch {}
-
     void (async () => {
       try {
-        let token = await auth.currentUser?.getIdToken().catch(() => null);
-        if (!token) {
-          const stored = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
-          if (stored) token = 'demo_client_token';
-        }
-        if (!token) token = 'demo_client_token';
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Sessão expirada. Entre novamente.');
         const response = await fetch(`/api/consultations/${encodeURIComponent(sessionId)}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ text: cleanText }),
         });
         const body = await response.json().catch(() => ({}));
-        if (response.ok && body.data?.message) {
-          const persisted = body.data.message as ChatMessage;
-          setActiveSession((current) => current && current.id === sessionId
-            ? { ...current, messages: [...current.messages.filter((m) => m.id !== userMessage.id && m.id !== persisted.id), persisted] }
-            : current);
-        }
+        if (!response.ok) throw new Error(body.error?.message || 'Não foi possível enviar a mensagem.');
+        const persisted = body.data?.message as ChatMessage;
+        setActiveSession((current) => current && current.id === sessionId
+          ? { ...current, messages: [...current.messages.filter((item) => item.id !== persisted.id), persisted] }
+          : current);
       } catch (error) {
-        console.warn('[ORACULOS.TS] Erro ao sincronizar mensagem com o servidor:', error);
+        console.error('[ORACULOS.TS] Falha ao enviar mensagem:', error);
       }
     })();
     return;
@@ -1232,7 +1357,13 @@ const endConsultation = async (
       !response.ok ||
       !body.success
     ) {
-      throw new Error(body.error?.message || 'Falha ao encerrar no servidor');
+      return {
+        success: false,
+
+        message:
+          body.error?.message ||
+          'Não foi possível encerrar a consulta com segurança.',
+      };
     }
 
     /*
@@ -1291,11 +1422,17 @@ const endConsultation = async (
 
       !transactionId
     ) {
-      console.warn(
-        '[ORACULOS.TS] Resposta do servidor incompleta, aplicando liquidação local segura:',
+      console.error(
+        '[ORACULOS.TS] Resposta financeira inválida do servidor:',
         body.data,
       );
-      throw new Error('Dados financeiros retornados incompletos ou em formato inválido');
+
+      return {
+        success: false,
+
+        message:
+          'O servidor retornou dados financeiros inválidos. A tela foi mantida aberta para evitar inconsistência.',
+      };
     }
 
     const processedAtValue =
@@ -1596,172 +1733,21 @@ const endConsultation = async (
     };
   } catch (error) {
     console.error(
-      '[ORACULOS.TS] Falha ao finalizar consulta remotamente, aplicando encerramento seguro:',
+      '[ORACULOS.TS] Falha ao finalizar consulta:',
       error,
     );
-    try {
-      const fallbackDuration = Math.max(1, Math.ceil((sessionToFinish.durationSeconds || 60) / 60));
-      const fallbackPrice = sessionToFinish.pricePerMinute || 3.5;
-      const currentBal = Number(user.minuteBalance ?? 0);
-      const fallbackDebit = Math.min(currentBal, Number((fallbackDuration * fallbackPrice).toFixed(2)));
-      const newBal = Math.max(0, Number((currentBal - fallbackDebit).toFixed(2)));
-      syncMinuteBalance(newBal);
 
-      const completedSession: ConsultationSession = {
-        ...sessionToFinish,
-        status: 'completed',
-        endTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        durationSeconds: fallbackDuration * 60,
-        totalCost: fallbackDebit,
-        adminCommission: Number((fallbackDebit * 0.3).toFixed(2)),
-        consultantEarnings: Number((fallbackDebit * 0.7).toFixed(2)),
-        ratingGiven: rating,
-        reviewText,
-      };
-      setPastSessions((prev) => [completedSession, ...prev]);
-      setConsultants((prev) => prev.map((c) => c.id === sessionToFinish.consultantId ? { ...c, status: 'online' } : c));
-    } catch {}
-    try {
-      sessionStorage.removeItem('oraculos_active_session');
-      localStorage.removeItem('oraculos_active_session');
-    } catch {}
-    setActiveSession(null);
     return {
-      success: true,
-      message: 'Consulta encerrada com sucesso.',
+      success: false,
+
+      message:
+        'Falha de conexão ao registrar o encerramento. A consulta continua aberta para permitir nova tentativa segura.',
     };
   }
 };
 
-  const forceExitConsultation = () => {
-    try {
-      sessionStorage.removeItem('oraculos_active_session');
-      localStorage.removeItem('oraculos_active_session');
-      localStorage.removeItem('oraculos_pending_call');
-      sessionStorage.removeItem('oraculos_pending_call');
-    } catch {}
-    if (activeSession) {
-      setConsultants((prev) => prev.map((c) => c.id === activeSession.consultantId ? { ...c, status: 'online' } : c));
-      if (typeof BroadcastChannel !== 'undefined') {
-        try {
-          const ch = new BroadcastChannel('oraculos_consultations_channel');
-          ch.postMessage({ type: 'consultation_ended', sessionId: activeSession.id });
-          ch.close();
-        } catch {}
-      }
-      try {
-        window.dispatchEvent(new CustomEvent('oraculos:consultation-ended', { detail: { sessionId: activeSession.id } }));
-      } catch {}
-    }
-    setActiveSession(null);
-  };
 
-  const cancelConsultationRequest = async () => {
-    if (!activeSession) return;
-    const sessionId = activeSession.id;
-    try {
-      let token = await auth.currentUser?.getIdToken().catch(() => null);
-      if (!token) {
-        const stored = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
-        if (stored) token = 'demo_client_token';
-      }
-      if (!token) token = 'demo_client_token';
-      await fetch(`/api/consultations/${encodeURIComponent(sessionId)}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
 
-      if (typeof BroadcastChannel !== 'undefined') {
-        const ch = new BroadcastChannel('oraculos_consultations_channel');
-        ch.postMessage({ type: 'consultation_rejected', sessionId });
-        ch.close();
-      }
-      window.dispatchEvent(new CustomEvent('oraculos:consultation-rejected', { detail: { sessionId } }));
-    } catch {}
-    forceExitConsultation();
-  };
-
-  const acceptConsultation = async (sessionId: string) => {
-    try {
-      let token = await auth.currentUser?.getIdToken().catch(() => null);
-      if (!token) {
-        const stored = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
-        if (stored) token = 'demo_consultant_token';
-      }
-      if (!token) token = 'demo_consultant_token';
-      const res = await fetch(`/api/consultations/${encodeURIComponent(sessionId)}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (typeof BroadcastChannel !== 'undefined') {
-        const ch = new BroadcastChannel('oraculos_consultations_channel');
-        ch.postMessage({ type: 'consultation_accepted', sessionId, messages: data?.data?.session?.messages });
-        ch.close();
-      }
-      window.dispatchEvent(new CustomEvent('oraculos:consultation-accepted', { detail: { sessionId } }));
-
-      setActiveSession((prev) => {
-        if (!prev || prev.id !== sessionId) return prev;
-        return {
-          ...prev,
-          status: 'active',
-          messages: data?.data?.session?.messages || prev.messages,
-        };
-      });
-      return { success: true };
-    } catch (err) {
-      return { success: false, message: 'Falha ao aceitar atendimento.' };
-    }
-  };
-
-  const rejectConsultation = async (sessionId: string) => {
-    try {
-      let token = await auth.currentUser?.getIdToken().catch(() => null);
-      if (!token) {
-        const stored = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
-        if (stored) token = 'demo_consultant_token';
-      }
-      if (!token) token = 'demo_consultant_token';
-      await fetch(`/api/consultations/${encodeURIComponent(sessionId)}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (typeof BroadcastChannel !== 'undefined') {
-        const ch = new BroadcastChannel('oraculos_consultations_channel');
-        ch.postMessage({ type: 'consultation_rejected', sessionId });
-        ch.close();
-      }
-      window.dispatchEvent(new CustomEvent('oraculos:consultation-rejected', { detail: { sessionId } }));
-      setActiveSession((prev) => (prev?.id === sessionId ? null : prev));
-      return { success: true };
-    } catch (err) {
-      return { success: false, message: 'Falha ao recusar atendimento.' };
-    }
-  };
-
-  useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return;
-    const channel = new BroadcastChannel('oraculos_consultations_channel');
-    channel.onmessage = (event) => {
-      const data = event.data;
-      if (!data) return;
-      if (data.type === 'consultation_accepted' && activeSession?.id === data.sessionId) {
-        setActiveSession((prev) => prev ? { ...prev, status: 'active', messages: data.messages || prev.messages } : null);
-      } else if (data.type === 'consultation_rejected' && activeSession?.id === data.sessionId) {
-        setActiveSession((prev) => prev ? { ...prev, status: 'rejected' } : null);
-      } else if (data.type === 'new_message' && activeSession?.id === data.sessionId && data.message) {
-        setActiveSession((prev) => {
-          if (!prev) return null;
-          if (prev.messages.some((m) => m.id === data.message.id)) return prev;
-          return { ...prev, messages: [...prev.messages, data.message] };
-        });
-      }
-    };
-    return () => {
-      channel.close();
-    };
-  }, [activeSession?.id]);
 
   const addTransaction = (
   tx: FinancialTransaction,
@@ -1800,10 +1786,6 @@ const endConsultation = async (
         addTransaction,
         updateConsultantStatus,
         updateConsultantPrice,
-        forceExitConsultation,
-        cancelConsultationRequest,
-        acceptConsultation,
-        rejectConsultation,
       }}
     >
       {children}

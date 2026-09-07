@@ -22,16 +22,22 @@ export const ConsultantCard: React.FC<Props> = ({
   const { isFavorite, toggleFavorite } = useAuth();
   const fav = isFavorite(consultant.id);
 
-  const specialties = Array.isArray(consultant.specialties) ? consultant.specialties : [];
-  const allowedOracles = Array.isArray(consultant.allowedOracles) ? consultant.allowedOracles : [];
+  const specialties = Array.isArray(consultant.specialties)
+  ? consultant.specialties
+  : [];
 
-  const chosenOracle: OracleType =
-    activeOracle &&
-    (specialties.includes(activeOracle) ||
-      allowedOracles.includes(activeOracle))
-      ? activeOracle
-      : (specialties[0] as OracleType) || (allowedOracles[0] as OracleType) || 'tarot';
+const allowedOracles = Array.isArray(consultant.allowedOracles)
+  ? consultant.allowedOracles
+  : [];
 
+const chosenOracle: OracleType =
+  activeOracle &&
+  (specialties.includes(activeOracle) ||
+    allowedOracles.includes(activeOracle))
+    ? activeOracle
+    : (specialties[0] as OracleType) ||
+      (allowedOracles[0] as OracleType) ||
+      'tarot';
   const getStatusBadge = () => {
     switch (consultant.status) {
       case 'online':
