@@ -3805,7 +3805,15 @@ async function findConsultationSession(consultationId: string) {
 app.get('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const found = await findConsultationSession(req.params.id.trim());
   if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Consulta não encontrada.' } });
-  return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
+  const requesterIsClient = found.session.userId === req.user.uid;
+ const requesterIsConsultant = req.user.role === 'consultant';
+ const requesterIsPrivilegedStaff = ['support', 'admin', 'superadmin'].includes(req.user.role);
+
+ if (!requesterIsClient && !requesterIsConsultant && !requesterIsPrivilegedStaff) {
+ return res.status(403).json({ success: false, error: { code: 'CONSULTATION_FORBIDDEN', message: 'Você não participa desta consulta.' } });
+ }
+
+ return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
 });
 
 app.post('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

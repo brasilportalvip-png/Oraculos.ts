@@ -975,7 +975,7 @@ export const ConsultantDashboard: React.FC = () => {
                   }))
                 }
                 placeholder={`Responder a ${currentChatSession.clientName || 'consulente'} em tempo real...`}
-                className="flex-1 bg-black/40 border border-purple-900/60 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                className="flex-1 min-w-0 bg-black/40 border border-purple-900/60 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
               />
               <button
                 type="submit"
