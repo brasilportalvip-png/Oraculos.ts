@@ -22,12 +22,15 @@ export const ConsultantCard: React.FC<Props> = ({
   const { isFavorite, toggleFavorite } = useAuth();
   const fav = isFavorite(consultant.id);
 
+  const specialties = Array.isArray(consultant.specialties) ? consultant.specialties : [];
+  const allowedOracles = Array.isArray(consultant.allowedOracles) ? consultant.allowedOracles : [];
+
   const chosenOracle: OracleType =
     activeOracle &&
-    (consultant.specialties.includes(activeOracle) ||
-      (consultant.allowedOracles && consultant.allowedOracles.includes(activeOracle)))
+    (specialties.includes(activeOracle) ||
+      allowedOracles.includes(activeOracle))
       ? activeOracle
-      : (consultant.specialties[0] as OracleType) || 'tarot';
+      : (specialties[0] as OracleType) || (allowedOracles[0] as OracleType) || 'tarot';
 
   const getStatusBadge = () => {
     switch (consultant.status) {
@@ -111,7 +114,7 @@ export const ConsultantCard: React.FC<Props> = ({
 
         {/* Specialties */}
         <div className="flex flex-wrap gap-1.5">
-          {consultant.specialties.map((spec) => {
+          {specialties.map((spec) => {
             const cat = ORACLE_CATEGORIES[spec];
             return (
               <span
