@@ -146,7 +146,7 @@ describe('BATERIA PARAMETRIZADA: 10 TESTES REAIS DA API (POST /api/ai/oracle-int
     expect(res.body.data.normalizedOracleId).toBe('numerologia');
     expect(res.body.data.consultant).toEqual({
       id: 'ai_c7',
-      name: 'Rafael Áurea',
+      name: 'Gabriel Áurea',
       kind: 'virtual',
     });
 
@@ -173,7 +173,7 @@ describe('BATERIA PARAMETRIZADA: 10 TESTES REAIS DA API (POST /api/ai/oracle-int
     expect(res.body.data.normalizedOracleId).toBe('buzios');
     expect(res.body.data.consultant).toEqual({
       id: 'c3',
-      name: 'Ialorixá Dandara de Oxum',
+      name: 'Mãe Serena de Oya',
       kind: 'human',
     });
 
