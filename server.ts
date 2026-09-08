@@ -3634,6 +3634,18 @@ app.get(
     if (!profileDocument?.exists) {
       return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Seu cadastro profissional ainda não foi vinculado. Contate o administrador.' } });
     }
+    if (req.query.profileOnly === '1') {
+      return res.json({
+        success: true,
+        data: {
+          profile: { id: profileDocument.id, ...profileDocument.data() },
+          sessions: [],
+          pendingSessions: [],
+          activeSessions: [],
+          earnings: { grossMinutes: 0, commissionRate: Number(profileDocument.data()?.commissionRate || 0.7), payableMinutes: 0, paymentMethod: 'manual_weekly' },
+        },
+      });
+    }
     const sessionsSnapshot = await adminDb.collectionGroup('consultationSessions').where('consultantId', '==', consultantId).get();
     const sessions = sessionsSnapshot.docs.map((doc) => ({
       ...(doc.data() as ServerConsultationSession),

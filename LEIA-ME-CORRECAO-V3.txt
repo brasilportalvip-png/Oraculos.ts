@@ -1,0 +1,16 @@
+ORACULOS.TS - CORRECAO DO CARREGAMENTO PROFISSIONAL V3
+
+- O perfil profissional abre antes do historico de atendimentos.
+- O botao Testar som fica disponivel sem aguardar consultas antigas.
+- Remove renovacao forcada do token a cada atualizacao.
+- Impede requisicoes simultaneas e acumuladas.
+- Atualizacao das chamadas passa a ocorrer a cada 5 segundos.
+- Requisicao lenta e encerrada com mensagem amigavel apos 15 segundos.
+- O painel permanece visivel quando o historico demora.
+
+VALIDACAO
+- TypeScript aprovado.
+- 127 testes aprovados.
+- Build de producao aprovado.
+
+Execute INSTALAR_TESTAR_E_ABRIR_PR_V3.cmd e aguarde a abertura do GitHub.
