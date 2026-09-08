@@ -31,12 +31,16 @@ import {
   Terminal,
   Save,
   Award,
+  UserCog,
+  MessagesSquare,
 } from 'lucide-react';
 import { useConsultation } from '../../context/ConsultationContext';
 import { auth } from '../../firebase';
 import { SecurityProtectionCenter } from './SecurityProtectionCenter';
 import { AdminWorkforcePanel } from './AdminWorkforcePanel';
 import { ProductionCommitteePanel } from './ProductionCommitteePanel';
+import { AdminAccountsPanel } from './AdminAccountsPanel';
+import { AdminConsultationAudit } from './AdminConsultationAudit';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
 
 interface AuditLog {
@@ -53,7 +57,7 @@ interface AuditLog {
 
 export const AdminDashboard: React.FC = () => {
   const { consultants, transactions, pastSessions } = useConsultation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'securityCenter' | 'productionCommittee' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
+  const [activeTab, setActiveTab] = useState<'overview' | 'workforce' | 'accounts' | 'consultationAudit' | 'securityCenter' | 'productionCommittee' | 'aiCentral' | 'securityLogs' | 'coupons'>('workforce');
   const platformFee = '30';
 
   // AI Feature Toggles
@@ -345,6 +349,18 @@ export const AdminDashboard: React.FC = () => {
           Profissionais
         </button>
         <button
+          onClick={() => setActiveTab('accounts')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'accounts' ? 'bg-[#d4af37] text-black shadow-md' : 'glass-card text-gray-400 hover:text-white'}`}
+        >
+          <UserCog className="w-4 h-4" /> Contas e perfis
+        </button>
+        <button
+          onClick={() => setActiveTab('consultationAudit')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'consultationAudit' ? 'bg-[#d4af37] text-black shadow-md' : 'glass-card text-gray-400 hover:text-white'}`}
+        >
+          <MessagesSquare className="w-4 h-4" /> Consultas e reclamações
+        </button>
+        <button
           onClick={() => setActiveTab('productionCommittee')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             activeTab === 'productionCommittee'
@@ -420,6 +436,8 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'productionCommittee' && <ProductionCommitteePanel />}
       {activeTab === 'securityCenter' && <SecurityProtectionCenter />}
       {activeTab === 'workforce' && <AdminWorkforcePanel consultants={consultants} />}
+      {activeTab === 'accounts' && <AdminAccountsPanel />}
+      {activeTab === 'consultationAudit' && <AdminConsultationAudit />}
 
       {/* TAB 1: OVERVIEW & FINANCE */}
       {activeTab === 'overview' && (

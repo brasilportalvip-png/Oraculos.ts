@@ -32,6 +32,7 @@ interface ConsultationContextType {
 
 
 sendMessage: (text: string) => void;
+  cancelPendingConsultation: () => Promise<{ success: boolean; message?: string }>;
   drawOracleCard: () => void;
   endConsultation: (
   rating?: number,
@@ -1267,6 +1268,23 @@ const sendMessage = (text: string) => {
   );
 };
 
+  const cancelPendingConsultation = async (): Promise<{ success: boolean; message?: string }> => {
+    if (!activeSession || activeSession.status !== 'waiting') return { success: false, message: 'Não existe solicitação aguardando cancelamento.' };
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) return { success: false, message: 'Sua sessão expirou. Entre novamente.' };
+      const response = await fetch(`/api/consultations/${encodeURIComponent(activeSession.id)}/cancel`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, message: body.error?.message || 'Não foi possível cancelar a solicitação.' };
+      setActiveSession(null);
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Falha de conexão ao cancelar. Tente novamente.' };
+    }
+  };
+
 
 
 
@@ -1806,6 +1824,7 @@ const endConsultation = async (
         setIsRechargeModalOpen,
         startConsultation,
         sendMessage,
+        cancelPendingConsultation,
         drawOracleCard,
         endConsultation,
         addTransaction,
