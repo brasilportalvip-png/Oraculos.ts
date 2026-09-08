@@ -1,0 +1,13 @@
+ORACULOS.TS - ENTREGA DE CHAMADAS PROFISSIONAIS V4
+
+- Cria uma fila individual de chamadas para cada profissional.
+- O painel deixa de depender da consulta global do Firestore que estava falhando.
+- A solicitacao e enviada para a fila assim que o cliente inicia o atendimento.
+- Aceite, recusa, cancelamento, mensagens e encerramento atualizam a mesma fila.
+- Um localizador seguro permite abrir a sessao original sem pesquisa global.
+- A campainha toca quando a fila possui uma solicitacao pendente.
+
+VALIDACAO
+- TypeScript aprovado.
+- 127 testes aprovados.
+- Build de producao aprovado.

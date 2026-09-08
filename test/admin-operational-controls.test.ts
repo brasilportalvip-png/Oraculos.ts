@@ -26,6 +26,7 @@ describe('Controles operacionais de produção', () => {
   });
 
   it('mantém teste manual de campainha disponível no painel profissional', () => {
+    const server = read('server.ts');
     const dashboard = read('src/components/consultant/ConsultantDashboard.tsx');
     expect(dashboard).toContain('Testar som');
     expect(dashboard).toContain('Som testado com sucesso');
@@ -33,5 +34,7 @@ describe('Controles operacionais de produção', () => {
     expect(dashboard).toContain('/api/consultants/me?profileOnly=1');
     expect(dashboard).toContain('loadInProgress.current');
     expect(dashboard).toContain('getIdToken()');
+    expect(server).toContain("collection('consultantCallQueues')");
+    expect(server).toContain("collection('consultationLocators')");
   });
 });

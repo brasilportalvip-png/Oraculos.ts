@@ -3646,7 +3646,7 @@ app.get(
         },
       });
     }
-    const sessionsSnapshot = await adminDb.collectionGroup('consultationSessions').where('consultantId', '==', consultantId).get();
+    const sessionsSnapshot = await adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions').limit(200).get();
     const sessions = sessionsSnapshot.docs.map((doc) => ({
       ...(doc.data() as ServerConsultationSession),
       id: doc.id,
@@ -3749,6 +3749,15 @@ async function findConsultationSession(consultationId: string) {
     const entry = Object.entries(consultationSessionsDb).find(([, session]) => session.id === consultationId);
     return entry ? { session: entry[1], reference: null, key: entry[0] } : null;
   }
+  const locator = await adminDb.collection('consultationLocators').doc(consultationId).get();
+  if (locator.exists) {
+    const userId = String(locator.data()?.userId || '');
+    if (userId) {
+      const reference = adminDb.collection('users').doc(userId).collection('consultationSessions').doc(consultationId);
+      const document = await reference.get();
+      if (document.exists) return { session: document.data() as ServerConsultationSession, reference, key: reference.path };
+    }
+  }
   const snapshot = await adminDb.collectionGroup('consultationSessions').where('id', '==', consultationId).limit(1).get();
   if (snapshot.empty) return null;
   return { session: snapshot.docs[0].data() as ServerConsultationSession, reference: snapshot.docs[0].ref, key: snapshot.docs[0].ref.path };
@@ -3790,6 +3799,7 @@ app.post(
         const snapshot = await transaction.get(found.reference!);
         if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
         transaction.update(found.reference!, patch);
+        transaction.set(adminDb.collection('consultantCallQueues').doc(authenticatedConsultantId).collection('sessions').doc(consultationId), patch, { merge: true });
         const userReference = adminDb.collection('users').doc(found.session.userId);
         transaction.update(userReference, nextStatus === 'active'
           ? { activeConsultationId: consultationId, pendingConsultationId: null, updatedAt: now.toISOString() }
@@ -3824,6 +3834,7 @@ app.post('/api/consultations/:id/cancel', requireAuth, async (req: Authenticated
       const snapshot = await transaction.get(found.reference!);
       if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
       transaction.update(found.reference!, sessionPatch);
+      transaction.set(adminDb.collection('consultantCallQueues').doc(found.session.consultantId).collection('sessions').doc(consultationId), sessionPatch, { merge: true });
       transaction.update(adminDb.collection('users').doc(found.session.userId), { activeConsultationId: null, pendingConsultationId: null, updatedAt: now });
     });
   } else {
@@ -3890,6 +3901,7 @@ app.get('/api/consultations/:id/messages', requireAuth, async (req: Authenticate
     const expiredPatch = { status: 'expired' as const, decidedAt: new Date().toISOString(), decisionReason: 'timeout' };
     if (adminDb && found.reference) {
       await found.reference.update(expiredPatch);
+      await adminDb.collection('consultantCallQueues').doc(found.session.consultantId).collection('sessions').doc(found.session.id).set(expiredPatch, { merge: true });
       await adminDb.collection('users').doc(found.session.userId).update({ activeConsultationId: null, pendingConsultationId: null, updatedAt: expiredPatch.decidedAt });
     } else consultationSessionsDb[found.key] = { ...found.session, ...expiredPatch };
     return res.json({ success: true, data: { messages: found.session.messages || [], status: 'expired' } });
@@ -3914,7 +3926,10 @@ app.post('/api/consultations/:id/messages', requireAuth, async (req: Authenticat
     text, timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), createdAt: now.toISOString(),
   };
   const messages = [...(found.session.messages || []), message].slice(-500);
-  if (adminDb && found.reference) await found.reference.update({ messages, updatedAt: now.toISOString() });
+  if (adminDb && found.reference) {
+    await found.reference.update({ messages, updatedAt: now.toISOString() });
+    await adminDb.collection('consultantCallQueues').doc(found.session.consultantId).collection('sessions').doc(found.session.id).set({ messages, updatedAt: now.toISOString() }, { merge: true });
+  }
   else consultationSessionsDb[found.key] = { ...found.session, messages };
   return res.status(201).json({ success: true, data: { message } });
 });
@@ -4435,6 +4450,16 @@ if (
 
             transaction.create(
               sessionReference,
+              newSession,
+            );
+
+            transaction.set(
+              adminDb.collection('consultationLocators').doc(consultationId),
+              { consultationId, userId, consultantId, createdAt: startedAt },
+            );
+
+            transaction.set(
+              adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions').doc(consultationId),
               newSession,
             );
 
@@ -5361,6 +5386,17 @@ app.post(
                 updatedAt:
                   processedAt,
               },
+            );
+
+            transaction.set(
+              adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions').doc(consultationId),
+              {
+                status: 'completed', endedAt: processedAt, durationMinutes, debitMinutes,
+                calculatedDebitMinutes, transactionId, balanceBefore, balanceAfter, cappedByBalance,
+                ...(ratingGiven !== undefined ? { ratingGiven } : {}),
+                ...(reviewText ? { reviewText } : {}), updatedAt: processedAt,
+              },
+              { merge: true },
             );
 
             return {
