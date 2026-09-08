@@ -130,6 +130,7 @@ export interface ConsultationSession {
   status: 'requested' | 'accepted' | 'waiting' | 'active' | 'reconnecting' | 'completed' | 'canceled' | 'interrupted' | 'refunded' | 'disputed';
   startTime: string;
   endTime?: string;
+  expiresAt?: string;
   durationSeconds: number;
 
 // Consumo de minutos registrado quando a consulta começa.

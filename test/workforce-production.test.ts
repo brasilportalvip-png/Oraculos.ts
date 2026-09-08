@@ -21,10 +21,11 @@ describe('Gestão de profissionais em produção', () => {
   it('recebe candidatura, permite aprovação administrativa e publica no marketplace', async () => {
     const application = await request(app)
       .post('/api/work-with-us/applications')
+      .set('x-user-id', 'usr-client-1')
       .send({
         fullName: 'Maria das Estrelas',
         professionalName: 'Mestra Estrela Dourada',
-        email: 'estrela@example.com',
+        email: 'maria.silva@exemplo.com',
         phone: '11999999999',
         city: 'São Paulo',
         state: 'SP',
@@ -104,5 +105,28 @@ describe('Gestão de profissionais em produção', () => {
       .send({ consultationId: 'video-blocked', consultantId: 'c1', mode: 'video' });
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe('VIDEO_NOT_AVAILABLE');
+  });
+
+  it('exige conta autenticada para vincular a candidatura ao futuro painel', async () => {
+    const response = await request(app).post('/api/work-with-us/applications').send({});
+    expect(response.status).toBe(401);
+  });
+
+  it('profissional humano recebe chamada e decide aceitar antes do chat começar', async () => {
+    const started = await request(app).post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({ consultationId: 'call-acceptance-test', consultantId: 'c1', oracleType: 'tarot', mode: 'chat' });
+
+    expect(started.status).toBe(200);
+    expect(started.body.data.status).toBe('requested');
+
+    const accepted = await request(app).post('/api/consultations/call-acceptance-test/decision')
+      .set('x-user-id', 'usr-consultant-1')
+      .send({ decision: 'accept' });
+
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.data.status).toBe('active');
+    expect(consultationSessionsDb['usr-client-1:call-acceptance-test'].status).toBe('active');
+    delete consultationSessionsDb['usr-client-1:call-acceptance-test'];
   });
 });

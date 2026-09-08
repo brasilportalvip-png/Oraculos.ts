@@ -1,0 +1,35 @@
+ORACULOS.TS - CORRECAO DO FLUXO PROFISSIONAL
+
+COMO USAR
+1. Extraia todo o ZIP.
+2. Abra a pasta extraida.
+3. Clique duas vezes em INSTALAR_TESTAR_E_ABRIR_PR.cmd.
+4. Aguarde a mensagem CONCLUIDO COM SUCESSO.
+5. Na pagina do GitHub, clique em Create pull request.
+6. Aguarde as verificacoes e depois clique em Merge pull request.
+
+PRINCIPAIS CORRECOES
+- Candidatura obrigatoriamente vinculada a uma conta autenticada.
+- Aprovacao transforma a conta correta em profissional.
+- Remocao de perfil e ganhos ficticios que escondiam erros reais.
+- Atendimento humano passa a nascer como solicitacao pendente.
+- Cliente aguarda sem consumo antes do aceite.
+- Campainha sonora habilitada pelo profissional.
+- Aviso visual forte para nova chamada.
+- Botoes Aceitar e Recusar.
+- Expiracao automatica da solicitacao em 45 segundos.
+- Validacao para impedir que outro profissional responda a chamada.
+- Aceite atomico no servidor para impedir resposta duplicada.
+- Profissional fica Ocupado somente depois de aceitar.
+- Chat bloqueado ate o aceite.
+- Atualizacao do painel a cada 2 segundos.
+- Testes automatizados para autenticacao e aceite de chamada.
+
+VALIDACAO REALIZADA ANTES DA ENTREGA
+- TypeScript aprovado.
+- 122 testes aprovados.
+- Build de producao aprovado.
+
+IMPORTANTE
+O script interrompe o processo se lint, testes ou build falharem. Nesse caso,
+nenhuma alteracao sera enviada ao GitHub.
