@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellRing, Check, Clock, MessageSquare, RefreshCw, Send, Star, Wallet, Wifi, X } from 'lucide-react';
+import { Bell, BellRing, Check, Clock, MessageSquare, RefreshCw, Send, Star, Volume2, Wallet, Wifi, X } from 'lucide-react';
 import { auth } from '../../firebase';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
 
@@ -19,6 +19,22 @@ export const ConsultantDashboard: React.FC = () => {
   const [earnings, setEarnings] = useState<ProfessionalEarnings | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+
+  const playCallSound = async () => {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) throw new Error('Este navegador não oferece suporte ao teste de som.');
+    const context = new AudioContextClass();
+    if (context.state === 'suspended') await context.resume();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.setValueAtTime(880, context.currentTime);
+    oscillator.frequency.setValueAtTime(660, context.currentTime + 0.22);
+    gain.gain.setValueAtTime(0.42, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.65);
+    oscillator.connect(gain); gain.connect(context.destination);
+    oscillator.start(); oscillator.stop(context.currentTime + 0.65);
+    oscillator.onended = () => void context.close();
+  };
 
   const request = async (url: string, options: RequestInit = {}) => {
     let token = await auth.currentUser?.getIdToken(true).catch(() => null);
@@ -40,10 +56,7 @@ export const ConsultantDashboard: React.FC = () => {
   const load = async (background = false) => {
     if (!background && !profile) setLoading(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const response = await request('/api/consultants/me', { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const response = await request('/api/consultants/me');
       const body = await response.json().catch(() => ({}));
       if (response.ok && body.success && body.data?.profile) {
         setProfile(body.data.profile);
@@ -56,7 +69,10 @@ export const ConsultantDashboard: React.FC = () => {
         throw new Error(body.error?.message || 'Perfil profissional carregado em modo seguro.');
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Não foi possível carregar o painel profissional.');
+      const rawMessage = error instanceof Error ? error.message : '';
+      setMessage(rawMessage.toLowerCase().includes('abort')
+        ? 'A conexão demorou mais que o esperado. O painel tentará novamente automaticamente.'
+        : rawMessage || 'Não foi possível carregar o painel profissional.');
     } finally {
       setLoading(false);
     }
@@ -71,18 +87,7 @@ export const ConsultantDashboard: React.FC = () => {
   useEffect(() => {
     if (!soundEnabled || pendingSessions.length === 0) return;
     const ring = () => {
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const context = new AudioContextClass();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.frequency.setValueAtTime(880, context.currentTime);
-      oscillator.frequency.setValueAtTime(660, context.currentTime + 0.22);
-      gain.gain.setValueAtTime(0.32, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.55);
-      oscillator.connect(gain); gain.connect(context.destination);
-      oscillator.start(); oscillator.stop(context.currentTime + 0.55);
-      oscillator.onended = () => void context.close();
+      void playCallSound().catch(() => undefined);
     };
     ring();
     const interval = window.setInterval(ring, 1400);
@@ -93,6 +98,17 @@ export const ConsultantDashboard: React.FC = () => {
     localStorage.setItem('oraculos_call_sound', 'enabled');
     setSoundEnabled(true);
     setMessage('Campainha ativada. Mantenha esta página aberta para receber chamadas.');
+  };
+
+  const testSound = async () => {
+    try {
+      await playCallSound();
+      localStorage.setItem('oraculos_call_sound', 'enabled');
+      setSoundEnabled(true);
+      setMessage('Som testado com sucesso. A campainha está ativada.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível reproduzir o som. Verifique o volume do aparelho.');
+    }
   };
 
   const decideCall = async (sessionId: string, decision: 'accept' | 'reject') => {
@@ -160,7 +176,10 @@ export const ConsultantDashboard: React.FC = () => {
       <section className={`p-4 sm:p-6 rounded-2xl border space-y-4 ${pendingSessions.length ? 'bg-amber-500/15 border-amber-300 animate-pulse' : 'bg-[#150F26] border-purple-900/40'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-black text-amber-200 flex items-center gap-2">{pendingSessions.length ? <BellRing className="w-6 h-6" /> : <Bell className="w-5 h-5" />} Chamadas aguardando</h2>
-          {!soundEnabled && <button onClick={enableSound} className="px-4 py-2 rounded-xl bg-amber-400 text-black font-black">Ativar campainha</button>}
+          <div className="flex flex-wrap gap-2">
+            {!soundEnabled && <button onClick={enableSound} className="px-4 py-2 rounded-xl bg-amber-400 text-black font-black">Ativar campainha</button>}
+            <button onClick={() => void testSound()} className="px-4 py-2 rounded-xl border border-amber-300/50 bg-white/5 text-amber-200 font-bold flex items-center gap-2"><Volume2 className="w-4 h-4" /> Testar som</button>
+          </div>
         </div>
         {pendingSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhuma solicitação neste momento.</p> : pendingSessions.map((session) => (
           <article key={session.id} className="p-5 rounded-2xl bg-black/40 border border-amber-300/50 space-y-3">

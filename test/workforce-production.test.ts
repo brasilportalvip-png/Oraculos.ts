@@ -16,6 +16,10 @@ describe('Gestão de profissionais em produção', () => {
     Object.keys(workforceApplicationsDb).forEach((key) => delete workforceApplicationsDb[key]);
     Object.keys(consultantProfilesDb).forEach((key) => delete consultantProfilesDb[key]);
     Object.keys(consultantSettingsDb).forEach((key) => delete consultantSettingsDb[key]);
+    if (usersDb['usr-client-1']) {
+      delete usersDb['usr-client-1'].activeConsultationId;
+      delete usersDb['usr-client-1'].pendingConsultationId;
+    }
   });
 
   it('recebe candidatura, permite aprovação administrativa e publica no marketplace', async () => {
@@ -128,5 +132,38 @@ describe('Gestão de profissionais em produção', () => {
     expect(accepted.body.data.status).toBe('active');
     expect(consultationSessionsDb['usr-client-1:call-acceptance-test'].status).toBe('active');
     delete consultationSessionsDb['usr-client-1:call-acceptance-test'];
+  });
+
+  it('permite que o cliente cancele uma chamada ainda aguardando o profissional', async () => {
+    const started = await request(app).post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({ consultationId: 'call-cancel-test', consultantId: 'c1', oracleType: 'tarot', mode: 'chat' });
+    expect(started.status).toBe(200);
+    expect(started.body.data.status).toBe('requested');
+
+    const canceled = await request(app).post('/api/consultations/call-cancel-test/cancel')
+      .set('x-user-id', 'usr-client-1');
+
+    expect(canceled.status).toBe(200);
+    expect(canceled.body.data.status).toBe('canceled');
+    expect(consultationSessionsDb['usr-client-1:call-cancel-test'].status).toBe('canceled');
+    expect(usersDb['usr-client-1'].pendingConsultationId).toBeUndefined();
+    delete consultationSessionsDb['usr-client-1:call-cancel-test'];
+  });
+
+  it('impede que outra conta cancele a solicitação do cliente', async () => {
+    consultationSessionsDb['usr-client-1:call-private-cancel'] = {
+      id: 'call-private-cancel', userId: 'usr-client-1', consultantId: 'c1',
+      consultantName: 'Oráculo', pricePerMinute: 4, requestedAt: new Date().toISOString(), status: 'requested',
+    };
+    usersDb['intruder-test'] = { ...usersDb['usr-client-1'], id: 'intruder-test', email: 'intruder@example.com' };
+
+    const forbidden = await request(app).post('/api/consultations/call-private-cancel/cancel')
+      .set('x-user-id', 'intruder-test');
+    expect(forbidden.status).toBe(403);
+    expect(consultationSessionsDb['usr-client-1:call-private-cancel'].status).toBe('requested');
+
+    delete usersDb['intruder-test'];
+    delete consultationSessionsDb['usr-client-1:call-private-cancel'];
   });
 });

@@ -23,7 +23,7 @@ const LEGAL_DOCS: Record<LegalDocType, {
     h1: 'Termos e Condições Gerais de Uso da Plataforma',
     subtitle: 'Diretrizes legais, direitos e deveres dos consulentes e especialistas credenciados na plataforma ORACULOS.TS.',
     canonical: '/termos',
-    lastUpdated: '14 de Agosto de 2026',
+    lastUpdated: '8 de Setembro de 2026',
     sections: [
       {
         title: '1. Objeto e Natureza dos Serviços',
@@ -75,6 +75,7 @@ const LEGAL_DOCS: Record<LegalDocType, {
         content: [
           'O conteúdo das mensagens trocadas nas salas de consulta privadas é protegido por sigilo oracular e criptografia em trânsito e repouso.',
           'Nenhum dado sensível de consulta é vendido, compartilhado ou comercializado com terceiros sob qualquer pretexto publicitário.',
+          'Para apuração de reclamações, fraudes, disputas de cobrança, incidentes de segurança ou solicitações de suporte, administradores autorizados poderão acessar o registro original do atendimento pelo tempo estritamente necessário. Todo acesso exige justificativa e fica registrado em trilha de auditoria.',
         ],
       },
       {

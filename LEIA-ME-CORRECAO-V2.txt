@@ -1,0 +1,39 @@
+ORACULOS.TS - CORRECAO OPERACIONAL V2
+
+COMO USAR
+1. Extraia todo o ZIP em uma pasta nova.
+2. Abra a pasta extraida.
+3. Clique duas vezes em INSTALAR_TESTAR_E_ABRIR_PR_V2.cmd.
+4. Aguarde a mensagem CONCLUIDO COM SUCESSO.
+5. Na pagina do GitHub, clique em Create pull request.
+6. Aguarde as verificacoes e depois clique em Merge pull request.
+
+CORRECOES DESTA ENTREGA
+- Cliente pode cancelar e sair enquanto aguarda o profissional.
+- Somente o dono da solicitacao pode cancela-la.
+- Solicitacao vencida e encerrada sem cobranca.
+- Remocao do limite de quatro segundos que abortava o painel profissional.
+- Painel profissional continua atualizando chamadas automaticamente.
+- Campainha sonora e alerta visual para atendimento aguardando.
+- Botoes para aceitar ou recusar o atendimento.
+- Botao Testar som para validar volume e permissao do navegador.
+- Painel administrativo passa a listar e pesquisar contas.
+- Administrador pode editar nome, bloquear e reativar contas.
+- Administrador pode editar nome, titulo e apresentacao profissional.
+- Exclusao de conta exige confirmacao digitando EXCLUIR.
+- Administrador comum nao pode excluir outro administrador.
+- Ninguem pode excluir a propria conta administrativa por esse painel.
+- Nova area Consultas e reclamacoes em modo somente leitura.
+- Abertura de conversa exige uma justificativa.
+- Acesso, edicao e exclusao ficam registrados no Firestore.
+- Politica de privacidade informa o acesso administrativo restrito.
+
+VALIDACAO REALIZADA ANTES DA ENTREGA
+- TypeScript aprovado.
+- 18 arquivos de teste aprovados.
+- 127 testes aprovados.
+- Build de producao aprovado.
+
+IMPORTANTE
+O script interrompe o processo se TypeScript, testes ou build falharem.
+Nesse caso, nenhuma alteracao sera enviada ao GitHub.

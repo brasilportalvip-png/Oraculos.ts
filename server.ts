@@ -465,6 +465,8 @@ export interface UserRecord {
   createdAt: string;
   favorites: string[];
   consultantId?: string;
+  activeConsultationId?: string;
+  pendingConsultationId?: string;
 }
 
 export const usersDb: Record<string, UserRecord> = {
@@ -3689,7 +3691,7 @@ interface ServerConsultationSession {
   consultantId: string;
   consultantName: string;
   pricePerMinute: number;
-  startedAt: string;
+  startedAt?: string;
   oracleType?: string;
   mode?: 'chat' | 'video';
   status: 'requested' | 'active' | 'completed' | 'canceled' | 'expired';
@@ -3796,6 +3798,28 @@ app.post(
   },
 );
 
+app.post('/api/consultations/:id/cancel', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const consultationId = req.params.id.trim();
+  const found = await findConsultationSession(consultationId);
+  if (!found || !req.user?.uid) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Solicitação não encontrada.' } });
+  if (found.session.userId !== req.user.uid) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não pode cancelar esta solicitação.' } });
+  if (found.session.status !== 'requested') return res.status(409).json({ success: false, error: { code: 'REQUEST_ALREADY_DECIDED', message: 'O profissional já respondeu a esta chamada.' } });
+
+  const now = new Date().toISOString();
+  const sessionPatch = { status: 'canceled' as const, decidedAt: now, decisionReason: 'client_canceled' };
+  if (adminDb && found.reference) {
+    await adminDb.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(found.reference!);
+      if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
+      transaction.update(found.reference!, sessionPatch);
+      transaction.update(adminDb.collection('users').doc(found.session.userId), { activeConsultationId: null, pendingConsultationId: null, updatedAt: now });
+    });
+  } else {
+    consultationSessionsDb[found.key] = { ...found.session, ...sessionPatch };
+  }
+  return res.json({ success: true, data: { consultationId, status: 'canceled' } });
+});
+
 app.get('/api/finance/active-consultation', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.uid;
   if (!userId) {
@@ -3849,6 +3873,14 @@ app.get('/api/consultations/:id/messages', requireAuth, async (req: Authenticate
   const consultantId = await resolveConsultantId(req.user.uid);
   if (found.session.userId !== req.user.uid && found.session.consultantId !== consultantId) {
     return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não participa desta consulta.' } });
+  }
+  if (found.session.status === 'requested' && Date.parse(String(found.session.expiresAt || '')) <= Date.now()) {
+    const expiredPatch = { status: 'expired' as const, decidedAt: new Date().toISOString(), decisionReason: 'timeout' };
+    if (adminDb && found.reference) {
+      await found.reference.update(expiredPatch);
+      await adminDb.collection('users').doc(found.session.userId).update({ activeConsultationId: null, pendingConsultationId: null, updatedAt: expiredPatch.decidedAt });
+    } else consultationSessionsDb[found.key] = { ...found.session, ...expiredPatch };
+    return res.json({ success: true, data: { messages: found.session.messages || [], status: 'expired' } });
   }
   return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
 });
@@ -7879,12 +7911,19 @@ app.get(
           .collection('users')
           .get();
 
-      const users = snapshot.docs.map(
-        (document) => ({
-          ...document.data(),
-          id: document.id,
-        }),
-      );
+      const users = await Promise.all(snapshot.docs.map(async (document) => {
+        const user = { ...document.data(), id: document.id } as Record<string, any>;
+        if (typeof user.consultantId === 'string' && user.consultantId) {
+          const profileDocument = await adminDb!.collection('consultantProfiles').doc(user.consultantId).get();
+          if (profileDocument.exists) {
+            const profile = profileDocument.data() || {};
+            user.professionalName = profile.name || '';
+            user.professionalTitle = profile.title || '';
+            user.professionalBio = profile.bio || '';
+          }
+        }
+        return user;
+      }));
 
       return res.json({
         success: true,
@@ -7909,6 +7948,108 @@ app.get(
     }
   },
 );
+
+app.patch('/api/admin/users/:id', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
+    const targetUserId = req.params.id.trim();
+    const userReference = adminDb.collection('users').doc(targetUserId);
+    const userDocument = await userReference.get();
+    if (!userDocument.exists) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Conta não encontrada.' } });
+    const current = userDocument.data() || {};
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 120) : String(current.name || '');
+    const status = ['active', 'blocked'].includes(req.body?.status) ? req.body.status : current.status;
+    if (name.length < 2) return res.status(400).json({ success: false, error: { code: 'INVALID_NAME', message: 'Informe um nome válido.' } });
+    const now = new Date().toISOString();
+    const userPatch = { name, status, updatedAt: now };
+    await userReference.update(userPatch);
+
+    const consultantId = typeof current.consultantId === 'string' ? current.consultantId : '';
+    if (consultantId) {
+      const professionalName = typeof req.body?.professionalName === 'string' ? req.body.professionalName.trim().slice(0, 120) : '';
+      const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
+      const bio = typeof req.body?.bio === 'string' ? req.body.bio.trim().slice(0, 2000) : '';
+      const profilePatch: Record<string, unknown> = { updatedAt: now };
+      if (professionalName.length >= 2) profilePatch.name = professionalName;
+      if (title.length >= 2) profilePatch.title = title;
+      if (bio.length >= 20) profilePatch.bio = bio;
+      await adminDb.collection('consultantProfiles').doc(consultantId).set(profilePatch, { merge: true });
+    }
+
+    const auditEntry = { id: `log-user-edit-${Date.now()}`, timestamp: now, userId: req.user?.uid || 'admin', userName: req.user?.name || 'Administrador', userRole: req.user?.role || 'admin', action: 'ADMIN_USER_UPDATED', details: `Conta ${targetUserId} atualizada administrativamente.`, target: targetUserId, ip: req.ip || '127.0.0.1', status: 'WARNING' as const };
+    auditLogs.unshift(auditEntry);
+    await adminDb.collection('auditLogs').doc(auditEntry.id).set(auditEntry);
+    return res.json({ success: true, data: { user: { id: targetUserId, ...current, ...userPatch } } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao editar conta:', error);
+    return res.status(500).json({ success: false, error: { code: 'ADMIN_USER_UPDATE_FAILED', message: 'Não foi possível atualizar a conta.' } });
+  }
+});
+
+app.delete('/api/admin/users/:id', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!adminDb || !firebaseAdminApp) return res.status(503).json({ success: false, error: { code: 'FIREBASE_NOT_AVAILABLE', message: 'Serviços de conta temporariamente indisponíveis.' } });
+    const targetUserId = req.params.id.trim();
+    if (targetUserId === req.user?.uid) return res.status(409).json({ success: false, error: { code: 'CANNOT_DELETE_SELF', message: 'Você não pode excluir sua própria conta administrativa.' } });
+    const userReference = adminDb.collection('users').doc(targetUserId);
+    const userDocument = await userReference.get();
+    if (!userDocument.exists) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Conta não encontrada.' } });
+    const target = userDocument.data() || {};
+    if (['admin', 'superadmin'].includes(String(target.role)) && req.user?.role !== 'superadmin') {
+      return res.status(403).json({ success: false, error: { code: 'SUPERADMIN_REQUIRED', message: 'Somente o proprietário superadministrador pode excluir outra conta administrativa.' } });
+    }
+    const consultantId = typeof target.consultantId === 'string' ? target.consultantId : '';
+    if (consultantId) {
+      await adminDb.recursiveDelete(adminDb.collection('consultantProfiles').doc(consultantId));
+      await adminDb.collection('consultantSettings').doc(consultantId).delete().catch(() => undefined);
+    }
+    await adminDb.recursiveDelete(userReference);
+    const adminAuth = getAdminAuth(firebaseAdminApp);
+    await adminAuth.deleteUser(targetUserId).catch((error: any) => { if (error?.code !== 'auth/user-not-found') throw error; });
+    const now = new Date().toISOString();
+    const auditEntry = { id: `log-user-delete-${Date.now()}`, timestamp: now, userId: req.user?.uid || 'admin', userName: req.user?.name || 'Administrador', userRole: req.user?.role || 'admin', action: 'ADMIN_USER_DELETED', details: `Conta ${targetUserId} excluída pelo painel administrativo.`, target: targetUserId, ip: req.ip || '127.0.0.1', status: 'WARNING' as const };
+    auditLogs.unshift(auditEntry);
+    await adminDb.collection('auditLogs').doc(auditEntry.id).set(auditEntry);
+    return res.json({ success: true, data: { deletedUserId: targetUserId } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao excluir conta:', error);
+    return res.status(500).json({ success: false, error: { code: 'ADMIN_USER_DELETE_FAILED', message: 'Não foi possível excluir a conta.' } });
+  }
+});
+
+app.get('/api/admin/consultation-audit', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const snapshot = await adminDb.collectionGroup('consultationSessions').limit(200).get();
+    const sessions = snapshot.docs.map((document) => ({ id: document.id, ...document.data() } as Record<string, any>))
+      .filter((session) => !search || [session.id, session.userId, session.consultantId, session.consultantName, session.clientName].some((value) => String(value || '').toLowerCase().includes(search)))
+      .sort((a, b) => String(b.createdAt || b.startedAt || '').localeCompare(String(a.createdAt || a.startedAt || '')))
+      .slice(0, 100);
+    return res.json({ success: true, data: { sessions } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao listar auditoria de consultas:', error);
+    return res.status(500).json({ success: false, error: { code: 'AUDIT_FETCH_FAILED', message: 'Não foi possível carregar os atendimentos.' } });
+  }
+});
+
+app.post('/api/admin/consultation-audit/:id/access', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
+    const reason = String(req.body?.reason || '').trim().slice(0, 500);
+    if (reason.length < 5) return res.status(400).json({ success: false, error: { code: 'REASON_REQUIRED', message: 'Informe o motivo do acesso à conversa.' } });
+    const found = await findConsultationSession(req.params.id.trim());
+    if (!found) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Atendimento não encontrado.' } });
+    const now = new Date().toISOString();
+    const auditEntry = { id: `log-chat-access-${Date.now()}`, timestamp: now, userId: req.user?.uid || 'admin', userName: req.user?.name || 'Administrador', userRole: req.user?.role || 'admin', action: 'CONSULTATION_AUDIT_ACCESSED', details: `Conversa ${found.session.id} acessada. Motivo: ${reason}`, target: found.session.id, ip: req.ip || '127.0.0.1', status: 'WARNING' as const };
+    auditLogs.unshift(auditEntry);
+    await adminDb.collection('auditLogs').doc(auditEntry.id).set(auditEntry);
+    return res.json({ success: true, data: { session: found.session, accessedAt: now } });
+  } catch (error) {
+    console.error('[ORACULOS.TS] Falha ao abrir auditoria:', error);
+    return res.status(500).json({ success: false, error: { code: 'AUDIT_ACCESS_FAILED', message: 'Não foi possível abrir o atendimento.' } });
+  }
+});
 
 
 app.post(

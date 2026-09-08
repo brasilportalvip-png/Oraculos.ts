@@ -28,7 +28,7 @@ import { auth } from '../firebase';
 
 export const ConsultationRoom: React.FC = () => {
   const { user } = useAuth();
-  const { activeSession, sendMessage, drawOracleCard, endConsultation } = useConsultation();
+  const { activeSession, sendMessage, cancelPendingConsultation, drawOracleCard, endConsultation } = useConsultation();
 
   const [mode, setMode] = useState<'chat' | 'video'>('chat');
   const [inputText, setInputText] = useState('');
@@ -38,6 +38,7 @@ export const ConsultationRoom: React.FC = () => {
   const [rating, setRating] = useState<number>(5);
   const [reviewText, setReviewText] = useState('');
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isCancelingRequest, setIsCancelingRequest] = useState(false);
 
 const [isEndingConsultation, setIsEndingConsultation] =
   useState(false);
@@ -433,6 +434,20 @@ window.location.assign('/');
         <div className="px-4 py-4 bg-amber-500/10 border-b border-amber-400/40 text-center">
           <p className="font-black text-amber-200 animate-pulse">Chamando o profissional…</p>
           <p className="text-xs text-slate-300 mt-1">Aguarde o aceite. Seus minutos ainda não estão sendo consumidos.</p>
+          <button
+            type="button"
+            disabled={isCancelingRequest}
+            onClick={async () => {
+              setIsCancelingRequest(true);
+              const result = await cancelPendingConsultation();
+              if (!result.success) setEndConsultationError(result.message || 'Não foi possível cancelar.');
+              setIsCancelingRequest(false);
+            }}
+            className="mt-3 px-5 py-2.5 rounded-xl bg-rose-600 text-white font-black disabled:opacity-50"
+          >
+            {isCancelingRequest ? 'Cancelando…' : 'Cancelar solicitação e sair'}
+          </button>
+          {endConsultationError && <p className="mt-2 text-xs text-rose-300">{endConsultationError}</p>}
         </div>
       )}
 
