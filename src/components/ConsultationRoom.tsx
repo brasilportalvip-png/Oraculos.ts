@@ -172,8 +172,9 @@ const [endConsultationError, setEndConsultationError] =
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   const consumedWalletMinutes =
-    (Math.ceil(activeSession.durationSeconds / 60) || 1) *
-    activeSession.pricePerMinute;
+    activeSession.status === 'active'
+      ? (Math.ceil(activeSession.durationSeconds / 60) || 1) * activeSession.pricePerMinute
+      : 0;
 
   const remainingWalletMinutes = Math.max(
     0,
@@ -390,13 +391,13 @@ window.location.assign('/');
             </button>
           </div>
 
-          <button
+          {activeSession.status === 'active' && <button
             onClick={() => setShowEndConfirm(true)}
             className="flex min-h-10 min-w-10 items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all cursor-pointer"
           >
             <PhoneOff className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Encerrar</span>
-          </button>
+          </button>}
         </div>
             </header>
 
@@ -427,6 +428,13 @@ window.location.assign('/');
         <Info className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
         <span>Atendimento confidencial e em tempo real com especialista oracular credenciado.</span>
       </div>
+
+      {activeSession.status === 'waiting' && (
+        <div className="px-4 py-4 bg-amber-500/10 border-b border-amber-400/40 text-center">
+          <p className="font-black text-amber-200 animate-pulse">Chamando o profissional…</p>
+          <p className="text-xs text-slate-300 mt-1">Aguarde o aceite. Seus minutos ainda não estão sendo consumidos.</p>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
@@ -634,12 +642,13 @@ window.location.assign('/');
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Digite sua mensagem ou dúvida para o oráculo..."
+              disabled={activeSession.status !== 'active'}
+              placeholder={activeSession.status === 'waiting' ? 'Aguardando o profissional aceitar…' : 'Digite sua mensagem ou dúvida para o oráculo...'}
               className="min-w-0 flex-1 bg-[#0B0813] border border-purple-900/60 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
             />
             <button
               type="submit"
-              disabled={!inputText.trim()}
+              disabled={activeSession.status !== 'active' || !inputText.trim()}
               className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 rounded-xl font-bold transition-all shadow-md cursor-pointer"
               aria-label="Enviar mensagem"
             >

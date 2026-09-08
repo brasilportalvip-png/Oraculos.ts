@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { BriefcaseBusiness, CheckCircle2, Upload, Camera, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { auth } from '../firebase';
 
 const ORACLES = ['tarot', 'cigano', 'astrologia', 'numerologia', 'buzios', 'ifa', 'runas', 'iching', 'cristais', 'mesaradionica'];
 
@@ -97,9 +98,15 @@ export const WorkWithUs: React.FC = () => {
     setLoading(true);
     setMessage('');
     try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        window.dispatchEvent(new CustomEvent('oraculos:open-auth'));
+        throw new Error('Entre ou crie sua conta antes de enviar a candidatura. Assim o painel profissional será vinculado corretamente.');
+      }
+      const idToken = await currentUser.getIdToken(true);
       const response = await fetch('/api/work-with-us/applications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           ...form,
           experienceYears: Number(form.experienceYears),

@@ -464,6 +464,7 @@ export interface UserRecord {
   status: 'active' | 'blocked';
   createdAt: string;
   favorites: string[];
+  consultantId?: string;
 }
 
 export const usersDb: Record<string, UserRecord> = {
@@ -486,6 +487,7 @@ export const usersDb: Record<string, UserRecord> = {
     status: 'active',
     createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
     favorites: [],
+    consultantId: 'c1',
   },
   'usr-support-1': {
     id: 'usr-support-1',
@@ -3243,6 +3245,7 @@ processedPaymentIds.add(
 
 interface WorkforceApplicationRecord {
   id: string;
+  userId: string;
   fullName: string;
   professionalName: string;
   email: string;
@@ -3324,13 +3327,18 @@ app.post('/api/work-with-us/upload-photo', async (req: Request, res: Response) =
   }
 });
 
-app.post('/api/work-with-us/applications', async (req: Request, res: Response) => {
+app.post('/api/work-with-us/applications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userId = req.user?.uid;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: { code: 'AUTH_REQUIRED', message: 'Entre na sua conta antes de enviar a candidatura.' } });
+    }
     const text = (value: unknown, max: number) =>
       typeof value === 'string' ? value.trim().slice(0, max) : '';
     const fullName = text(req.body?.fullName, 120);
     const professionalName = text(req.body?.professionalName, 120);
     const email = text(req.body?.email, 180).toLowerCase();
+    const authenticatedEmail = String(req.user?.email || '').trim().toLowerCase();
     const phone = text(req.body?.phone, 30);
     const city = text(req.body?.city, 80);
     const state = text(req.body?.state, 40);
@@ -3373,10 +3381,13 @@ app.post('/api/work-with-us/applications', async (req: Request, res: Response) =
         },
       });
     }
+    if (authenticatedEmail && email !== authenticatedEmail) {
+      return res.status(400).json({ success: false, error: { code: 'EMAIL_MISMATCH', message: 'Use na candidatura o mesmo e-mail da sua conta.' } });
+    }
 
     const id = `candidate_${crypto.randomUUID()}`;
     const application: WorkforceApplicationRecord = {
-      id, fullName, professionalName, email, phone, city, state, bio,
+      id, userId, fullName, professionalName, email, phone, city, state, bio,
       experienceYears, specialties, oracles, languages, modality,
       ...(profilePhoto ? { profilePhoto } : {}),
       status: 'submitted',
@@ -3489,10 +3500,17 @@ app.patch(
       };
       if (adminDb) {
         await adminDb.collection('consultantProfiles').doc(consultantId).set(profile, { merge: true });
-        const users = await adminDb.collection('users').where('email', '==', application.email).limit(1).get();
-        if (!users.empty) await users.docs[0].ref.update({ role: 'consultant', consultantId, updatedAt: reviewedAt });
+        const userReference = adminDb.collection('users').doc(application.userId);
+        const userDocument = await userReference.get();
+        if (!userDocument.exists) {
+          throw new Error('CANDIDATE_ACCOUNT_NOT_FOUND');
+        }
+        await userReference.update({ role: 'consultant', consultantId, updatedAt: reviewedAt });
       } else {
         consultantProfilesDb[consultantId] = profile;
+        if (usersDb[application.userId]) {
+          usersDb[application.userId] = { ...usersDb[application.userId], role: 'consultant', consultantId } as UserRecord;
+        }
       }
       consultantSettingsDb[consultantId] = { pricePerMinute, active: true };
     }
@@ -3564,6 +3582,7 @@ app.get(
         data: {
           profile: inMemoryProfile,
           sessions: [],
+          pendingSessions: Object.values(consultationSessionsDb).filter((session) => session.consultantId === inMemoryProfile.id && session.status === 'requested'),
           activeSessions: [],
           earnings: { grossMinutes: 0, commissionRate: 0.7, payableMinutes: 0, paymentMethod: 'manual_weekly' },
         },
@@ -3618,6 +3637,8 @@ app.get(
       ...(doc.data() as ServerConsultationSession),
       id: doc.id,
     }));
+    const now = Date.now();
+    const pending = sessions.filter((session) => session.status === 'requested' && Date.parse(String(session.expiresAt || '')) > now);
     const completed = sessions.filter((session) => session.status === 'completed');
     const active = sessions.filter((session) => session.status === 'active');
     const grossMinutes = completed.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
@@ -3627,6 +3648,7 @@ app.get(
       data: {
         profile: { id: profileDocument.id, ...profileDocument.data() },
         sessions: completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))),
+        pendingSessions: pending.sort((a, b) => String(a.expiresAt || '').localeCompare(String(b.expiresAt || ''))),
         activeSessions: active.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
         earnings: {
           grossMinutes: Number(grossMinutes.toFixed(2)),
@@ -3670,7 +3692,13 @@ interface ServerConsultationSession {
   startedAt: string;
   oracleType?: string;
   mode?: 'chat' | 'video';
-  status: 'active' | 'completed';
+  status: 'requested' | 'active' | 'completed' | 'canceled' | 'expired';
+  requestedAt?: string;
+  expiresAt?: string;
+  acceptedAt?: string;
+  decidedAt?: string;
+  decisionReason?: string;
+  reservedMinutes?: number;
   endedAt?: string;
   durationMinutes?: number;
     debitMinutes?: number;
@@ -3712,6 +3740,62 @@ async function findConsultationSession(consultationId: string) {
   return { session: snapshot.docs[0].data() as ServerConsultationSession, reference: snapshot.docs[0].ref, key: snapshot.docs[0].ref.path };
 }
 
+app.post(
+  '/api/consultations/:id/decision',
+  requireAuth,
+  requireRole(['consultant', 'employee']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    const consultationId = req.params.id.trim();
+    const decision = req.body?.decision;
+    if (!['accept', 'reject'].includes(decision)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_DECISION', message: 'Escolha aceitar ou recusar o atendimento.' } });
+    }
+
+    const found = await findConsultationSession(consultationId);
+    const authenticatedConsultantId = req.user?.uid ? await resolveConsultantId(req.user.uid) : '';
+    if (!found) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Solicitação não encontrada.' } });
+    if (!authenticatedConsultantId || found.session.consultantId !== authenticatedConsultantId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Esta chamada pertence a outro profissional.' } });
+    }
+    if (found.session.status !== 'requested') {
+      return res.status(409).json({ success: false, error: { code: 'REQUEST_ALREADY_DECIDED', message: 'Esta solicitação já foi respondida.' } });
+    }
+
+    const now = new Date();
+    const expired = Date.parse(String(found.session.expiresAt || '')) <= now.getTime();
+    const nextStatus: ServerConsultationSession['status'] = expired ? 'expired' : decision === 'accept' ? 'active' : 'canceled';
+    const patch: Partial<ServerConsultationSession> = {
+      status: nextStatus,
+      decidedAt: now.toISOString(),
+      decisionReason: expired ? 'timeout' : decision,
+      ...(nextStatus === 'active' ? { acceptedAt: now.toISOString(), startedAt: now.toISOString() } : {}),
+    };
+
+    if (adminDb && found.reference) {
+      await adminDb.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(found.reference!);
+        if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
+        transaction.update(found.reference!, patch);
+        const userReference = adminDb.collection('users').doc(found.session.userId);
+        transaction.update(userReference, nextStatus === 'active'
+          ? { activeConsultationId: consultationId, pendingConsultationId: null, updatedAt: now.toISOString() }
+          : { activeConsultationId: null, pendingConsultationId: null, updatedAt: now.toISOString() });
+        transaction.update(adminDb.collection('consultantProfiles').doc(authenticatedConsultantId), {
+          status: nextStatus === 'active' ? 'busy' : 'online', updatedAt: now.toISOString(),
+        });
+      });
+    } else {
+      consultationSessionsDb[found.key] = { ...found.session, ...patch };
+      if (usersDb[found.session.userId]) {
+        (usersDb[found.session.userId] as UserRecord & { activeConsultationId?: string | null }).activeConsultationId = nextStatus === 'active' ? consultationId : null;
+      }
+    }
+
+    if (expired) return res.status(410).json({ success: false, error: { code: 'REQUEST_EXPIRED', message: 'O tempo para responder terminou.' } });
+    return res.json({ success: true, data: { consultationId, status: nextStatus } });
+  },
+);
+
 app.get('/api/finance/active-consultation', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.uid;
   if (!userId) {
@@ -3720,7 +3804,7 @@ app.get('/api/finance/active-consultation', requireAuth, async (req: Authenticat
 
   if (!adminDb) {
     const activeSession = Object.values(consultationSessionsDb).find(
-      (session) => session.userId === userId && session.status === 'active',
+      (session) => session.userId === userId && ['requested', 'active'].includes(session.status),
     );
     return res.json({ success: true, data: { activeSession: activeSession || null } });
   }
@@ -3744,7 +3828,7 @@ app.get('/api/finance/active-consultation', requireAuth, async (req: Authenticat
       ? sessionDocument.data() as ServerConsultationSession
       : null;
 
-    if (!session || session.status !== 'active') {
+    if (!session || !['requested', 'active'].includes(session.status)) {
       await userReference.update({ activeConsultationId: null, updatedAt: new Date().toISOString() });
       return res.json({ success: true, data: { activeSession: null } });
     }
@@ -3909,6 +3993,14 @@ app.post(
         });
       }
 
+      const requiresProfessionalAcceptance = consultant.isAI !== true;
+      if (requiresProfessionalAcceptance && consultant.status !== 'online') {
+        return res.status(409).json({
+          success: false,
+          error: { code: 'CONSULTANT_NOT_AVAILABLE', message: 'Este profissional não está disponível para receber chamadas agora.' },
+        });
+      }
+
       let pricePerMinute = Number(
         consultant.pricePerMinute,
       );
@@ -4056,8 +4148,8 @@ app.post(
           });
         }
 
-        const startedAt =
-          new Date().toISOString();
+        const startedAt = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 45_000).toISOString();
 
         const newSession:
           ServerConsultationSession = {
@@ -4071,8 +4163,12 @@ app.post(
           startedAt,
           oracleType,
           mode,
-          status:
-            'active',
+          status: requiresProfessionalAcceptance ? 'requested' : 'active',
+          ...(requiresProfessionalAcceptance ? {
+            requestedAt: startedAt,
+            expiresAt,
+            reservedMinutes: pricePerMinute,
+          } : {}),
         };
 
         consultationSessionsDb[
@@ -4217,8 +4313,7 @@ if (
 
   if (
   activeSessionDocument.exists &&
-  activeSessionData.status ===
-    'active'
+  ['requested', 'active'].includes(String(activeSessionData.status))
 ) {
   const activeMessages =
     Array.isArray(
@@ -4260,8 +4355,8 @@ if (
 }
 }
 
-            const startedAt =
-              new Date().toISOString();
+            const startedAt = new Date().toISOString();
+            const expiresAt = new Date(Date.now() + 45_000).toISOString();
 
             const newSession = {
               id:
@@ -4274,8 +4369,12 @@ if (
               startedAt,
               oracleType,
               mode,
-              status:
-                'active',
+              status: requiresProfessionalAcceptance ? 'requested' : 'active',
+              ...(requiresProfessionalAcceptance ? {
+                requestedAt: startedAt,
+                expiresAt,
+                reservedMinutes: pricePerMinute,
+              } : {}),
               createdAt:
                 startedAt,
             };

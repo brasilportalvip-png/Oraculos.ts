@@ -72,6 +72,8 @@ interface PersistedConsultationSession {
   debitMinutes?: number;
   ratingGiven?: number;
   reviewText?: string;
+  status?: string;
+  expiresAt?: string;
 }
 
 // Sample Tarot Cards for live draws in chat
@@ -137,7 +139,8 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         consultantAvatar: consultant?.avatar || '/brand/logo-oraculos.png',
         oracleType: (session.oracleType || 'tarot') as OracleType,
         mode: session.mode === 'video' ? 'video' : 'chat',
-        status: 'active',
+        status: session.status === 'requested' ? 'waiting' : 'active',
+        expiresAt: typeof session.expiresAt === 'string' ? session.expiresAt : undefined,
         startTime: Number.isFinite(startedAt.getTime())
           ? startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -168,7 +171,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Preserve active consultation session across orientation changes and page refreshes
   useEffect(() => {
-    if (activeSession && activeSession.status === 'active') {
+    if (activeSession && ['waiting', 'active'].includes(activeSession.status)) {
       try {
         sessionStorage.setItem('oraculos_active_session', JSON.stringify(activeSession));
         localStorage.setItem('oraculos_active_session', JSON.stringify(activeSession));
@@ -200,7 +203,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!activeSession || activeSession.status !== 'active') return;
+    if (!activeSession || !['waiting', 'active'].includes(activeSession.status)) return;
     const isVirtual = activeSession.consultantId.startsWith('ai_') || activeSession.consultantId.startsWith('c_ai_');
     if (isVirtual) return;
     let cancelled = false;
@@ -213,15 +216,25 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok || cancelled || !Array.isArray(body.data?.messages)) return;
+        const remoteStatus = String(body.data?.status || '');
+        if (remoteStatus === 'canceled' || remoteStatus === 'expired') {
+          setActiveSession(null);
+          window.alert(remoteStatus === 'expired' ? 'O profissional não respondeu a tempo. Seus minutos foram liberados.' : 'O profissional não pôde aceitar agora. Seus minutos foram liberados.');
+          return;
+        }
         setActiveSession((current) => current && current.id === activeSession.id
-          ? { ...current, messages: body.data.messages as ChatMessage[] }
+          ? {
+              ...current,
+              status: remoteStatus === 'active' ? 'active' : current.status,
+              messages: body.data.messages as ChatMessage[],
+            }
           : current);
       } catch (error) {
         console.warn('[ORACULOS.TS] Falha temporária ao sincronizar conversa:', error);
       }
     };
     void refreshMessages();
-    const interval = window.setInterval(() => { void refreshMessages(); }, 2500);
+    const interval = window.setInterval(() => { void refreshMessages(); }, activeSession.status === 'waiting' ? 1500 : 2500);
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [activeSession?.id, activeSession?.status, activeSession?.consultantId]);
 
@@ -1004,6 +1017,8 @@ return;
 const consultationId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 let serverPricePerMinute = effectivePrice;
 let serverStartedAt = new Date().toISOString();
+let serverSessionStatus: 'active' | 'waiting' = 'active';
+let serverExpiresAt = '';
 
 if (!firebaseUser) {
   return {
@@ -1063,6 +1078,10 @@ try {
   ) {
     serverStartedAt = body.data.startedAt;
   }
+  if (body.data?.status === 'requested') {
+    serverSessionStatus = 'waiting';
+    serverExpiresAt = String(body.data?.expiresAt || '');
+  }
 } catch (error) {
   console.error(
     '[ORACULOS.TS] Falha ao registrar consulta no servidor:',
@@ -1084,7 +1103,9 @@ const initialMessage: ChatMessage = {
       senderName: 'ORACULOS.TS',
       
 
-text: `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
+text: serverSessionStatus === 'waiting'
+  ? `Solicitação enviada para ${consultant.name}. Aguarde o profissional aceitar. Nenhum minuto será consumido antes do aceite.`
+  : `Conexão espiritual iniciada com ${consultant.name}. Atendimento por ${mode === 'chat' ? 'Chat ao Vivo' : 'Chamada de Vídeo'}. Consumo: ${serverPricePerMinute.toFixed(2)} min do saldo por minuto de atendimento.`,
 
 
 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1108,7 +1129,7 @@ timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit
       consultantAvatar: consultant.avatar,
       oracleType: oracle,
       mode,
-      status: 'active',
+      status: serverSessionStatus,
       startTime:
   new Date(
     serverStartedAt,
@@ -1125,8 +1146,12 @@ timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit
       totalCost: 0,
       adminCommission: 0,
       consultantEarnings: 0,
-      messages: [initialMessage, welcomeConsultantMsg],
+      messages: serverSessionStatus === 'active' ? [initialMessage, welcomeConsultantMsg] : [initialMessage],
     };
+
+    if (serverExpiresAt) {
+      (newSession as ConsultationSession & { expiresAt?: string }).expiresAt = serverExpiresAt;
+    }
 
     setActiveSession(newSession);
 

@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, MessageSquare, RefreshCw, Send, Star, Wallet, Wifi } from 'lucide-react';
+import { Bell, BellRing, Check, Clock, MessageSquare, RefreshCw, Send, Star, Wallet, Wifi, X } from 'lucide-react';
 import { auth } from '../../firebase';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
 
 interface ProfessionalProfile { id: string; name: string; avatar: string; title: string; status: 'online' | 'busy' | 'offline'; pricePerMinute: number; rating: number; }
 interface ProfessionalSession { id: string; oracleType?: string; endedAt?: string; durationMinutes?: number; debitMinutes?: number; ratingGiven?: number; reviewText?: string; }
 interface ActiveProfessionalSession { id: string; oracleType?: string; startedAt?: string; messages?: Array<{ id: string; senderId: string; senderName: string; text: string; timestamp: string }>; }
+interface PendingProfessionalSession { id: string; userId: string; consultantName?: string; oracleType?: string; requestedAt?: string; expiresAt?: string; pricePerMinute?: number; }
 interface ProfessionalEarnings { grossMinutes: number; commissionRate: number; payableMinutes: number; paymentMethod: 'manual_weekly'; }
 
 export const ConsultantDashboard: React.FC = () => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [sessions, setSessions] = useState<ProfessionalSession[]>([]);
   const [activeSessions, setActiveSessions] = useState<ActiveProfessionalSession[]>([]);
+  const [pendingSessions, setPendingSessions] = useState<PendingProfessionalSession[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('oraculos_call_sound') === 'enabled');
   const [replyBySession, setReplyBySession] = useState<Record<string, string>>({});
   const [earnings, setEarnings] = useState<ProfessionalEarnings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +33,7 @@ export const ConsultantDashboard: React.FC = () => {
         }
       } catch {}
     }
-    if (!token) token = 'demo_consultant_token';
+    if (!token) throw new Error('Sessão profissional expirada. Entre novamente.');
     return fetch(url, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
   };
 
@@ -45,6 +48,7 @@ export const ConsultantDashboard: React.FC = () => {
       if (response.ok && body.success && body.data?.profile) {
         setProfile(body.data.profile);
         setSessions(body.data.sessions || []);
+        setPendingSessions(body.data.pendingSessions || []);
         setActiveSessions(body.data.activeSessions || []);
         setEarnings(body.data.earnings || { grossMinutes: 0, commissionRate: 0.7, payableMinutes: 0, paymentMethod: 'manual_weekly' });
         setMessage('');
@@ -52,19 +56,7 @@ export const ConsultantDashboard: React.FC = () => {
         throw new Error(body.error?.message || 'Perfil profissional carregado em modo seguro.');
       }
     } catch (error) {
-      if (!profile) {
-        const fallbackProfile: ProfessionalProfile = {
-          id: 'consultant_me',
-          name: auth.currentUser?.displayName || 'Consultor Oracular',
-          title: 'Tarot • Baralho Cigano • Astrologia',
-          avatar: auth.currentUser?.photoURL || '/brand/logo-oraculos.png?v=20260831',
-          status: 'online',
-          rating: 5.0,
-          pricePerMinute: 3.5,
-        };
-        setProfile(fallbackProfile);
-        setEarnings({ grossMinutes: 142.5, commissionRate: 0.7, payableMinutes: 99.75, paymentMethod: 'manual_weekly' });
-      }
+      setMessage(error instanceof Error ? error.message : 'Não foi possível carregar o painel profissional.');
     } finally {
       setLoading(false);
     }
@@ -72,9 +64,49 @@ export const ConsultantDashboard: React.FC = () => {
 
   useEffect(() => { void load(); }, []);
   useEffect(() => {
-    const interval = window.setInterval(() => { void load(true); }, 8000);
+    const interval = window.setInterval(() => { void load(true); }, 2000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!soundEnabled || pendingSessions.length === 0) return;
+    const ring = () => {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.frequency.setValueAtTime(880, context.currentTime);
+      oscillator.frequency.setValueAtTime(660, context.currentTime + 0.22);
+      gain.gain.setValueAtTime(0.32, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.55);
+      oscillator.connect(gain); gain.connect(context.destination);
+      oscillator.start(); oscillator.stop(context.currentTime + 0.55);
+      oscillator.onended = () => void context.close();
+    };
+    ring();
+    const interval = window.setInterval(ring, 1400);
+    return () => window.clearInterval(interval);
+  }, [soundEnabled, pendingSessions.length]);
+
+  const enableSound = () => {
+    localStorage.setItem('oraculos_call_sound', 'enabled');
+    setSoundEnabled(true);
+    setMessage('Campainha ativada. Mantenha esta página aberta para receber chamadas.');
+  };
+
+  const decideCall = async (sessionId: string, decision: 'accept' | 'reject') => {
+    try {
+      const response = await request(`/api/consultations/${encodeURIComponent(sessionId)}/decision`, {
+        method: 'POST', body: JSON.stringify({ decision }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível responder à chamada.');
+      setPendingSessions((current) => current.filter((item) => item.id !== sessionId));
+      setMessage(decision === 'accept' ? 'Atendimento aceito. O chat está liberado.' : 'Atendimento recusado e minutos liberados ao cliente.');
+      await load(true);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao responder à chamada.'); }
+  };
 
   const sendReply = async (sessionId: string) => {
     const text = (replyBySession[sessionId] || '').trim();
@@ -125,6 +157,22 @@ export const ConsultantDashboard: React.FC = () => {
         </div>
       </header>
       {message && <p role="status" className="p-3 bg-amber-500/10 text-amber-200 rounded-xl text-sm">{message}</p>}
+      <section className={`p-4 sm:p-6 rounded-2xl border space-y-4 ${pendingSessions.length ? 'bg-amber-500/15 border-amber-300 animate-pulse' : 'bg-[#150F26] border-purple-900/40'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-black text-amber-200 flex items-center gap-2">{pendingSessions.length ? <BellRing className="w-6 h-6" /> : <Bell className="w-5 h-5" />} Chamadas aguardando</h2>
+          {!soundEnabled && <button onClick={enableSound} className="px-4 py-2 rounded-xl bg-amber-400 text-black font-black">Ativar campainha</button>}
+        </div>
+        {pendingSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhuma solicitação neste momento.</p> : pendingSessions.map((session) => (
+          <article key={session.id} className="p-5 rounded-2xl bg-black/40 border border-amber-300/50 space-y-3">
+            <div><p className="text-xl font-black text-white">Novo atendimento</p><p className="text-sm text-purple-200 capitalize">{session.oracleType || 'Consulta'} • {Number(session.pricePerMinute || 0).toFixed(2)} min/min</p></div>
+            <p className="text-xs text-amber-200">Responda rapidamente. A solicitação expira automaticamente.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => void decideCall(session.id, 'accept')} className="py-3 rounded-xl bg-emerald-500 text-black font-black flex items-center justify-center gap-2"><Check className="w-5 h-5" /> Aceitar</button>
+              <button onClick={() => void decideCall(session.id, 'reject')} className="py-3 rounded-xl bg-rose-600 text-white font-black flex items-center justify-center gap-2"><X className="w-5 h-5" /> Recusar</button>
+            </div>
+          </article>
+        ))}
+      </section>
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Metric icon={<Wallet />} label="Repasse acumulado" value={`${earnings?.payableMinutes.toFixed(2) || '0.00'} min`} />
         <Metric icon={<Clock />} label="Atendimentos" value={String(sessions.length)} />
