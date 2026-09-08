@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bell, BellRing, Check, Clock, MessageSquare, RefreshCw, Send, Star, Volume2, Wallet, Wifi, X } from 'lucide-react';
 import { auth } from '../../firebase';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
@@ -19,6 +19,7 @@ export const ConsultantDashboard: React.FC = () => {
   const [earnings, setEarnings] = useState<ProfessionalEarnings | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const loadInProgress = useRef(false);
 
   const playCallSound = async () => {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -37,7 +38,7 @@ export const ConsultantDashboard: React.FC = () => {
   };
 
   const request = async (url: string, options: RequestInit = {}) => {
-    let token = await auth.currentUser?.getIdToken(true).catch(() => null);
+    let token = await auth.currentUser?.getIdToken().catch(() => null);
     if (!token) {
       try {
         const stored = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
@@ -50,13 +51,21 @@ export const ConsultantDashboard: React.FC = () => {
       } catch {}
     }
     if (!token) throw new Error('Sessão profissional expirada. Entre novamente.');
-    return fetch(url, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort('timeout'), 15000);
+    try {
+      return await fetch(url, { ...options, signal: options.signal || controller.signal, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+    } finally {
+      window.clearTimeout(timeout);
+    }
   };
 
   const load = async (background = false) => {
+    if (loadInProgress.current) return;
+    loadInProgress.current = true;
     if (!background && !profile) setLoading(true);
     try {
-      const response = await request('/api/consultants/me');
+      const response = await request(background ? '/api/consultants/me' : '/api/consultants/me?profileOnly=1');
       const body = await response.json().catch(() => ({}));
       if (response.ok && body.success && body.data?.profile) {
         setProfile(body.data.profile);
@@ -70,17 +79,20 @@ export const ConsultantDashboard: React.FC = () => {
       }
     } catch (error) {
       const rawMessage = error instanceof Error ? error.message : '';
-      setMessage(rawMessage.toLowerCase().includes('abort')
-        ? 'A conexão demorou mais que o esperado. O painel tentará novamente automaticamente.'
+      setMessage(rawMessage.toLowerCase().includes('abort') || rawMessage.toLowerCase().includes('timeout')
+        ? 'O histórico demorou mais que o esperado. O painel continua disponível e tentará novamente.'
         : rawMessage || 'Não foi possível carregar o painel profissional.');
     } finally {
       setLoading(false);
+      loadInProgress.current = false;
     }
   };
 
-  useEffect(() => { void load(); }, []);
   useEffect(() => {
-    const interval = window.setInterval(() => { void load(true); }, 2000);
+    void load().then(() => void load(true));
+  }, []);
+  useEffect(() => {
+    const interval = window.setInterval(() => { void load(true); }, 5000);
     return () => window.clearInterval(interval);
   }, []);
 
