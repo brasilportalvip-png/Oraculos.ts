@@ -1,0 +1,31 @@
+ORACULOS.TS - CORRECAO COMPLETA V5
+
+CAMPAINHA
+- Mantem o canal de audio aberto depois do teste.
+- Toca repetidamente enquanto houver chamada aguardando.
+- Vibra no celular quando o aparelho permitir.
+- Exibe notificacao quando o navegador autorizar.
+- Mostra Campainha ativa no painel.
+
+VIDEO
+- Profissional pode ativar ou desativar video.
+- Administrador define preco do chat e preco do video separadamente.
+- Cliente visualiza o preco correto antes de escolher.
+- Profissional aceita ou recusa antes da cobranca.
+- Cliente e profissional entram na mesma sala de video Jitsi.
+- Camera e microfone dependem da permissao do navegador.
+
+ADMINISTRACAO
+- Conversas abrem diretamente sem solicitar justificativa.
+- Registro original permanece somente para leitura.
+- Lista usa os localizadores reais das consultas.
+
+MARKETPLACE
+- Remove nomes repetidos da lista final.
+- Mãe Serena de Oya aparece somente uma vez.
+
+VALIDACAO
+- TypeScript aprovado.
+- 18 arquivos de teste aprovados.
+- 130 testes aprovados.
+- Build de producao aprovado.

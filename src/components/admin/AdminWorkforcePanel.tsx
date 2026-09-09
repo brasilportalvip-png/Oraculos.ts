@@ -21,6 +21,8 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
     return {};
   });
   const [message, setMessage] = useState('');
+  const [videoPrices, setVideoPrices] = useState<Record<string, string>>({});
+  const [videoEnabled, setVideoEnabled] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
 
   const authorizedFetch = async (url: string, options: RequestInit = {}) => {
@@ -83,6 +85,7 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
   const savePrice = async (consultant: Consultant) => {
     const rawVal = prices[consultant.id];
     const pricePerMinute = Number(rawVal !== undefined && rawVal !== '' ? rawVal : consultant.pricePerMinute);
+    const videoPricePerMinute = Number(videoPrices[consultant.id] || consultant.videoPricePerMinute || pricePerMinute);
     if (isNaN(pricePerMinute) || pricePerMinute <= 0) {
       setMessage('Por favor, informe um valor numérico válido maior que zero.');
       return;
@@ -106,7 +109,7 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
     try {
       const response = await authorizedFetch(`/api/admin/consultants/${consultant.id}/pricing`, {
         method: 'PATCH',
-        body: JSON.stringify({ pricePerMinute, active: true }),
+        body: JSON.stringify({ pricePerMinute, videoPricePerMinute, videoEnabled: videoEnabled[consultant.id] ?? consultant.videoEnabled ?? false, active: true }),
       });
       const body = await response.json().catch(() => ({}));
       if (response.ok) {
@@ -166,7 +169,7 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
         <h3 className="font-bold text-white">Controle do valor por minuto</h3>
         <div className="grid md:grid-cols-2 gap-3">
           {consultants.map((consultant) => (
-            <div key={consultant.id} className="p-4 rounded-xl bg-[#150F26] border border-purple-900/40 flex items-center gap-3">
+            <div key={consultant.id} className="p-4 rounded-xl bg-[#150F26] border border-purple-900/40 flex flex-wrap items-center gap-3">
               <img
                 src={getSafeConsultantAvatar(consultant.avatar, consultant.name)}
                 alt={consultant.name}
@@ -177,6 +180,8 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
               />
               <div className="min-w-0 flex-1"><p className="font-bold text-sm text-white truncate">{consultant.name}</p><p className="text-[11px] text-slate-400">Atual: {consultant.pricePerMinute.toFixed(2)} min/min</p></div>
               <input type="number" min="0.01" step="0.10" className="w-24 px-2 py-2 bg-black/30 rounded-lg text-white" value={prices[consultant.id] ?? consultant.pricePerMinute} onChange={(e) => setPrices({ ...prices, [consultant.id]: e.target.value })} />
+              <input aria-label={`Valor de vídeo de ${consultant.name}`} type="number" min="0.01" step="0.10" className="w-24 px-2 py-2 bg-black/30 rounded-lg text-white" value={videoPrices[consultant.id] ?? consultant.videoPricePerMinute ?? consultant.pricePerMinute} onChange={(e) => setVideoPrices({ ...videoPrices, [consultant.id]: e.target.value })} />
+              <label className="text-xs text-purple-200 flex items-center gap-1"><input type="checkbox" checked={videoEnabled[consultant.id] ?? consultant.videoEnabled ?? false} onChange={(e) => setVideoEnabled({ ...videoEnabled, [consultant.id]: e.target.checked })} /> Vídeo</label>
               <button onClick={() => void savePrice(consultant)} aria-label={`Salvar valor de ${consultant.name}`} className="p-2 rounded-lg bg-amber-400 text-black"><Save className="w-4 h-4" /></button>
             </div>
           ))}

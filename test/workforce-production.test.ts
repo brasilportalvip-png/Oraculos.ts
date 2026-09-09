@@ -111,6 +111,18 @@ describe('Gestão de profissionais em produção', () => {
     expect(response.body.error.code).toBe('VIDEO_NOT_AVAILABLE');
   });
 
+  it('usa o preço separado do vídeo quando o profissional habilita a modalidade', async () => {
+    consultantSettingsDb.c1 = { pricePerMinute: 3.5, videoPricePerMinute: 6.25, videoEnabled: true, active: true };
+    const response = await request(app).post('/api/finance/start-consultation')
+      .set('x-user-id', 'usr-client-1')
+      .send({ consultationId: 'video-price-test', consultantId: 'c1', oracleType: 'tarot', mode: 'video' });
+    expect(response.status).toBe(200);
+    expect(response.body.data.mode).toBe('video');
+    expect(response.body.data.pricePerMinute).toBe(6.25);
+    expect(response.body.data.status).toBe('requested');
+    delete consultationSessionsDb['usr-client-1:video-price-test'];
+  });
+
   it('exige conta autenticada para vincular a candidatura ao futuro painel', async () => {
     const response = await request(app).post('/api/work-with-us/applications').send({});
     expect(response.status).toBe(401);

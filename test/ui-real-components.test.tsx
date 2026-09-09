@@ -225,8 +225,8 @@ describe('TESTES DA INTERFACE REAL: ConsultantProfileModal E OraclesDirectory', 
     // O modal deve ter aberto com Mestre Gabriel Astros
     expect(getByText('Mestre Gabriel Astros')).toBeTruthy();
 
-    // Vídeo não é oferecido até existir conexão P2P real.
-    const videoButton = getByText('Vídeo em breve').closest('button');
+    // Vídeo permanece bloqueado enquanto o profissional não habilitar a modalidade.
+    const videoButton = getByText('Vídeo indisponível').closest('button');
     expect(videoButton?.disabled).toBe(true);
     expect(handleStartFinal).not.toHaveBeenCalled();
 

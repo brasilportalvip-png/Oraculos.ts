@@ -176,7 +176,7 @@ app.use(
             baseUri: ["'self'"],
             objectSrc: ["'none'"],
             formAction: ["'self'", 'https://www.mercadopago.com.br'],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https://meet.jit.si'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
             fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
             imgSrc: [
@@ -188,7 +188,7 @@ app.use(
             ],
             mediaSrc: ["'self'", 'blob:'],
             workerSrc: ["'self'", 'blob:'],
-            frameSrc: ["'self'", 'https://www.mercadopago.com.br'],
+            frameSrc: ["'self'", 'https://www.mercadopago.com.br', 'https://meet.jit.si'],
             connectSrc: [
               "'self'",
               'https://*.googleapis.com',
@@ -197,6 +197,8 @@ app.use(
               'https://securetoken.googleapis.com',
               'https://identitytoolkit.googleapis.com',
               'https://api.mercadopago.com',
+              'https://meet.jit.si',
+              'wss://meet.jit.si',
             ],
             upgradeInsecureRequests: [],
           },
@@ -3276,7 +3278,7 @@ export const workforceApplicationsDb: Record<
 
 export const consultantSettingsDb: Record<
   string,
-  { pricePerMinute: number; active: boolean }
+  { pricePerMinute: number; videoPricePerMinute?: number; videoEnabled?: boolean; active: boolean }
 > = {};
 
 export const consultantProfilesDb: Record<
@@ -3487,6 +3489,8 @@ app.patch(
         totalReviews: 0,
         totalConsultations: 0,
         pricePerMinute,
+        videoPricePerMinute: Number((pricePerMinute * 1.5).toFixed(2)),
+        videoEnabled: application.modality === 'video' || application.modality === 'both',
         status: 'offline',
         experienceYears: application.experienceYears,
         avgResponseTime: 'Novo profissional',
@@ -3502,6 +3506,7 @@ app.patch(
       };
       if (adminDb) {
         await adminDb.collection('consultantProfiles').doc(consultantId).set(profile, { merge: true });
+        await adminDb.collection('consultantSettings').doc(consultantId).set({ pricePerMinute, videoPricePerMinute: Number((pricePerMinute * 1.5).toFixed(2)), videoEnabled: application.modality === 'video' || application.modality === 'both', active: true }, { merge: true });
         const userReference = adminDb.collection('users').doc(application.userId);
         const userDocument = await userReference.get();
         if (!userDocument.exists) {
@@ -3514,7 +3519,7 @@ app.patch(
           usersDb[application.userId] = { ...usersDb[application.userId], role: 'consultant', consultantId } as UserRecord;
         }
       }
-      consultantSettingsDb[consultantId] = { pricePerMinute, active: true };
+      consultantSettingsDb[consultantId] = { pricePerMinute, videoPricePerMinute: Number((pricePerMinute * 1.5).toFixed(2)), videoEnabled: application.modality === 'video' || application.modality === 'both', active: true };
     }
 
     return res.json({ success: true, data: { id: applicationId, status } });
@@ -3523,8 +3528,8 @@ app.patch(
 
 app.get('/api/consultants/public', async (_req: Request, res: Response) => {
   const settings = adminDb
-    ? (await adminDb.collection('consultantSettings').get()).docs.reduce<Record<string, { pricePerMinute: number; active: boolean }>>((result, doc) => {
-        result[doc.id] = doc.data() as { pricePerMinute: number; active: boolean };
+    ? (await adminDb.collection('consultantSettings').get()).docs.reduce<Record<string, { pricePerMinute: number; videoPricePerMinute?: number; videoEnabled?: boolean; active: boolean }>>((result, doc) => {
+        result[doc.id] = doc.data() as { pricePerMinute: number; videoPricePerMinute?: number; videoEnabled?: boolean; active: boolean };
         return result;
       }, {})
     : consultantSettingsDb;
@@ -3541,15 +3546,18 @@ app.patch(
   async (req: AuthenticatedRequest, res: Response) => {
     const consultantId = req.params.id.trim();
     const pricePerMinute = Number(req.body?.pricePerMinute);
+    const videoPricePerMinute = Number(req.body?.videoPricePerMinute || pricePerMinute);
+    const videoEnabled = req.body?.videoEnabled === true;
     const active = req.body?.active !== false;
     if (!consultantId || !Number.isFinite(pricePerMinute) || pricePerMinute <= 0 || pricePerMinute > 100) {
       return res.status(400).json({ success: false, error: { code: 'INVALID_PRICING', message: 'Valor por minuto inválido.' } });
     }
-    const setting = { pricePerMinute: Number(pricePerMinute.toFixed(2)), active, updatedAt: new Date().toISOString(), updatedBy: req.user?.uid };
+    if (!Number.isFinite(videoPricePerMinute) || videoPricePerMinute <= 0 || videoPricePerMinute > 100) return res.status(400).json({ success: false, error: { code: 'INVALID_VIDEO_PRICING', message: 'Valor do vídeo por minuto inválido.' } });
+    const setting = { pricePerMinute: Number(pricePerMinute.toFixed(2)), videoPricePerMinute: Number(videoPricePerMinute.toFixed(2)), videoEnabled, active, updatedAt: new Date().toISOString(), updatedBy: req.user?.uid };
     if (adminDb) {
       await adminDb.collection('consultantSettings').doc(consultantId).set(setting, { merge: true });
       try {
-        await adminDb.collection('consultantProfiles').doc(consultantId).set({ pricePerMinute: setting.pricePerMinute, active }, { merge: true });
+        await adminDb.collection('consultantProfiles').doc(consultantId).set({ pricePerMinute: setting.pricePerMinute, videoPricePerMinute: setting.videoPricePerMinute, videoEnabled, active }, { merge: true });
       } catch (profileErr) {
         console.warn('[ORACULOS.TS] Aviso ao atualizar consultantProfiles:', profileErr);
       }
@@ -3558,6 +3566,8 @@ app.patch(
     if (consultantProfilesDb[consultantId]) {
       consultantProfilesDb[consultantId].pricePerMinute = setting.pricePerMinute;
       consultantProfilesDb[consultantId].active = active;
+      consultantProfilesDb[consultantId].videoPricePerMinute = setting.videoPricePerMinute;
+      consultantProfilesDb[consultantId].videoEnabled = videoEnabled;
     }
     return res.json({ success: true, data: setting });
   },
@@ -3696,6 +3706,18 @@ app.patch(
     return res.json({ success: true, data: { status } });
   },
 );
+
+app.patch('/api/consultants/me/video-settings', requireAuth, requireRole(['consultant', 'employee']), async (req: AuthenticatedRequest, res: Response) => {
+  if (!adminDb || !req.user?.uid) return res.status(503).json({ success: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Serviço temporariamente indisponível.' } });
+  const consultantId = await resolveConsultantId(req.user.uid);
+  if (!consultantId) return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Perfil profissional não vinculado.' } });
+  const videoEnabled = req.body?.videoEnabled === true;
+  await Promise.all([
+    adminDb.collection('consultantSettings').doc(consultantId).set({ videoEnabled, updatedAt: new Date().toISOString() }, { merge: true }),
+    adminDb.collection('consultantProfiles').doc(consultantId).set({ videoEnabled, updatedAt: new Date().toISOString() }, { merge: true }),
+  ]);
+  return res.json({ success: true, data: { videoEnabled } });
+});
 
 interface ServerConsultationSession {
   id: string;
@@ -3969,15 +3991,6 @@ app.post(
           ? 'video'
           : 'chat';
 
-      if (mode === 'video') {
-        return res.status(409).json({
-          success: false,
-          error: {
-            code: 'VIDEO_NOT_AVAILABLE',
-            message: 'A videochamada está temporariamente indisponível. Inicie pelo Chat Seguro, que já está plenamente operacional.',
-          },
-        });
-      }
 
       if (!userId) {
         return res.status(401).json({
@@ -4063,6 +4076,8 @@ app.post(
       let pricePerMinute = Number(
         consultant.pricePerMinute,
       );
+      if (mode === 'video' && consultant.isAI === true) return res.status(409).json({ success: false, error: { code: 'VIDEO_NOT_AVAILABLE', message: 'Vídeo disponível apenas com profissionais humanos.' } });
+      if (mode === 'video' && !adminDb && consultantSettingsDb[consultantId]?.videoEnabled !== true) return res.status(409).json({ success: false, error: { code: 'VIDEO_NOT_AVAILABLE', message: 'Este profissional não está oferecendo vídeo agora.' } });
 
       if (adminDb) {
         const pricingDocument = await adminDb
@@ -4077,7 +4092,8 @@ app.post(
               error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
             });
           }
-          pricePerMinute = Number(pricing.pricePerMinute);
+          if (mode === 'video' && pricing.videoEnabled !== true) return res.status(409).json({ success: false, error: { code: 'VIDEO_NOT_AVAILABLE', message: 'Este profissional não está oferecendo vídeo agora.' } });
+          pricePerMinute = Number(mode === 'video' ? (pricing.videoPricePerMinute ?? pricing.pricePerMinute) : pricing.pricePerMinute);
         }
       } else if (consultantSettingsDb[consultantId]) {
         const pricing = consultantSettingsDb[consultantId];
@@ -4087,7 +4103,8 @@ app.post(
             error: { code: 'CONSULTANT_INACTIVE', message: 'Este profissional está indisponível.' },
           });
         }
-        pricePerMinute = pricing.pricePerMinute;
+        if (mode === 'video' && pricing.videoEnabled !== true) return res.status(409).json({ success: false, error: { code: 'VIDEO_NOT_AVAILABLE', message: 'Este profissional não está oferecendo vídeo agora.' } });
+        pricePerMinute = Number(mode === 'video' ? (pricing.videoPricePerMinute ?? pricing.pricePerMinute) : pricing.pricePerMinute);
       }
 
       if (
@@ -8069,8 +8086,14 @@ app.get('/api/admin/consultation-audit', ...requireAdmin, async (req: Authentica
   try {
     if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
     const search = String(req.query.search || '').trim().toLowerCase();
-    const snapshot = await adminDb.collectionGroup('consultationSessions').limit(200).get();
-    const sessions = snapshot.docs.map((document) => ({ id: document.id, ...document.data() } as Record<string, any>))
+    const locatorSnapshot = await adminDb.collection('consultationLocators').limit(200).get();
+    const resolvedSessions = await Promise.all(locatorSnapshot.docs.map(async (locator) => {
+      const userId = String(locator.data()?.userId || '');
+      if (!userId) return null;
+      const document = await adminDb!.collection('users').doc(userId).collection('consultationSessions').doc(locator.id).get();
+      return document.exists ? ({ id: document.id, ...document.data() } as Record<string, any>) : null;
+    }));
+    const sessions = resolvedSessions.filter((session): session is Record<string, any> => Boolean(session))
       .filter((session) => !search || [session.id, session.userId, session.consultantId, session.consultantName, session.clientName].some((value) => String(value || '').toLowerCase().includes(search)))
       .sort((a, b) => String(b.createdAt || b.startedAt || '').localeCompare(String(a.createdAt || a.startedAt || '')))
       .slice(0, 100);
@@ -8084,14 +8107,9 @@ app.get('/api/admin/consultation-audit', ...requireAdmin, async (req: Authentica
 app.post('/api/admin/consultation-audit/:id/access', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
-    const reason = String(req.body?.reason || '').trim().slice(0, 500);
-    if (reason.length < 5) return res.status(400).json({ success: false, error: { code: 'REASON_REQUIRED', message: 'Informe o motivo do acesso à conversa.' } });
     const found = await findConsultationSession(req.params.id.trim());
     if (!found) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Atendimento não encontrado.' } });
     const now = new Date().toISOString();
-    const auditEntry = { id: `log-chat-access-${Date.now()}`, timestamp: now, userId: req.user?.uid || 'admin', userName: req.user?.name || 'Administrador', userRole: req.user?.role || 'admin', action: 'CONSULTATION_AUDIT_ACCESSED', details: `Conversa ${found.session.id} acessada. Motivo: ${reason}`, target: found.session.id, ip: req.ip || '127.0.0.1', status: 'WARNING' as const };
-    auditLogs.unshift(auditEntry);
-    await adminDb.collection('auditLogs').doc(auditEntry.id).set(auditEntry);
     return res.json({ success: true, data: { session: found.session, accessedAt: now } });
   } catch (error) {
     console.error('[ORACULOS.TS] Falha ao abrir auditoria:', error);

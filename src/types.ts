@@ -93,6 +93,8 @@ export interface Consultant {
   // Minutos descontados da carteira do cliente
 // por minuto de atendimento.
 pricePerMinute: number;
+  videoPricePerMinute?: number;
+  videoEnabled?: boolean;
   status: ConsultantStatus;
   experienceYears: number;
   avgResponseTime: string;

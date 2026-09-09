@@ -25,6 +25,7 @@ import { useConsultation } from '../context/ConsultationContext';
 import { useAuth } from '../context/AuthContext';
 import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 import { auth } from '../firebase';
+import { VideoMeeting } from './VideoMeeting';
 
 export const ConsultationRoom: React.FC = () => {
   const { user } = useAuth();
@@ -77,6 +78,14 @@ const [endConsultationError, setEndConsultationError] =
         stopMedia();
         return;
       }
+
+      if (activeSession?.status !== 'active') {
+        setVideoStatus('idle');
+        return;
+      }
+
+      setVideoStatus('connected');
+      return;
 
       setVideoStatus('requesting');
       setVideoError(null);
@@ -137,7 +146,7 @@ const [endConsultationError, setEndConsultationError] =
       isCancelled = true;
       stopMedia();
     };
-  }, [mode]);
+  }, [mode, activeSession?.status]);
 
   const toggleMic = () => {
     if (localStreamRef.current) {
@@ -484,35 +493,7 @@ window.location.assign('/');
 
             {videoStatus === 'connected' && (
               <div className="relative w-full h-full flex items-center justify-center">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="max-h-full max-w-full rounded-2xl object-cover border border-purple-800/50 shadow-2xl"
-                />
-
-                {/* In-Call Media Controls Overlay */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10">
-                  <button
-                    onClick={toggleMic}
-                    className={`p-3 rounded-xl transition-colors cursor-pointer ${
-                      isMicOn ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-rose-600 text-white'
-                    }`}
-                    title={isMicOn ? 'Mutar microfone' : 'Ativar microfone'}
-                  >
-                    {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-                  </button>
-                  <button
-                    onClick={toggleVideoTrack}
-                    className={`p-3 rounded-xl transition-colors cursor-pointer ${
-                      isVideoOn ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-rose-600 text-white'
-                    }`}
-                    title={isVideoOn ? 'Desativar câmera' : 'Ativar câmera'}
-                  >
-                    {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-                  </button>
-                </div>
+                <VideoMeeting sessionId={activeSession.id} displayName={user.name} className="w-full h-full min-h-[520px] shadow-2xl" />
               </div>
             )}
           </div>

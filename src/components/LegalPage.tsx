@@ -75,7 +75,8 @@ const LEGAL_DOCS: Record<LegalDocType, {
         content: [
           'O conteúdo das mensagens trocadas nas salas de consulta privadas é protegido por sigilo oracular e criptografia em trânsito e repouso.',
           'Nenhum dado sensível de consulta é vendido, compartilhado ou comercializado com terceiros sob qualquer pretexto publicitário.',
-          'Para apuração de reclamações, fraudes, disputas de cobrança, incidentes de segurança ou solicitações de suporte, administradores autorizados poderão acessar o registro original do atendimento pelo tempo estritamente necessário. Todo acesso exige justificativa e fica registrado em trilha de auditoria.',
+          'Para apuração de reclamações, fraudes, disputas de cobrança, incidentes de segurança ou solicitações de suporte, administradores autorizados poderão acessar o registro original do atendimento pelo tempo estritamente necessário.',
+          'Quando a modalidade de vídeo for escolhida, câmera, microfone e mídia da chamada são processados pela infraestrutura de videoconferência Jitsi Meet incorporada à plataforma, mediante permissão do navegador. A ORACULOS.TS não grava a mídia da videochamada em seus registros de atendimento.',
         ],
       },
       {
