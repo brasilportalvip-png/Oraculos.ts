@@ -6,10 +6,10 @@ import path from 'path';
 
 describe('SEO, Sitemaps XML, Robots, PWA & Android TWA Validation', () => {
   // 1. Health & Packages APIs
-  it('GET /api/health deve responder 200 com status ok e identificação do sistema', async () => {
+  it('GET /api/health deve declarar degradação quando integrações obrigatórias não estão configuradas', async () => {
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ok');
+    expect(res.body.status).toBe('degraded');
     expect(res.body.system).toBe('ORACULOS.TS');
   });
 

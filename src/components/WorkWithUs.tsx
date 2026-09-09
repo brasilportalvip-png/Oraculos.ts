@@ -64,10 +64,12 @@ export const WorkWithUs: React.FC = () => {
         reader.readAsDataURL(file);
       });
 
-      // Envia ao servidor para persistir arquivo em /uploads/
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Entre na sua conta antes de enviar a foto profissional.');
+      // Envia ao Firebase Storage através do servidor autenticado.
       const res = await fetch('/api/work-with-us/upload-photo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ image: dataUrl }),
       });
 

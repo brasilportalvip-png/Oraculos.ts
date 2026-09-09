@@ -19,6 +19,7 @@ import {
 } from 'firebase-admin/app';
 
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { getStorage as getAdminStorage } from 'firebase-admin/storage';
 
 import {
   getFirestore,
@@ -209,8 +210,9 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ==========================================
 // FIREBASE ADMIN SDK INITIALIZATION
@@ -262,6 +264,7 @@ try {
       projectId:
         process.env.FIREBASE_PROJECT_ID ||
         serviceAccount.project_id,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`,
     });
   } else if (
     process.env.FIREBASE_PROJECT_ID &&
@@ -275,10 +278,12 @@ try {
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
       projectId: process.env.FIREBASE_PROJECT_ID,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
     });
   } else if (process.env.FIREBASE_PROJECT_ID && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     firebaseAdminApp = initAdminApp({
       projectId: process.env.FIREBASE_PROJECT_ID,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
     });
   }
 
@@ -718,7 +723,7 @@ function getCouponBonusMinutes(
 
 // 1. WAF & Rate Limiting Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || '127.0.0.1';
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
   securityMetrics.totalRequestsChecked++;
 
   // Check IP Blacklist
@@ -739,6 +744,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     const windowMs = 60 * 1000;
     
     if (!requestBuckets[clientIp]) {
+      if (Object.keys(requestBuckets).length >= 10_000) {
+        for (const key of Object.keys(requestBuckets).slice(0, 1_000)) delete requestBuckets[key];
+      }
       requestBuckets[clientIp] = [];
     }
 
@@ -959,6 +967,16 @@ export const requireAuth = async (
       if (userDocument.exists) {
         const profile =
           userDocument.data() || {};
+
+        if (profile.status === 'blocked' || profile.disabled === true) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'ACCOUNT_BLOCKED',
+              message: 'Esta conta está bloqueada. Entre em contato com o suporte.',
+            },
+          });
+        }
 
         if (
           isValidUserRole(
@@ -1394,8 +1412,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
   const mercadoPagoStatus = mpConfig ? 'ok' : 'not_configured';
   const commitVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.npm_package_version || 'local-uncommitted';
 
-  res.json({
-    status: 'ok',
+  const healthy = firebaseAdminStatus === 'ok' && firestoreStatus === 'ok' && geminiStatus === 'ok' && mercadoPagoStatus === 'ok';
+  res.status(200).json({
+    status: healthy ? 'ok' : 'degraded',
     system: 'ORACULOS.TS',
     version: commitVersion,
     timestamp: new Date().toISOString(),
@@ -1410,7 +1429,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Production Readiness & Verification Committee Audit Endpoint
-app.get('/api/admin/readiness-audit', (_req: Request, res: Response) => {
+app.get('/api/admin/readiness-audit', ...requireAdmin, (_req: Request, res: Response) => {
   const assetsChecked = [
     'public/brand/logo-oraculos.png',
     'public/image/logo-oraculo.ts.png',
@@ -1430,21 +1449,25 @@ app.get('/api/admin/readiness-audit', (_req: Request, res: Response) => {
   }));
 
   const allAssetsOk = assetsStatus.every((a) => a.exists);
+  const requiredServicesOk = Boolean(firebaseAdminInitialized && adminDb && process.env.GEMINI_API_KEY && mpConfig);
+  const readinessScore = [allAssetsOk, requiredServicesOk, firebaseAdminInitialized, Boolean(adminDb), Boolean(process.env.GEMINI_API_KEY), Boolean(mpConfig)]
+    .filter(Boolean).length / 6 * 100;
+  const committeeStatus = readinessScore === 100 ? 'approved' : 'attention';
   const consultantsCount = INITIAL_CONSULTANTS.length;
   const oraclesCount = VIRTUAL_PROFILES.length;
 
   res.json({
     success: true,
-    score: 100,
-    status: 'PRODUCTION_READY_CERTIFIED',
+    score: Math.round(readinessScore),
+    status: readinessScore === 100 ? 'PRODUCTION_READY' : 'PRODUCTION_ATTENTION_REQUIRED',
     timestamp: new Date().toISOString(),
     committee: {
-      architect: { status: 'approved', role: 'Engenharia de Cloud & Runtime Node 22' },
-      infosec: { status: 'approved', role: 'Ciberdefesa, RBAC & Proteção WAF' },
-      oracles: { status: 'approved', role: 'Motores Oraculares & Gemini LLM' },
-      workforce: { status: 'approved', role: '26 Especialistas & Blindagem de Avatares' },
-      finance: { status: 'approved', role: 'Minutos, PIX & Repasse de Comissões' },
-      qa: { status: 'approved', role: '114 Testes Automatizados & Smoke Tests 100%' },
+      architect: { status: committeeStatus, role: 'Engenharia de Cloud & Runtime Node 22' },
+      infosec: { status: committeeStatus, role: 'Ciberdefesa, RBAC & Proteção WAF' },
+      oracles: { status: process.env.GEMINI_API_KEY ? 'approved' : 'attention', role: 'Motores Oraculares & Gemini LLM' },
+      workforce: { status: committeeStatus, role: 'Especialistas & Blindagem de Avatares' },
+      finance: { status: mpConfig ? 'approved' : 'attention', role: 'Minutos, PIX & Repasse de Comissões' },
+      qa: { status: 'approved', role: 'Testes automatizados, build e smoke tests' },
     },
     metrics: {
       uptimeSeconds: Math.round(process.uptime()),
@@ -1453,8 +1476,8 @@ app.get('/api/admin/readiness-audit', (_req: Request, res: Response) => {
       consultantsCount,
       oraclesCount,
       assetsVerified: allAssetsOk,
-      firebaseAdmin: firebaseAdminInitialized ? 'configured' : 'ready_with_fallback',
-      geminiEngine: Boolean(process.env.GEMINI_API_KEY) ? 'configured' : 'ready_with_fallback',
+      firebaseAdmin: firebaseAdminInitialized ? 'configured' : 'not_configured',
+      geminiEngine: Boolean(process.env.GEMINI_API_KEY) ? 'configured' : 'not_configured',
       rateLimiter: 'active',
       helmetSecurity: 'active',
       rbacEnforcement: 'active',
@@ -2784,6 +2807,34 @@ if (
       if (
         status !== 'approved'
       ) {
+        const reversalStatuses = new Set(['refunded', 'charged_back', 'cancelled']);
+        if (reversalStatuses.has(status)) {
+          const reversalReference = userReference.collection('minuteTransactions').doc(`mercadopago-reversal-${paymentId}`);
+          await adminDb.runTransaction(async (transaction) => {
+            const [existingPayment, userDocument, existingReversal] = await Promise.all([
+              transaction.get(paymentReference),
+              transaction.get(userReference),
+              transaction.get(reversalReference),
+            ]);
+            if (existingReversal.exists || existingPayment.data()?.credited !== true || !userDocument.exists) return;
+            const currentUser = userDocument.data() || {};
+            const balanceBefore = Math.max(0, Number(currentUser.minuteBalance ?? currentUser.balance ?? 0));
+            const reversalMinutes = Math.min(totalMinutes, balanceBefore);
+            const balanceAfter = Number(Math.max(0, balanceBefore - reversalMinutes).toFixed(2));
+            const processedAt = new Date().toISOString();
+            transaction.update(userReference, { minuteBalance: balanceAfter, balance: balanceAfter, updatedAt: processedAt });
+            transaction.create(reversalReference, {
+              id: `mercadopago-reversal-${paymentId}`, userId, type: 'refund', minutes: reversalMinutes,
+              originalMinutes: totalMinutes, balanceBefore, balanceAfter, paymentId, status,
+              reason: `Reversão automática de pagamento: ${status}.`, createdBy: 'system-mercadopago', createdAt: processedAt,
+            });
+            transaction.set(paymentReference, {
+              status, credited: false, reversed: true, reversedMinutes: reversalMinutes,
+              outstandingReversalMinutes: Number(Math.max(0, totalMinutes - reversalMinutes).toFixed(2)),
+              reversedAt: processedAt, updatedAt: processedAt,
+            }, { merge: true });
+          });
+        }
         await paymentReference.set(
           {
             paymentId,
@@ -3099,33 +3150,36 @@ paymentMethod:
                 ] || 0,
               );
 
-            if (
-              !coupon.active ||
-              coupon.type !==
-                'bonus_fixed'
-            ) {
-              console.warn(
-                '[ORACULOS.TS] Cupom do pagamento não está mais ativo ou compatível.',
-                {
-                  paymentId,
-                  couponCode,
-                },
-              );
-              return;
-            }
+            const couponEligible = coupon.active && coupon.type === 'bonus_fixed' &&
+              (!coupon.expiresAt || new Date(coupon.expiresAt) > new Date()) &&
+              currentUses < Number(coupon.maxUses || 0) &&
+              currentUserUses < Number(coupon.maxUsesPerUser || 1);
 
-            if (
-              coupon.expiresAt &&
-              new Date(
-                coupon.expiresAt,
-              ) <= new Date()
-            ) {
-              console.warn(
-                '[ORACULOS.TS] Cupom do pagamento expirou antes da contabilização.',
-                {
-                  paymentId,
-                  couponCode,
-                },
+            if (!couponEligible) {
+              const currentUserDocument = await transaction.get(userReference);
+              const currentPaymentDocument = await transaction.get(paymentReference);
+              const currentUserData = currentUserDocument.data() || {};
+              const balanceBeforeRollback = Math.max(0, Number(currentUserData.minuteBalance ?? currentUserData.balance ?? 0));
+              const rollbackMinutes = Math.min(couponBonusMinutes, balanceBeforeRollback);
+              const balanceAfterRollback = Number(Math.max(0, balanceBeforeRollback - rollbackMinutes).toFixed(2));
+              const rollbackAt = new Date().toISOString();
+              transaction.update(userReference, { minuteBalance: balanceAfterRollback, balance: balanceAfterRollback, updatedAt: rollbackAt });
+              transaction.set(paymentReference, {
+                couponBonusMinutes: 0,
+                totalMinutes: officialMinutes,
+                couponRejectedAtWebhook: true,
+                couponRollbackMinutes: rollbackMinutes,
+                couponRollbackOutstanding: Number(Math.max(0, couponBonusMinutes - rollbackMinutes).toFixed(2)),
+                updatedAt: rollbackAt,
+              }, { merge: true });
+              transaction.set(
+                userReference.collection('minuteTransactions').doc(`coupon-rollback-${paymentId}`),
+                { id: `coupon-rollback-${paymentId}`, userId, type: 'admin_adjustment', minutes: rollbackMinutes,
+                  balanceBefore: balanceBeforeRollback, balanceAfter: balanceAfterRollback, paymentId,
+                  reason: 'Bônus de cupom revertido porque o limite ou a validade mudou antes da aprovação.',
+                  createdBy: 'system-mercadopago', createdAt: rollbackAt,
+                  originalPaymentCredited: currentPaymentDocument.data()?.credited === true },
+                { merge: false },
               );
               return;
             }
@@ -3286,7 +3340,7 @@ export const consultantProfilesDb: Record<
   Record<string, unknown>
 > = {};
 
-function saveCandidatePhotoIfBase64(photoStr: string): string {
+async function saveCandidatePhotoIfBase64(photoStr: string): Promise<string> {
   if (!photoStr || typeof photoStr !== 'string') return '';
   const trimmed = photoStr.trim();
   const match = trimmed.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
@@ -3294,33 +3348,42 @@ function saveCandidatePhotoIfBase64(photoStr: string): string {
     return trimmed.slice(0, 2048);
   }
   try {
+    if (!firebaseAdminApp) return '';
     const rawExt = match[1].toLowerCase();
-    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt.replace(/[^a-z0-9]/g, '');
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
+    if (!['jpg', 'png', 'webp'].includes(ext)) return '';
     const filename = `candidate_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext || 'jpg'}`;
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    const filepath = path.join(uploadsDir, filename);
     const buffer = Buffer.from(match[2], 'base64');
-    if (buffer.length > 10 * 1024 * 1024) {
+    if (buffer.length > 5 * 1024 * 1024) {
       return '';
     }
-    fs.writeFileSync(filepath, buffer);
-    return `/uploads/${filename}`;
+    const validMagic = ext === 'jpg'
+      ? buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+      : ext === 'png'
+        ? buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+        : buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    if (!validMagic) return '';
+    const object = getAdminStorage(firebaseAdminApp).bucket().file(`candidate-uploads/${filename}`);
+    await object.save(buffer, {
+      resumable: false,
+      contentType: ext === 'jpg' ? 'image/jpeg' : `image/${ext}`,
+      metadata: { cacheControl: 'public,max-age=31536000,immutable' },
+    });
+    const [signedUrl] = await object.getSignedUrl({ action: 'read', expires: '2500-01-01' });
+    return signedUrl;
   } catch (err) {
     console.error('[ORACULOS.TS] Erro ao salvar foto de candidato:', err);
-    return trimmed.length < 500000 ? trimmed : '';
+    return '';
   }
 }
 
-app.post('/api/work-with-us/upload-photo', async (req: Request, res: Response) => {
+app.post('/api/work-with-us/upload-photo', requireAuth, async (req: Request, res: Response) => {
   try {
     const rawImage = req.body?.image;
     if (!rawImage || typeof rawImage !== 'string') {
       return res.status(400).json({ success: false, error: { message: 'Imagem inválida.' } });
     }
-    const savedUrl = saveCandidatePhotoIfBase64(rawImage);
+    const savedUrl = await saveCandidatePhotoIfBase64(rawImage);
     if (!savedUrl) {
       return res.status(400).json({ success: false, error: { message: 'Falha ao processar ou arquivo muito grande.' } });
     }
@@ -3348,7 +3411,7 @@ app.post('/api/work-with-us/applications', requireAuth, async (req: Authenticate
     const state = text(req.body?.state, 40);
     const bio = text(req.body?.bio, 1500);
     const rawProfilePhoto = typeof req.body?.profilePhoto === 'string' ? req.body.profilePhoto.trim() : '';
-    const profilePhoto = saveCandidatePhotoIfBase64(rawProfilePhoto);
+    const profilePhoto = await saveCandidatePhotoIfBase64(rawProfilePhoto);
     const experienceYears = Number(req.body?.experienceYears);
     const specialties = Array.isArray(req.body?.specialties)
       ? req.body.specialties.map((item: unknown) => text(item, 50)).filter(Boolean).slice(0, 10)
@@ -3656,25 +3719,44 @@ app.get(
         },
       });
     }
-    const sessionsSnapshot = await adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions').limit(200).get();
-    const sessions = sessionsSnapshot.docs.map((doc) => ({
-      ...(doc.data() as ServerConsultationSession),
-      id: doc.id,
+    const queue = adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions');
+    const liveOnly = req.query.liveOnly === '1';
+    const [pendingSnapshot, activeSnapshot, completedSnapshot] = await Promise.all([
+      queue.where('status', '==', 'requested').get(),
+      queue.where('status', '==', 'active').get(),
+      liveOnly ? Promise.resolve(null) : queue.where('status', '==', 'completed').get(),
+    ]);
+    const mapSessions = (snapshot: FirebaseFirestore.QuerySnapshot) => snapshot.docs.map((doc) => ({
+      ...(doc.data() as ServerConsultationSession), id: doc.id,
     }));
+    const requestedSessions = mapSessions(pendingSnapshot);
+    const activeSessions = mapSessions(activeSnapshot);
+    const completed = completedSnapshot ? mapSessions(completedSnapshot) : [];
     const now = Date.now();
-    const pending = sessions.filter((session) => session.status === 'requested' && Date.parse(String(session.expiresAt || '')) > now);
-    const completed = sessions.filter((session) => session.status === 'completed');
-    const active = sessions.filter((session) => session.status === 'active');
-    const grossMinutes = completed.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
+    const expiredRequested = requestedSessions.filter((session) => Date.parse(String(session.expiresAt || '')) <= now).slice(0, 150);
+    if (expiredRequested.length > 0) {
+      const batch = adminDb.batch();
+      const decidedAt = new Date(now).toISOString();
+      for (const session of expiredRequested) {
+        const expiredPatch = { status: 'expired', decidedAt, decisionReason: 'timeout', updatedAt: decidedAt };
+        batch.set(adminDb.collection('users').doc(session.userId).collection('consultationSessions').doc(session.id), expiredPatch, { merge: true });
+        batch.set(queue.doc(session.id), expiredPatch, { merge: true });
+      }
+      await batch.commit();
+    }
+    const pending = requestedSessions.filter((session) => Date.parse(String(session.expiresAt || '')) > now);
+    const active = activeSessions;
+    const unpaidCompleted = completed.filter((session) => !(session as ServerConsultationSession & { payoutId?: string }).payoutId);
+    const grossMinutes = unpaidCompleted.reduce((total, session) => total + Number(session.debitMinutes || 0), 0);
     const commissionRate = Number(profileDocument.data()?.commissionRate || 0.7);
     return res.json({
       success: true,
       data: {
         profile: { id: profileDocument.id, ...profileDocument.data() },
-        sessions: completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))),
+        sessions: liveOnly ? undefined : completed.sort((a, b) => String(b.endedAt || '').localeCompare(String(a.endedAt || ''))).slice(0, 100),
         pendingSessions: pending.sort((a, b) => String(a.expiresAt || '').localeCompare(String(b.expiresAt || ''))),
         activeSessions: active.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || ''))),
-        earnings: {
+        earnings: liveOnly ? undefined : {
           grossMinutes: Number(grossMinutes.toFixed(2)),
           commissionRate,
           payableMinutes: Number((grossMinutes * commissionRate).toFixed(2)),
@@ -3702,7 +3784,12 @@ app.patch(
     if (typeof consultantId !== 'string' || !consultantId) {
       return res.status(404).json({ success: false, error: { code: 'CONSULTANT_PROFILE_NOT_FOUND', message: 'Perfil profissional não vinculado.' } });
     }
-    await adminDb.collection('consultantProfiles').doc(consultantId).update({ status, updatedAt: new Date().toISOString() });
+    const profileReference = adminDb.collection('consultantProfiles').doc(consultantId);
+    const profileDocument = await profileReference.get();
+    if (profileDocument.data()?.activeConsultationId && status !== 'busy') {
+      return res.status(409).json({ success: false, error: { code: 'ACTIVE_CONSULTATION_EXISTS', message: 'Encerre o atendimento atual antes de alterar sua disponibilidade.' } });
+    }
+    await profileReference.update({ status, updatedAt: new Date().toISOString() });
     return res.json({ success: true, data: { status } });
   },
 );
@@ -3719,6 +3806,40 @@ app.patch('/api/consultants/me/video-settings', requireAuth, requireRole(['consu
   return res.json({ success: true, data: { videoEnabled } });
 });
 
+app.post('/api/admin/consultants/:id/payouts', ...requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!adminDb) return res.status(503).json({ success: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Banco de dados indisponível.' } });
+    const consultantId = req.params.id.trim();
+    const profileReference = adminDb.collection('consultantProfiles').doc(consultantId);
+    const queue = adminDb.collection('consultantCallQueues').doc(consultantId).collection('sessions');
+    const [profileDocument, completedSnapshot] = await Promise.all([
+      profileReference.get(), queue.where('status', '==', 'completed').get(),
+    ]);
+    if (!profileDocument.exists) return res.status(404).json({ success: false, error: { code: 'CONSULTANT_NOT_FOUND', message: 'Profissional não encontrado.' } });
+    const unpaid = completedSnapshot.docs.filter((document) => !document.data()?.payoutId).slice(0, 400);
+    if (unpaid.length === 0) return res.json({ success: true, data: { paidSessions: 0, payableMinutes: 0, alreadySettled: true } });
+    const commissionRate = Number(profileDocument.data()?.commissionRate || 0.7);
+    const grossMinutes = unpaid.reduce((total, document) => total + Number(document.data()?.debitMinutes || 0), 0);
+    const payableMinutes = Number((grossMinutes * commissionRate).toFixed(2));
+    const payoutId = `payout_${consultantId}_${Date.now()}`;
+    const paidAt = new Date().toISOString();
+    await adminDb.runTransaction(async (transaction) => {
+      const refreshed = await Promise.all(unpaid.map((document) => transaction.get(document.ref)));
+      if (refreshed.some((document) => document.data()?.payoutId)) throw new Error('PAYOUT_CONFLICT');
+      for (const document of unpaid) transaction.update(document.ref, { payoutId, payoutStatus: 'paid', paidAt });
+      transaction.create(adminDb!.collection('consultantPayouts').doc(payoutId), {
+        id: payoutId, consultantId, sessionIds: unpaid.map((document) => document.id), grossMinutes,
+        commissionRate, payableMinutes, method: 'manual_weekly', status: 'paid', paidAt,
+        createdBy: req.user?.uid || 'admin', createdAt: paidAt,
+      });
+    });
+    return res.status(201).json({ success: true, data: { payoutId, paidSessions: unpaid.length, grossMinutes, commissionRate, payableMinutes, paidAt } });
+  } catch (error) {
+    const conflict = error instanceof Error && error.message === 'PAYOUT_CONFLICT';
+    return res.status(conflict ? 409 : 500).json({ success: false, error: { code: conflict ? 'PAYOUT_CONFLICT' : 'PAYOUT_FAILED', message: conflict ? 'Alguma consulta já foi incluída em outro repasse. Atualize e tente novamente.' : 'Não foi possível registrar o repasse.' } });
+  }
+});
+
 interface ServerConsultationSession {
   id: string;
   userId: string;
@@ -3732,6 +3853,7 @@ interface ServerConsultationSession {
   requestedAt?: string;
   expiresAt?: string;
   acceptedAt?: string;
+  autoEndsAt?: string;
   decidedAt?: string;
   decisionReason?: string;
   reservedMinutes?: number;
@@ -3817,19 +3939,42 @@ app.post(
     };
 
     if (adminDb && found.reference) {
+      try {
       await adminDb.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(found.reference!);
-        if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
-        transaction.update(found.reference!, patch);
-        transaction.set(adminDb.collection('consultantCallQueues').doc(authenticatedConsultantId).collection('sessions').doc(consultationId), patch, { merge: true });
+        const profileReference = adminDb.collection('consultantProfiles').doc(authenticatedConsultantId);
         const userReference = adminDb.collection('users').doc(found.session.userId);
+        const [profileSnapshot, userSnapshot] = await Promise.all([
+          transaction.get(profileReference), transaction.get(userReference),
+        ]);
+        if (!snapshot.exists || snapshot.data()?.status !== 'requested') throw new Error('REQUEST_ALREADY_DECIDED');
+        const profileData = profileSnapshot.data() || {};
+        if (decision === 'accept' && (
+          profileData.status !== 'online' ||
+          (typeof profileData.activeConsultationId === 'string' && profileData.activeConsultationId !== consultationId)
+        )) throw new Error('CONSULTANT_ALREADY_BUSY');
+        const balance = Math.max(0, Number(userSnapshot.data()?.minuteBalance ?? userSnapshot.data()?.balance ?? 0));
+        const maxWholeMinutes = Math.max(1, Math.floor(balance / Number(found.session.pricePerMinute || 1)));
+        const transactionPatch = nextStatus === 'active'
+          ? { ...patch, autoEndsAt: new Date(now.getTime() + maxWholeMinutes * 60_000).toISOString() }
+          : patch;
+        transaction.update(found.reference!, transactionPatch);
+        transaction.set(adminDb.collection('consultantCallQueues').doc(authenticatedConsultantId).collection('sessions').doc(consultationId), transactionPatch, { merge: true });
         transaction.update(userReference, nextStatus === 'active'
           ? { activeConsultationId: consultationId, pendingConsultationId: null, updatedAt: now.toISOString() }
           : { activeConsultationId: null, pendingConsultationId: null, updatedAt: now.toISOString() });
-        transaction.update(adminDb.collection('consultantProfiles').doc(authenticatedConsultantId), {
-          status: nextStatus === 'active' ? 'busy' : 'online', updatedAt: now.toISOString(),
-        });
+        if (nextStatus === 'active') {
+          transaction.update(profileReference, { status: 'busy', activeConsultationId: consultationId, updatedAt: now.toISOString() });
+        } else if (!profileData.activeConsultationId) {
+          transaction.update(profileReference, { status: 'online', activeConsultationId: null, updatedAt: now.toISOString() });
+        }
       });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : 'DECISION_FAILED';
+        if (code === 'CONSULTANT_ALREADY_BUSY') return res.status(409).json({ success: false, error: { code, message: 'Você já possui outro atendimento ativo.' } });
+        if (code === 'REQUEST_ALREADY_DECIDED') return res.status(409).json({ success: false, error: { code, message: 'Esta solicitação já foi respondida.' } });
+        throw error;
+      }
     } else {
       consultationSessionsDb[found.key] = { ...found.session, ...patch };
       if (usersDb[found.session.userId]) {
@@ -3928,7 +4073,7 @@ app.get('/api/consultations/:id/messages', requireAuth, async (req: Authenticate
     } else consultationSessionsDb[found.key] = { ...found.session, ...expiredPatch };
     return res.json({ success: true, data: { messages: found.session.messages || [], status: 'expired' } });
   }
-  return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status } });
+  return res.json({ success: true, data: { messages: found.session.messages || [], status: found.session.status, autoEndsAt: found.session.autoEndsAt || null } });
 });
 
 app.post('/api/consultations/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -3947,10 +4092,18 @@ app.post('/api/consultations/:id/messages', requireAuth, async (req: Authenticat
     senderName: req.user.name || (found.session.userId === req.user.uid ? 'Cliente' : found.session.consultantName),
     text, timestamp: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), createdAt: now.toISOString(),
   };
-  const messages = [...(found.session.messages || []), message].slice(-500);
+  let messages = [...(found.session.messages || []), message].slice(-200);
   if (adminDb && found.reference) {
-    await found.reference.update({ messages, updatedAt: now.toISOString() });
-    await adminDb.collection('consultantCallQueues').doc(found.session.consultantId).collection('sessions').doc(found.session.id).set({ messages, updatedAt: now.toISOString() }, { merge: true });
+    const queueReference = adminDb.collection('consultantCallQueues').doc(found.session.consultantId).collection('sessions').doc(found.session.id);
+    await adminDb.runTransaction(async (transaction) => {
+      const current = await transaction.get(found.reference!);
+      if (!current.exists || current.data()?.status !== 'active') throw new Error('CONSULTATION_CLOSED');
+      const currentMessages = Array.isArray(current.data()?.messages) ? current.data()!.messages : [];
+      messages = [...currentMessages, message].slice(-200);
+      transaction.create(found.reference!.collection('messages').doc(message.id), message);
+      transaction.update(found.reference!, { messages, updatedAt: now.toISOString() });
+      transaction.set(queueReference, { messages, updatedAt: now.toISOString() }, { merge: true });
+    });
   }
   else consultationSessionsDb[found.key] = { ...found.session, messages };
   return res.status(201).json({ success: true, data: { message } });
@@ -3966,8 +4119,7 @@ app.post(
     res: Response,
   ) => {
     try {
-      const userId =
-        req.user?.uid;
+      const userId = req.user?.uid;
 
       const consultationId =
         typeof req.body?.consultationId ===
@@ -4604,8 +4756,7 @@ app.post(
     res: Response,
   ) => {
     try {
-      const userId =
-        req.user?.uid;
+      let userId = req.user?.uid;
 
       const consultationId =
         typeof req.body?.consultationId ===
@@ -4618,6 +4769,15 @@ app.post(
         'string'
           ? req.body.consultantId.trim()
           : '';
+
+      if (userId && ['consultant', 'employee'].includes(String(req.user?.role))) {
+        const foundSession = await findConsultationSession(consultationId);
+        const authenticatedConsultantId = await resolveConsultantId(userId);
+        if (!foundSession || !authenticatedConsultantId || foundSession.session.consultantId !== authenticatedConsultantId || consultantId !== authenticatedConsultantId) {
+          return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Você não pode encerrar este atendimento.' } });
+        }
+        userId = foundSession.session.userId;
+      }
 
       const rawRating = req.body?.rating;
       const ratingGiven =
@@ -5413,6 +5573,12 @@ app.post(
                 ...(ratingGiven !== undefined ? { ratingGiven } : {}),
                 ...(reviewText ? { reviewText } : {}), updatedAt: processedAt,
               },
+              { merge: true },
+            );
+
+            transaction.set(
+              adminDb.collection('consultantProfiles').doc(consultantId),
+              { status: 'online', activeConsultationId: null, updatedAt: processedAt },
               { merge: true },
             );
 
@@ -7952,12 +8118,7 @@ app.post(
 
 app.get(
   '/api/admin/users',
-  requireAuth,
-  requireRole([
-    'admin',
-    'superadmin',
-    'support',
-  ]),
+  ...requireAdmin,
   async (_req: Request, res: Response) => {
     try {
       if (!adminDb) {
@@ -8022,6 +8183,9 @@ app.patch('/api/admin/users/:id', ...requireAdmin, async (req: AuthenticatedRequ
     const userDocument = await userReference.get();
     if (!userDocument.exists) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Conta não encontrada.' } });
     const current = userDocument.data() || {};
+    if (String(current.role) === 'superadmin' && req.user?.role !== 'superadmin') {
+      return res.status(403).json({ success: false, error: { code: 'SUPERADMIN_REQUIRED', message: 'Somente o proprietário pode alterar uma conta superadministradora.' } });
+    }
     const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 120) : String(current.name || '');
     const status = ['active', 'blocked'].includes(req.body?.status) ? req.body.status : current.status;
     if (name.length < 2) return res.status(400).json({ success: false, error: { code: 'INVALID_NAME', message: 'Informe um nome válido.' } });
@@ -8086,7 +8250,10 @@ app.get('/api/admin/consultation-audit', ...requireAdmin, async (req: Authentica
   try {
     if (!adminDb) return res.status(503).json({ success: false, error: { code: 'FIRESTORE_NOT_AVAILABLE', message: 'Banco de dados temporariamente indisponível.' } });
     const search = String(req.query.search || '').trim().toLowerCase();
-    const locatorSnapshot = await adminDb.collection('consultationLocators').limit(200).get();
+    const cursor = String(req.query.cursor || '').trim();
+    let locatorQuery: FirebaseFirestore.Query = adminDb.collection('consultationLocators').orderBy('createdAt', 'desc').limit(100);
+    if (cursor) locatorQuery = locatorQuery.startAfter(cursor);
+    const locatorSnapshot = await locatorQuery.get();
     const resolvedSessions = await Promise.all(locatorSnapshot.docs.map(async (locator) => {
       const userId = String(locator.data()?.userId || '');
       if (!userId) return null;
@@ -8097,7 +8264,10 @@ app.get('/api/admin/consultation-audit', ...requireAdmin, async (req: Authentica
       .filter((session) => !search || [session.id, session.userId, session.consultantId, session.consultantName, session.clientName].some((value) => String(value || '').toLowerCase().includes(search)))
       .sort((a, b) => String(b.createdAt || b.startedAt || '').localeCompare(String(a.createdAt || a.startedAt || '')))
       .slice(0, 100);
-    return res.json({ success: true, data: { sessions } });
+    const nextCursor = locatorSnapshot.docs.length === 100
+      ? String(locatorSnapshot.docs[locatorSnapshot.docs.length - 1].data()?.createdAt || '')
+      : null;
+    return res.json({ success: true, data: { sessions, nextCursor } });
   } catch (error) {
     console.error('[ORACULOS.TS] Falha ao listar auditoria de consultas:', error);
     return res.status(500).json({ success: false, error: { code: 'AUDIT_FETCH_FAILED', message: 'Não foi possível carregar os atendimentos.' } });
@@ -8110,7 +8280,13 @@ app.post('/api/admin/consultation-audit/:id/access', ...requireAdmin, async (req
     const found = await findConsultationSession(req.params.id.trim());
     if (!found) return res.status(404).json({ success: false, error: { code: 'CONSULTATION_NOT_FOUND', message: 'Atendimento não encontrado.' } });
     const now = new Date().toISOString();
-    return res.json({ success: true, data: { session: found.session, accessedAt: now } });
+    const messageSnapshot = found.reference
+      ? await found.reference.collection('messages').orderBy('createdAt', 'asc').limit(2000).get()
+      : null;
+    const archivedMessages = messageSnapshot && !messageSnapshot.empty
+      ? messageSnapshot.docs.map((document) => document.data())
+      : found.session.messages || [];
+    return res.json({ success: true, data: { session: { ...found.session, messages: archivedMessages }, accessedAt: now } });
   } catch (error) {
     console.error('[ORACULOS.TS] Falha ao abrir auditoria:', error);
     return res.status(500).json({ success: false, error: { code: 'AUDIT_ACCESS_FAILED', message: 'Não foi possível abrir o atendimento.' } });

@@ -106,7 +106,7 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       let token = await auth.currentUser?.getIdToken(true).catch(() => null);
-      if (!token) token = 'demo_admin_token';
+      if (!token) throw new Error('Sessão administrativa expirada. Entre novamente.');
       await fetch(`/api/admin/consultants/${consultant.id}/pricing`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

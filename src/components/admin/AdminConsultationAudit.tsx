@@ -28,6 +28,7 @@ export const AdminConsultationAudit: React.FC = () => {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<AuditSession | null>(null);
   const request = async (url: string, options: RequestInit = {}) => {
     const token = await auth.currentUser?.getIdToken(true);
@@ -41,18 +42,19 @@ export const AdminConsultationAudit: React.FC = () => {
       },
     });
   };
-  const load = async () => {
+  const load = async (append = false) => {
     setLoading(true);
     try {
       const response = await request(
-        `/api/admin/consultation-audit?search=${encodeURIComponent(search)}`,
+        `/api/admin/consultation-audit?search=${encodeURIComponent(search)}${append && nextCursor ? `&cursor=${encodeURIComponent(nextCursor)}` : ""}`,
       );
       const body = await response.json().catch(() => ({}));
       if (!response.ok)
         throw new Error(
           body.error?.message || "Falha ao carregar atendimentos.",
         );
-      setSessions(body.data?.sessions || []);
+      setSessions((current) => append ? [...current, ...(body.data?.sessions || [])] : (body.data?.sessions || []));
+      setNextCursor(body.data?.nextCursor || null);
       setMessage("");
     } catch (error) {
       setMessage(
@@ -156,19 +158,20 @@ export const AdminConsultationAudit: React.FC = () => {
           ))
         )}
       </div>
+      {nextCursor && <button type="button" disabled={loading} onClick={() => void load(true)} className="w-full rounded-xl border border-purple-700 bg-purple-500/10 p-3 font-bold text-purple-100 disabled:opacity-50">Carregar atendimentos anteriores</button>}
       {selected && (
-        <div className="fixed inset-0 z-50 bg-black/85 p-4 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black/85 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="audit-dialog-title">
           <div className="max-w-3xl w-full max-h-[92vh] overflow-y-auto bg-[#100b1b] border border-amber-400/40 rounded-2xl p-5 space-y-4">
             <div className="flex justify-between">
               <div>
-                <h3 className="font-black text-amber-200">
+                <h3 id="audit-dialog-title" className="font-black text-amber-200">
                   Atendimento {selected.id}
                 </h3>
                 <p className="text-xs text-slate-400">
                   Registro original somente para leitura
                 </p>
               </div>
-              <button onClick={() => setSelected(null)}>
+              <button onClick={() => setSelected(null)} aria-label="Fechar atendimento">
                 <X />
               </button>
             </div>

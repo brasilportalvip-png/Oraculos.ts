@@ -1,0 +1,48 @@
+ORACULOS.TS - CORRECAO COMPLETA DE PRODUCAO V6
+
+SEGURANCA
+- Remove completamente tokens administrativos e profissionais de demonstracao.
+- Contas bloqueadas perdem acesso real as APIs.
+- Protege superadministrador e restringe dados administrativos.
+- Fecha alteracoes indevidas de campos pelo Firebase Web SDK.
+- Protege upload de foto, valida o arquivo e usa Firebase Storage.
+- Corrige identificacao de IP, limite de corpo e crescimento do rate limiter.
+
+ATENDIMENTOS
+- Impede o profissional de aceitar duas consultas simultaneamente.
+- Mensagens concorrentes sao salvas em transacao.
+- Conversa completa possui arquivo de mensagens separado para auditoria.
+- Profissional pode encerrar o atendimento.
+- Duracao maxima e calculada pelo saldo e o encerramento e automatico com os paineis ativos.
+- Pedidos expirados sao limpos e consultas antigas possuem paginacao administrativa.
+
+FINANCEIRO
+- Estorno, cancelamento e chargeback revertem minutos com ledger idempotente.
+- Cupom e revalidado no webhook e bonus invalido e revertido.
+- Repasse semanal recebe identificador unico e baixa das consultas pagas.
+- Painel administrativo possui botao para registrar repasse e evitar duplicidade.
+
+EXPERIENCIA
+- Campainha exige ativacao real em cada abertura e cria notificacao persistente.
+- Clique na notificacao retorna ao painel profissional.
+- Video possui carregamento, falha e tentativa novamente.
+- Melhora video em celular e acessibilidade dos cartoes e auditoria.
+
+OPERACAO
+- Health check informa estado degradado quando integracoes faltam.
+- Painel de prontidao exige administrador e nao apresenta mais nota fixa.
+- Funcao Vercel possui duracao maxima configurada.
+- Historico completo nao e recarregado a cada 5 segundos.
+
+VALIDACAO LOCAL CONCLUIDA
+- TypeScript aprovado.
+- 19 arquivos de teste aprovados.
+- 138 testes aprovados.
+- Ativos oficiais aprovados.
+- Build de producao aprovado.
+- Smoke serverless e servidor standalone aprovados.
+- Nenhuma vulnerabilidade alta ou critica em dependencias de producao.
+
+ATENCAO APOS O MERGE
+- Confirmar FIREBASE_STORAGE_BUCKET na Vercel se o bucket do projeto nao usar o nome padrao.
+- Realizar teste final de pagamento sandbox, video em dois aparelhos e notificacao no celular.

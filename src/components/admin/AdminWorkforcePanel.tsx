@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, RefreshCw, Save } from 'lucide-react';
+import { Banknote, CheckCircle2, XCircle, RefreshCw, Save } from 'lucide-react';
 import type { CandidateApplication, Consultant } from '../../types';
 import { auth } from '../../firebase';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
@@ -26,19 +26,8 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
   const [loading, setLoading] = useState(false);
 
   const authorizedFetch = async (url: string, options: RequestInit = {}) => {
-    let token = await auth.currentUser?.getIdToken(true);
-    if (!token) {
-      try {
-        const saved = localStorage.getItem('oraculos_user') || sessionStorage.getItem('oraculos_user');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.role === 'admin' || parsed.role === 'superadmin') {
-            token = 'demo_admin_token';
-          }
-        }
-      } catch {}
-    }
-    if (!token) token = 'demo_admin_token'; // Allow administrative actions in preview
+    const token = await auth.currentUser?.getIdToken(true).catch(() => null);
+    if (!token) throw new Error('Sessão administrativa expirada. Entre novamente.');
     return fetch(url, {
       ...options,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) },
@@ -122,6 +111,16 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
     }
   };
 
+  const registerPayout = async (consultant: Consultant) => {
+    if (!window.confirm(`Confirmar que o repasse semanal de ${consultant.name} foi realizado?`)) return;
+    try {
+      const response = await authorizedFetch(`/api/admin/consultants/${encodeURIComponent(consultant.id)}/payouts`, { method: 'POST' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível registrar o repasse.');
+      setMessage(body.data?.alreadySettled ? 'Não existem atendimentos pendentes de repasse.' : `Repasse registrado: ${Number(body.data?.payableMinutes || 0).toFixed(2)} min em ${body.data?.paidSessions || 0} atendimentos.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao registrar o repasse.'); }
+  };
+
   return (
     <div className="space-y-8">
       <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">
@@ -183,6 +182,7 @@ export const AdminWorkforcePanel: React.FC<{ consultants: Consultant[] }> = ({ c
               <input aria-label={`Valor de vídeo de ${consultant.name}`} type="number" min="0.01" step="0.10" className="w-24 px-2 py-2 bg-black/30 rounded-lg text-white" value={videoPrices[consultant.id] ?? consultant.videoPricePerMinute ?? consultant.pricePerMinute} onChange={(e) => setVideoPrices({ ...videoPrices, [consultant.id]: e.target.value })} />
               <label className="text-xs text-purple-200 flex items-center gap-1"><input type="checkbox" checked={videoEnabled[consultant.id] ?? consultant.videoEnabled ?? false} onChange={(e) => setVideoEnabled({ ...videoEnabled, [consultant.id]: e.target.checked })} /> Vídeo</label>
               <button onClick={() => void savePrice(consultant)} aria-label={`Salvar valor de ${consultant.name}`} className="p-2 rounded-lg bg-amber-400 text-black"><Save className="w-4 h-4" /></button>
+              {!consultant.isAI && <button onClick={() => void registerPayout(consultant)} aria-label={`Registrar repasse de ${consultant.name}`} title="Registrar repasse semanal" className="p-2 rounded-lg bg-emerald-500 text-black"><Banknote className="w-4 h-4" /></button>}
             </div>
           ))}
         </div>
