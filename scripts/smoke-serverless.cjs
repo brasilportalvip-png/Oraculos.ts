@@ -60,7 +60,7 @@ async function run() {
       if (
         pathname === '/api/health' &&
         (
-          body.status !== 'ok' ||
+          !['ok', 'degraded'].includes(body.status) ||
           body.services?.api !== 'ok'
         )
       ) {

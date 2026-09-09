@@ -142,6 +142,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         mode: session.mode === 'video' ? 'video' : 'chat',
         status: session.status === 'requested' ? 'waiting' : 'active',
         expiresAt: typeof session.expiresAt === 'string' ? session.expiresAt : undefined,
+        autoEndsAt: typeof session.autoEndsAt === 'string' ? session.autoEndsAt : undefined,
         startTime: Number.isFinite(startedAt.getTime())
           ? startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -227,6 +228,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ? {
               ...current,
               status: remoteStatus === 'active' ? 'active' : current.status,
+              autoEndsAt: typeof body.data.autoEndsAt === 'string' ? body.data.autoEndsAt : current.autoEndsAt,
               messages: body.data.messages as ChatMessage[],
             }
           : current);
@@ -475,6 +477,7 @@ const uniqueApproved = approved.filter(
  */
 const isAutoReplyInProgressRef =
   useRef(false);
+const isAutoEndInProgressRef = useRef(false);
 
 
   /*
@@ -549,6 +552,16 @@ const isAutoReplyInProgressRef =
     activeSession?.id,
     activeSession?.status,
   ]);
+
+  useEffect(() => {
+    if (!activeSession?.autoEndsAt || activeSession.status !== 'active') return;
+    const timeout = window.setTimeout(() => {
+      if (isAutoEndInProgressRef.current) return;
+      isAutoEndInProgressRef.current = true;
+      void endConsultation().finally(() => { isAutoEndInProgressRef.current = false; });
+    }, Math.max(0, Date.parse(activeSession.autoEndsAt) - Date.now()));
+    return () => window.clearTimeout(timeout);
+  }, [activeSession?.id, activeSession?.status, activeSession?.autoEndsAt]);
 
   // Simulated automated or Gemini AI responses from the Consultant during chat
   

@@ -1,9 +1,9 @@
 // ==============================================================================
 // ORACULOS.TS — Service Worker PWA de Produção
-// Versão: 2.7.1
+// Versão: 2.8.0
 // ==============================================================================
 
-const CACHE_NAME = 'oraculos-ts-v2.7.1';
+const CACHE_NAME = 'oraculos-ts-v2.8.0';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE_ASSETS = [
@@ -109,6 +109,16 @@ self.addEventListener('fetch', (event) => {
         .catch(() => cachedResponse || Response.error());
 
       return cachedResponse || fetchPromise;
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => 'focus' in client);
+      return existing ? existing.focus() : self.clients.openWindow('/painel/consultor');
     })
   );
 });

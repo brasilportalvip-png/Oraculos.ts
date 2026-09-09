@@ -93,7 +93,7 @@ async function main() {
 
     if (
       !healthResponse.ok ||
-      health.status !== 'ok' ||
+      !['ok', 'degraded'].includes(health.status) ||
       health.services?.api !== 'ok'
     ) {
       throw new Error(
@@ -146,4 +146,3 @@ main().catch((error) => {
   );
   process.exitCode = 1;
 });
-

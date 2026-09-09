@@ -65,13 +65,6 @@ export const requireAuth = async (
   const authHeader =
     req.headers.authorization;
 
-  const isProduction =
-    process.env.NODE_ENV ===
-      'production' ||
-    process.env.VERCEL === '1' ||
-    process.env.STRICT_AUTH ===
-      'true';
-
   if (
     !authHeader ||
     !authHeader.startsWith(
@@ -82,7 +75,7 @@ export const requireAuth = async (
      * Usuários simulados são permitidos
      * somente no desenvolvimento local.
      */
-    if (!isProduction) {
+    if (process.env.NODE_ENV === 'test') {
       const devUserId =
         req.headers[
           'x-user-id'
@@ -129,27 +122,6 @@ export const requireAuth = async (
           'Token de autenticação inválido.',
       },
     });
-  }
-
-  // Allow administrative and consultant tokens in development/preview
-  if (token === 'demo_admin_token' || token === 'admin' || token.startsWith('demo_admin')) {
-    req.user = {
-      uid: 'admin_demo_id',
-      email: 'admin@oraculos.ts',
-      role: 'admin',
-      name: 'Administrador Demo',
-    };
-    return next();
-  }
-
-  if (token === 'demo_consultant_token' || token === 'consultant' || token.startsWith('demo_consultant')) {
-    req.user = {
-      uid: 'consultant_demo_id',
-      email: 'consultor@oraculos.ts',
-      role: 'consultant',
-      name: 'Atendente Consultor',
-    };
-    return next();
   }
 
   try {
@@ -217,6 +189,16 @@ export const requireAuth = async (
       ) {
         const profile =
           userDocument.data() || {};
+
+        if (profile.status === 'blocked' || profile.disabled === true) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'ACCOUNT_BLOCKED',
+              message: 'Esta conta está bloqueada. Entre em contato com o suporte.',
+            },
+          });
+        }
 
         if (
           isValidRole(

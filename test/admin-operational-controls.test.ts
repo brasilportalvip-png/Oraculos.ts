@@ -30,7 +30,7 @@ describe('Controles operacionais de produção', () => {
     expect(dashboard).toContain('Testar som');
     expect(dashboard).toContain('Som testado com sucesso');
     expect(dashboard).not.toContain('setTimeout(() => controller.abort(), 4000)');
-    expect(dashboard).toContain('/api/consultants/me?profileOnly=1');
+    expect(dashboard).toContain('/api/consultants/me?liveOnly=1');
     expect(dashboard).toContain('loadInProgress.current');
     expect(dashboard).toContain('getIdToken()');
     expect(server).toContain("collection('consultantCallQueues')");

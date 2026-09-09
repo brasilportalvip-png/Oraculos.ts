@@ -69,6 +69,10 @@ const chosenOracle: OracleType =
         <div className="relative mb-2">
           <div
             onClick={() => onSelect(consultant)}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(consultant); } }}
+            role="button"
+            tabIndex={0}
+            aria-label={`Abrir perfil de ${consultant.name}`}
             className="h-44 w-full rounded-xl overflow-hidden cursor-pointer relative bg-gray-900 border border-white/10"
           >
             <img
@@ -88,6 +92,7 @@ const chosenOracle: OracleType =
 
           <button
             onClick={() => toggleFavorite(consultant.id)}
+            aria-label={fav ? `Remover ${consultant.name} dos favoritos` : `Adicionar ${consultant.name} aos favoritos`}
             className="absolute top-3 right-3 p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-gray-400 hover:text-rose-400 transition-colors"
           >
             <Heart className={`w-4 h-4 ${fav ? 'text-rose-500 fill-rose-500' : ''}`} />
@@ -98,6 +103,9 @@ const chosenOracle: OracleType =
         <div>
           <h3
             onClick={() => onSelect(consultant)}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(consultant); } }}
+            role="button"
+            tabIndex={0}
             className="text-xl font-semibold text-white hover:text-[#d4af37] transition-colors cursor-pointer"
           >
             {consultant.name}

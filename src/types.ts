@@ -133,6 +133,7 @@ export interface ConsultationSession {
   startTime: string;
   endTime?: string;
   expiresAt?: string;
+  autoEndsAt?: string;
   durationSeconds: number;
 
 // Consumo de minutos registrado quando a consulta começa.

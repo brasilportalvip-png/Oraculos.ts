@@ -73,6 +73,12 @@ service cloud.firestore {
        */
       allow create: if
         isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'name', 'birthFullName', 'email', 'birthDate', 'birthTime',
+          'doesNotKnowBirthTime', 'role', 'status', 'minuteBalance', 'balance',
+          'avatar', 'termsAccepted', 'privacyAccepted', 'birthDataConsent',
+          'favorites', 'createdAt', 'updatedAt'
+        ])
         && request.resource.data.get(
           'role',
           'user'
@@ -104,18 +110,13 @@ service cloud.firestore {
        */
       allow update: if (
         isOwner(userId)
-        && !request.resource.data
+        && request.resource.data
           .diff(resource.data)
           .affectedKeys()
-          .hasAny([
-            'id',
-            'role',
-            'status',
-            'email',
-            'minuteBalance',
-            'balance',
-            'isAdmin',
-            'createdAt'
+          .hasOnly([
+            'name', 'birthFullName', 'birthDate', 'birthTime',
+            'doesNotKnowBirthTime', 'avatar', 'termsAccepted',
+            'privacyAccepted', 'birthDataConsent', 'favorites', 'updatedAt'
           ])
       ) || isSuperAdmin();
 

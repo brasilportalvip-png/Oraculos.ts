@@ -389,7 +389,7 @@ window.location.assign('/');
               Chat
             </button>
             <button
-              disabled
+              disabled={mode !== 'video'}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
@@ -397,7 +397,7 @@ window.location.assign('/');
               }`}
             >
               <Video className="w-3.5 h-3.5" />
-              Vídeo em breve
+              Vídeo
             </button>
           </div>
 
@@ -493,7 +493,7 @@ window.location.assign('/');
 
             {videoStatus === 'connected' && (
               <div className="relative w-full h-full flex items-center justify-center">
-                <VideoMeeting sessionId={activeSession.id} displayName={user.name} className="w-full h-full min-h-[520px] shadow-2xl" />
+                <VideoMeeting sessionId={activeSession.id} displayName={user.name} className="w-full h-full min-h-[300px] sm:min-h-[420px] shadow-2xl" />
               </div>
             )}
           </div>
