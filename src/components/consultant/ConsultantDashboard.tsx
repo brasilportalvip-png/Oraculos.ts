@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, BellRing, Check, Clock, MessageSquare, RefreshCw, Send, Star, Volume2, Wallet, Wifi, X } from 'lucide-react';
 import { auth } from '../../firebase';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../../utils/avatarUtils';
+import { VideoMeeting } from '../VideoMeeting';
 
-interface ProfessionalProfile { id: string; name: string; avatar: string; title: string; status: 'online' | 'busy' | 'offline'; pricePerMinute: number; rating: number; }
+interface ProfessionalProfile { id: string; name: string; avatar: string; title: string; status: 'online' | 'busy' | 'offline'; pricePerMinute: number; videoPricePerMinute?: number; videoEnabled?: boolean; rating: number; }
 interface ProfessionalSession { id: string; oracleType?: string; endedAt?: string; durationMinutes?: number; debitMinutes?: number; ratingGiven?: number; reviewText?: string; }
-interface ActiveProfessionalSession { id: string; oracleType?: string; startedAt?: string; messages?: Array<{ id: string; senderId: string; senderName: string; text: string; timestamp: string }>; }
-interface PendingProfessionalSession { id: string; userId: string; consultantName?: string; oracleType?: string; requestedAt?: string; expiresAt?: string; pricePerMinute?: number; }
+interface ActiveProfessionalSession { id: string; mode?: 'chat' | 'video'; oracleType?: string; startedAt?: string; messages?: Array<{ id: string; senderId: string; senderName: string; text: string; timestamp: string }>; }
+interface PendingProfessionalSession { id: string; userId: string; mode?: 'chat' | 'video'; consultantName?: string; oracleType?: string; requestedAt?: string; expiresAt?: string; pricePerMinute?: number; }
 interface ProfessionalEarnings { grossMinutes: number; commissionRate: number; payableMinutes: number; paymentMethod: 'manual_weekly'; }
 
 export const ConsultantDashboard: React.FC = () => {
@@ -20,21 +21,23 @@ export const ConsultantDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const loadInProgress = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const notifiedCallsRef = useRef<Set<string>>(new Set());
 
   const playCallSound = async () => {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) throw new Error('Este navegador não oferece suporte ao teste de som.');
-    const context = new AudioContextClass();
+    const context = audioContextRef.current || new AudioContextClass();
+    audioContextRef.current = context;
     if (context.state === 'suspended') await context.resume();
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.frequency.setValueAtTime(880, context.currentTime);
     oscillator.frequency.setValueAtTime(660, context.currentTime + 0.22);
-    gain.gain.setValueAtTime(0.42, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.65);
+    gain.gain.setValueAtTime(0.7, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.9);
     oscillator.connect(gain); gain.connect(context.destination);
-    oscillator.start(); oscillator.stop(context.currentTime + 0.65);
-    oscillator.onended = () => void context.close();
+    oscillator.start(); oscillator.stop(context.currentTime + 0.9);
   };
 
   const request = async (url: string, options: RequestInit = {}) => {
@@ -100,21 +103,35 @@ export const ConsultantDashboard: React.FC = () => {
     if (!soundEnabled || pendingSessions.length === 0) return;
     const ring = () => {
       void playCallSound().catch(() => undefined);
+      if ('vibrate' in navigator) navigator.vibrate([400, 180, 400]);
     };
+    for (const session of pendingSessions) {
+      if (!notifiedCallsRef.current.has(session.id)) {
+        notifiedCallsRef.current.add(session.id);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try { new Notification('Novo atendimento — ORACULOS.TS', { body: `${session.mode === 'video' ? 'Vídeo' : 'Chat'} aguardando sua resposta.`, icon: '/brand/logo-oraculos.png' }); } catch {}
+        }
+      }
+    }
     ring();
     const interval = window.setInterval(ring, 1400);
     return () => window.clearInterval(interval);
   }, [soundEnabled, pendingSessions.length]);
 
-  const enableSound = () => {
+  useEffect(() => () => { void audioContextRef.current?.close(); }, []);
+
+  const enableSound = async () => {
+    await playCallSound();
+    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission();
     localStorage.setItem('oraculos_call_sound', 'enabled');
     setSoundEnabled(true);
-    setMessage('Campainha ativada. Mantenha esta página aberta para receber chamadas.');
+    setMessage('Campainha ativa. Mantenha esta página aberta para receber chamadas.');
   };
 
   const testSound = async () => {
     try {
       await playCallSound();
+      if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission();
       localStorage.setItem('oraculos_call_sound', 'enabled');
       setSoundEnabled(true);
       setMessage('Som testado com sucesso. A campainha está ativada.');
@@ -157,6 +174,17 @@ export const ConsultantDashboard: React.FC = () => {
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao atualizar disponibilidade.'); }
   };
 
+  const toggleVideoAvailability = async () => {
+    const next = !profile?.videoEnabled;
+    try {
+      const response = await request('/api/consultants/me/video-settings', { method: 'PATCH', body: JSON.stringify({ videoEnabled: next }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || 'Não foi possível alterar o vídeo.');
+      setProfile((current) => current ? { ...current, videoEnabled: next } : current);
+      setMessage(next ? 'Chamadas por vídeo ativadas.' : 'Chamadas por vídeo desativadas.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao alterar vídeo.'); }
+  };
+
   if (loading) return <div className="py-24 text-center text-purple-200"><RefreshCw className="w-8 h-8 animate-spin mx-auto mb-3" />Carregando painel profissional...</div>;
   if (!profile) return <div className="max-w-xl mx-auto py-20 text-center p-6 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-200">{message}</div>;
 
@@ -185,17 +213,19 @@ export const ConsultantDashboard: React.FC = () => {
         </div>
       </header>
       {message && <p role="status" className="p-3 bg-amber-500/10 text-amber-200 rounded-xl text-sm">{message}</p>}
+      <section className="p-4 rounded-2xl bg-[#150F26] border border-purple-900/40 flex flex-wrap items-center justify-between gap-3"><div><strong className="text-white">Atendimento por vídeo</strong><p className="text-xs text-purple-200">Valor definido pelo administrador: {Number(profile.videoPricePerMinute || profile.pricePerMinute).toFixed(2)} min/min</p></div><button onClick={() => void toggleVideoAvailability()} className={`px-4 py-2 rounded-xl font-black ${profile.videoEnabled ? 'bg-emerald-500 text-black' : 'bg-white/10 text-slate-300'}`}>{profile.videoEnabled ? 'Vídeo disponível' : 'Ativar vídeo'}</button></section>
       <section className={`p-4 sm:p-6 rounded-2xl border space-y-4 ${pendingSessions.length ? 'bg-amber-500/15 border-amber-300 animate-pulse' : 'bg-[#150F26] border-purple-900/40'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-black text-amber-200 flex items-center gap-2">{pendingSessions.length ? <BellRing className="w-6 h-6" /> : <Bell className="w-5 h-5" />} Chamadas aguardando</h2>
           <div className="flex flex-wrap gap-2">
-            {!soundEnabled && <button onClick={enableSound} className="px-4 py-2 rounded-xl bg-amber-400 text-black font-black">Ativar campainha</button>}
+            {!soundEnabled && <button onClick={() => void enableSound()} className="px-4 py-2 rounded-xl bg-amber-400 text-black font-black">Ativar campainha</button>}
+            {soundEnabled && <span className="px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 font-bold">Campainha ativa</span>}
             <button onClick={() => void testSound()} className="px-4 py-2 rounded-xl border border-amber-300/50 bg-white/5 text-amber-200 font-bold flex items-center gap-2"><Volume2 className="w-4 h-4" /> Testar som</button>
           </div>
         </div>
         {pendingSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhuma solicitação neste momento.</p> : pendingSessions.map((session) => (
           <article key={session.id} className="p-5 rounded-2xl bg-black/40 border border-amber-300/50 space-y-3">
-            <div><p className="text-xl font-black text-white">Novo atendimento</p><p className="text-sm text-purple-200 capitalize">{session.oracleType || 'Consulta'} • {Number(session.pricePerMinute || 0).toFixed(2)} min/min</p></div>
+            <div><p className="text-xl font-black text-white">Novo atendimento por {session.mode === 'video' ? 'vídeo' : 'chat'}</p><p className="text-sm text-purple-200 capitalize">{session.oracleType || 'Consulta'} • {Number(session.pricePerMinute || 0).toFixed(2)} min/min</p></div>
             <p className="text-xs text-amber-200">Responda rapidamente. A solicitação expira automaticamente.</p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => void decideCall(session.id, 'accept')} className="py-3 rounded-xl bg-emerald-500 text-black font-black flex items-center justify-center gap-2"><Check className="w-5 h-5" /> Aceitar</button>
@@ -216,6 +246,7 @@ export const ConsultantDashboard: React.FC = () => {
         {activeSessions.length === 0 ? <p className="text-sm text-slate-400">Nenhum cliente aguardando atendimento.</p> : activeSessions.map((session) => (
           <article key={session.id} className="p-4 bg-black/20 rounded-xl space-y-3">
             <div className="flex justify-between text-sm"><strong className="text-white capitalize">{session.oracleType || 'Consulta'}</strong><span className="text-emerald-300">Em andamento</span></div>
+            {session.mode === 'video' && <VideoMeeting sessionId={session.id} displayName={profile.name} className="w-full h-[430px]" />}
             <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl bg-black/25 p-3">
               {(session.messages || []).length === 0 ? <p className="text-xs text-slate-400">Aguardando a primeira mensagem do cliente.</p> : (session.messages || []).map((item) => (
                 <div key={item.id} className="text-sm"><span className="font-bold text-purple-200">{item.senderName}:</span> <span className="text-slate-200">{item.text}</span> <span className="text-[10px] text-slate-500">{item.timestamp}</span></div>

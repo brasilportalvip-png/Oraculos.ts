@@ -255,7 +255,7 @@ export const ConsultationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (cancelled) return;
 
         const settings = response.ok && body.data?.settings && typeof body.data.settings === 'object'
-          ? body.data.settings as Record<string, { pricePerMinute?: number; active?: boolean }>
+          ? body.data.settings as Record<string, { pricePerMinute?: number; videoPricePerMinute?: number; videoEnabled?: boolean; active?: boolean }>
           : {};
         const approved = response.ok && Array.isArray(body.data?.approved)
           ? body.data.approved as Consultant[]
@@ -312,10 +312,13 @@ const uniqueApproved = approved.filter(
     return true;
   },
 );
-  const merged = [
+  const mergedProfiles = [
     ...INITIAL_CONSULTANTS,
     ...uniqueApproved,
   ];
+  const merged = mergedProfiles.filter((profile, index, all) =>
+    all.findIndex((candidate) => normalizeProfileName(candidate.name) === normalizeProfileName(profile.name)) === index
+  );
 
   return merged
             .filter((profile) => settings[profile.id]?.active !== false)
@@ -328,6 +331,8 @@ const uniqueApproved = approved.filter(
               return {
                 ...profile,
                 pricePerMinute: Number(finalPrice),
+                videoPricePerMinute: Number(settings[profile.id]?.videoPricePerMinute || profile.videoPricePerMinute || finalPrice),
+                videoEnabled: settings[profile.id]?.videoEnabled ?? profile.videoEnabled ?? false,
               };
             });
         });

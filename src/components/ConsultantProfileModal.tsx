@@ -222,11 +222,16 @@ disabled={!canStartConsultation}
               </button>
 
               <button
-disabled
+                onClick={() => {
+                  if (!canStartConsultation || !consultant.videoEnabled) return;
+                  onClose();
+                  onStartConsultation(consultant, selectedOracle, 'video');
+                }}
+                disabled={!canStartConsultation || !consultant.videoEnabled}
                 className="flex items-center justify-center gap-2 py-3 bg-[#1F1638] hover:bg-purple-900/50 border border-purple-700/50 text-purple-200 font-bold text-sm rounded-xl transition-all"
               >
                 <Video className="w-4 h-4 text-amber-400" />
-                Vídeo em breve
+                {consultant.videoEnabled ? `Iniciar Vídeo (${Number(consultant.videoPricePerMinute || consultant.pricePerMinute).toFixed(2)} min/min)` : 'Vídeo indisponível'}
               </button>
             </div>
           </div>

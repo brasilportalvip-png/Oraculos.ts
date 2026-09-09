@@ -151,11 +151,12 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
             Iniciar Consulta por Chat Seguro
           </button>
           <button
-            disabled
+            onClick={() => onStartConsultation(consultant, (consultant.specialties[0] as OracleType) || 'tarot', 'video')}
+            disabled={consultant.status === 'offline' || !consultant.videoEnabled}
             className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 border border-white/10 transition-colors"
           >
             <Video className="w-4 h-4 text-purple-400" />
-            Vídeo em breve
+            {consultant.videoEnabled ? `Vídeo — ${Number(consultant.videoPricePerMinute || consultant.pricePerMinute).toFixed(2)} min/min` : 'Vídeo indisponível'}
           </button>
         </div>
       </div>

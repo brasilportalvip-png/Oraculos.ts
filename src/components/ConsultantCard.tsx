@@ -154,6 +154,7 @@ const chosenOracle: OracleType =
       do saldo/min de atendimento
     </span>
   </span>
+  {consultant.videoEnabled && <span className="block text-[10px] text-purple-300">Vídeo: {Number(consultant.videoPricePerMinute || consultant.pricePerMinute).toFixed(2)} min/min</span>}
 </div>
         </div>
 
@@ -172,11 +173,13 @@ const chosenOracle: OracleType =
           </button>
 
           <button
-            disabled
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onStartConsultation(consultant, chosenOracle, 'video'); }}
+            disabled={consultant.status === 'offline' || !consultant.videoEnabled}
             className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-white/20 hover:border-[#d4af37] py-2.5 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <Video className="w-3.5 h-3.5 gold-accent" />
-            Vídeo em breve
+            {consultant.videoEnabled ? 'Vídeo' : 'Vídeo indisponível'}
           </button>
         </div>
       </div>
