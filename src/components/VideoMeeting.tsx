@@ -23,10 +23,15 @@ export const VideoMeeting: React.FC<{ sessionId: string; displayName: string; cl
         configOverwrite={{ prejoinConfig: { enabled: false }, disableDeepLinking: true, startWithAudioMuted: false, startWithVideoMuted: false }}
         interfaceConfigOverwrite={{ DISABLE_JOIN_LEAVE_NOTIFICATIONS: true, MOBILE_APP_PROMO: false }}
         userInfo={{ displayName, email: '' }}
-        getIFrameRef={(iframe) => {
-          iframe.style.height = '100%'; iframe.style.width = '100%';
-          iframe.title = 'Sala segura de videochamada';
-          iframe.addEventListener('load', () => { readyRef.current = true; setReady(true); }, { once: true });
+        onApiReady={() => {
+          readyRef.current = true;
+          setReady(true);
+          setFailed(false);
+        }}
+        getIFrameRef={(container) => {
+          container.style.height = '100%'; container.style.width = '100%';
+          const iframe = container.querySelector('iframe');
+          if (iframe) iframe.title = 'Sala segura de videochamada';
         }}
       />
       </React.Fragment>
