@@ -346,8 +346,8 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
                   }}
                   className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-purple-900/60 border border-purple-500/40 text-purple-200 hover:text-white text-xs font-bold transition-all cursor-pointer"
                 >
-                  <UserPlus className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden xs:inline">Cadastrar</span>
+                  <UserPlus className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                  <span>Cadastrar</span>
                 </button>
               </div>
             ) : (

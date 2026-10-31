@@ -1,0 +1,44 @@
+ORACULOS.TS - V8 - ATENDENTES QUE CONHECEM O SITE, PRIMEIRO IMPACTO, SEO YOAST E TESTE DE USUARIO REAL
+
+COMO INSTALAR
+1. Extraia o ZIP nos Downloads (Extrair tudo).
+2. Dois cliques em INSTALAR_TESTAR_E_ABRIR_PR_V8.cmd
+3. Ele baixa o projeto, aplica a V8, instala, confere seguranca, TypeScript, testes, build,
+   servidor e faz o TESTE DE USUARIO REAL num navegador de verdade (computador e celular).
+   O relatorio com prints abre sozinho. Se tudo estiver certo, envia e abre o Pull Request.
+4. Clique em "Merge pull request".
+
+1) ATENDENTES CONHECEM O SITE DE PONTA A PONTA
+- Sabem os pacotes de minutos reais (lidos do painel admin), o consumo por minuto de cada um,
+  Pix/cartao pelo Mercado Pago, cupons, saldo e recarga, painel do cliente, reembolso em 7 dias,
+  LGPD, suporte, perguntas sobre outras pessoas e com datas, e todas as paginas do site.
+- Respondem duvidas do site do seu jeito e voltam para a consulta, sem inventar.
+
+2) PRIMEIRO IMPACTO DA PAGINA INICIAL
+- Saudacao do horario + quantos oraculistas estao online agora (ao vivo).
+- Titulo com a palavra-chave principal e promessa clara.
+- Botao principal "Consultar agora" (antes o unico botao era "Trabalhe Conosco").
+- Garantias visiveis: sigilo, pague so os minutos usados, Pix/cartao Mercado Pago, reembolso 7 dias.
+- Bloco "Como funciona em 3 passos" (dados natal, o dia certo, o jogo real).
+- Chamada final "Escolher meu oraculista". Animacoes suaves de entrada e estrelas.
+
+3) SEO NO PADRAO YOAST EM TODAS AS PAGINAS
+- Titulo 30-60 caracteres e meta description 120-156 com palavra-chave foco, garantidos
+  automaticamente em qualquer pagina.
+- Palavra-chave foco por pagina: inicio, oraculos, blog, como funciona, ajuda, trabalhe conosco
+  e os 10 oraculos (tarot online, baralho cigano online, jogo de buzios online, mapa astral online...).
+- Dados estruturados: trilha de navegacao (Breadcrumb) em todas as paginas internas,
+  FAQ em cada oraculo, Person nos especialistas, BlogPosting nos artigos.
+
+4) TESTE DE USUARIO REAL (garantia antes de cada envio)
+- Navegador Chromium de verdade, no computador (1366px) e celular (390px).
+- 13 paginas + fluxos: Consultar agora, busca, Entrar, Cadastrar, perfil de especialista, pagina 404.
+- Verifica: abre sem erro, sem travamento, H1, titulo/descricao SEO, canonical, JSON-LD valido,
+  sem rolagem lateral no celular, sem palavras proibidas.
+- Relatorio com prints em Oraculos.ts-V8\TESTE_USUARIO_REAL\relatorio.html
+- Pode rodar quando quiser:  npm run build  e depois  npm run e2e:usuario-real
+
+5) DEFEITOS REAIS ENCONTRADOS PELO TESTE DE USUARIO REAL (corrigidos)
+- Ao voltar para o endereco inicial "/" (logo, botao voltar), o site mostrava a ULTIMA pagina
+  visitada em vez da pagina inicial. Corrigido: o site sempre mostra a pagina do endereco.
+- O botao "Cadastrar" do topo aparecia so como icone, sem texto, em todos os aparelhos. Corrigido.

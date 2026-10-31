@@ -10,6 +10,8 @@ import {
 import { montarContextoConsulta } from './src/oracle-engine/engine/consultationContext.js';
 import { blindarLinguagemOracular } from './src/oracle-engine/engine/languageGuard.js';
 import { obterVozAtendente, formatarVozParaPrompt } from './src/data/attendantVoices.js';
+import { formatarConhecimentoDoSite } from './src/data/siteKnowledge.js';
+import { getActivePackages, DEFAULT_MINUTE_PACKAGES } from './server/modules/minutes/packages.js';
 import {
   buildCouponIdentityKeys,
   findExceededCouponIdentity,
@@ -6977,6 +6979,23 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
 
 const attendantVoice = obterVozAtendente(attendant.id);
 
+let pacotesParaAtendente: Array<{ title: string; priceBrl: number; minutes: number; bonusMinutes?: number; active?: boolean }> =
+  DEFAULT_MINUTE_PACKAGES;
+try {
+  const ativos = await Promise.race([
+    getActivePackages(),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('PACKAGES_TIMEOUT')), 1500)),
+  ]);
+  if (Array.isArray(ativos) && ativos.length) pacotesParaAtendente = ativos;
+} catch {
+  // usa os pacotes padrão
+}
+const conhecimentoDoSite = formatarConhecimentoDoSite(pacotesParaAtendente, {
+  name: attendant.name,
+  pricePerMinute: attendant.pricePerMinute,
+  authorizedOracles: attendant.authorizedOracles,
+});
+
 const systemInstruction = `Você é ${attendant.name}, ${attendant.title}, oraculista do ORACULOS.TS.
 Apresentação: ${attendant.bio}.
 Estilo de comunicação: ${attendant.communicationStyle}.
@@ -6995,7 +7014,9 @@ MANDATOS DE ATENDIMENTO HUMANO REAL:
 5. Se faltar o nome completo ou a data de nascimento de alguém mencionado, dê a primeira resposta que o jogo mostra e peça esses dados com carinho para aprofundar.
 6. Limite a resposta a no máximo 1200 caracteres para manter a agilidade da consulta por minutos.
 
-${contextoConsulta.regrasDeLeitura}`;
+${contextoConsulta.regrasDeLeitura}
+
+${conhecimentoDoSite}`;
 
 const birthTimeInformation =
   userProfile?.doesNotKnowBirthTime === true

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Calendar, Clock, User, Tag, Share2, Check, MessageSquare, ShieldCheck, Sparkles } from 'lucide-react';
 import { INITIAL_BLOG_POSTS } from '../../data/mockData';
 import { SEOHead } from '../SEOHead';
+import { breadcrumbJsonLd } from '../../seo/yoast';
 import { NotFoundPage } from '../NotFoundPage';
 import { getSafeBlogImage, handleBlogImageError } from '../../utils/blogImageUtils';
 
@@ -42,12 +43,15 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
   return (
     <div className="space-y-8 max-w-3xl mx-auto pb-16">
       <SEOHead
-        title={`${post.title} | Blog ORACULOS.TS`}
+        title={post.title}
         description={post.summary}
         canonicalPath={canonicalUrl}
         ogType="article"
         ogImage={safeCover}
-        jsonLd={{
+        jsonLd={[breadcrumbJsonLd([
+          { nome: 'Blog', caminho: '/blog' },
+          { nome: post.title, caminho: canonicalUrl },
+        ]), {
           '@context': 'https://schema.org',
           '@type': 'BlogPosting',
           headline: post.title,
@@ -64,7 +68,8 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
           },
           datePublished: post.date,
           mainEntityOfPage: `https://oraculos-ts.vercel.app${canonicalUrl}`,
-        }}
+          inLanguage: 'pt-BR',
+        }]}
       />
 
       {/* Top Bar Navigation */}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { SITE_ORIGIN } from '../routing/routes';
+import { tituloSEO, descricaoSEO } from '../seo/yoast';
 
 interface SEOHeadProps {
   title: string;
@@ -10,6 +11,7 @@ interface SEOHeadProps {
   ogImageAlt?: string;
   noIndex?: boolean;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  keywords?: string;
 }
 
 function absoluteUrl(value: string): string {
@@ -46,10 +48,12 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   ogImageAlt = 'ORACULOS.TS — consultas oraculares online',
   noIndex = false,
   jsonLd,
+  keywords,
 }) => {
   const fullCanonicalUrl = useMemo(() => canonicalUrlFromPath(canonicalPath), [canonicalPath]);
   const fullImageUrl = useMemo(() => absoluteUrl(ogImage), [ogImage]);
-  const fullTitle = title.toUpperCase().includes('ORACULOS.TS') ? title : `${title} | ORACULOS.TS`;
+  const fullTitle = tituloSEO(title);
+  description = descricaoSEO(description);
   const robots = noIndex
     ? 'noindex, nofollow, noarchive, nosnippet'
     : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
@@ -60,6 +64,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
     setMeta('meta[name="description"]', 'name', 'description', description);
     setMeta('meta[name="robots"]', 'name', 'robots', robots);
+    if (keywords) setMeta('meta[name="keywords"]', 'name', 'keywords', keywords);
     setMeta('meta[name="googlebot"]', 'name', 'googlebot', robots);
 
     let canonicalLink = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -100,7 +105,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
     return () => {
       document.head.querySelector<HTMLScriptElement>('#dynamic-jsonld')?.remove();
     };
-  }, [description, fullCanonicalUrl, fullImageUrl, fullTitle, jsonLd, ogImageAlt, ogType, robots]);
+  }, [description, keywords, fullCanonicalUrl, fullImageUrl, fullTitle, jsonLd, ogImageAlt, ogType, robots]);
 
   return null;
 };

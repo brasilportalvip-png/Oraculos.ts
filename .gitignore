@@ -9,3 +9,6 @@ coverage/
 
 .vercel
 .env*.local
+
+# relatorio do teste de usuario real
+TESTE_USUARIO_REAL/

@@ -14,7 +14,15 @@ import {
   Compass,
   CheckCircle2,
   RotateCcw,
+  MessageCircle,
+  CalendarClock,
+  Users,
+  Lock,
+  CreditCard,
+  ArrowRight,
 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { saudacaoPorHorario } from '../../utils/timeGreeting';
 import { useConsultation } from '../../context/ConsultationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Consultant, OracleType } from '../../types';
@@ -47,6 +55,10 @@ export const ConsultantShowcase: React.FC<Props> = ({
   onStartConsultation,
 }) => {
   const { consultants } = useConsultation();
+  const oraculistasOnline = useMemo(
+    () => (consultants || []).filter((c) => c.status === 'online').length,
+    [consultants],
+  );
   const { user } = useAuth();
 
   const favoriteIds = Array.isArray(user?.favorites) ? user.favorites : [];
@@ -202,9 +214,30 @@ export const ConsultantShowcase: React.FC<Props> = ({
 
   return (
     <div className="space-y-8 pb-12" id="consultant-showcase-section">
-      {/* Hero Section - Mystical Gradient */}
-      <section className="mystical-gradient flex flex-col items-center justify-center py-12 sm:py-16 px-6 sm:px-10 text-center rounded-3xl glass-card border border-white/10 relative overflow-hidden shadow-2xl">
-        <div className="relative mb-6 group">
+      {/* Hero Section - primeiro impacto: certeza, segurança e chamada para ação */}
+      <section
+        aria-labelledby="hero-titulo"
+        className="mystical-gradient relative overflow-hidden flex flex-col items-center justify-center py-12 sm:py-16 px-5 sm:px-10 text-center rounded-3xl glass-card border border-white/10 shadow-2xl"
+      >
+        {/* Estrelas animadas de fundo */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          {[...Array(14)].map((_, i) => (
+            <motion.span
+              key={i}
+              className="absolute w-1 h-1 rounded-full bg-amber-200/70"
+              style={{ left: `${(i * 37) % 100}%`, top: `${(i * 53) % 100}%` }}
+              animate={{ opacity: [0.15, 0.9, 0.15], scale: [0.8, 1.4, 0.8] }}
+              transition={{ duration: 3 + (i % 4), repeat: Infinity, delay: i * 0.3 }}
+            />
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative mb-5 group"
+        >
           <div className="absolute -inset-2 bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-amber-500/20 rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition-opacity"></div>
           <img
             src="/brand/logo-oraculos.png?v=20260831b"
@@ -216,37 +249,126 @@ export const ConsultantShowcase: React.FC<Props> = ({
             }}
             className="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-2xl border border-[#d4af37]/40 shadow-2xl bg-[#06060c]/90 p-1.5"
           />
-        </div>
+        </motion.div>
 
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-4">
-          <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
-          Marketplace de Oraculistas Credenciados
-        </div>
-
-        <h1 className="font-serif text-3xl sm:text-5xl font-light text-white leading-tight mb-4 tracking-wide max-w-4xl">
-          Conecte-se com a Sabedoria <span className="italic gold-accent">Ancestral</span>
-        </h1>
-
-        <p className="max-w-2xl text-sm sm:text-base text-gray-400 font-light leading-relaxed mb-6">
-          Consulte os melhores oraculistas do Brasil em tempo real pelo Chat Seguro. Tarot, Baralho Cigano, Astrologia e Búzios para guiar seus próximos passos.
-        </p>
-
-        <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-300 font-medium">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Atendimento 100% Sigiloso</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 gold-accent" />
-            <span>Cobrança Transparente por Minuto</span>
-          </div>
-        </div>
-        <a
-          href="/trabalhe-conosco"
-          className="mt-7 inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-black uppercase tracking-wider text-xs shadow-lg shadow-amber-500/20 hover:from-amber-300 transition-all"
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-4"
         >
-          Trabalhe Conosco — Cadastre-se
-        </a>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+          </span>
+          {saudacaoPorHorario()}! {oraculistasOnline > 0 ? `${oraculistasOnline} oraculistas online agora` : 'Oraculistas prontos para te atender'}
+        </motion.div>
+
+        <motion.h1
+          id="hero-titulo"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="font-serif text-3xl sm:text-5xl font-light text-white leading-tight mb-4 tracking-wide max-w-4xl"
+        >
+          Consulta de Tarot Online ao Vivo: a resposta que você <span className="italic gold-accent">procura</span>, agora
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="max-w-2xl text-sm sm:text-base text-gray-300 font-light leading-relaxed mb-6"
+        >
+          Amor, trabalho, dinheiro, sociedade ou família: os oraculistas abrem o jogo de verdade com o seu nome de
+          nascimento, a sua data natal e a energia do dia — até para o que vai acontecer amanhã ou daqui a alguns dias.
+          Tarot, Baralho Cigano, Búzios, Astrologia e mais 6 oráculos.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto mb-7"
+        >
+          <a
+            href="#advanced-search-hub"
+            id="hero-cta-consultar"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('advanced-search-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-black uppercase tracking-wider text-xs sm:text-sm shadow-lg shadow-amber-500/30 hover:from-amber-300 hover:scale-[1.03] transition-all"
+          >
+            <MessageCircle className="w-4 h-4" aria-hidden="true" />
+            Consultar agora
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+          </a>
+          <a
+            href="/como-funciona"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-all"
+          >
+            Como funciona
+          </a>
+        </motion.div>
+
+        <motion.ul
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] sm:text-xs text-gray-300 font-medium"
+          aria-label="Garantias"
+        >
+          <li className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+            Atendimento 100% sigiloso
+          </li>
+          <li className="flex items-center gap-2">
+            <Zap className="w-4 h-4 gold-accent" aria-hidden="true" />
+            Pague só os minutos usados
+          </li>
+          <li className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-sky-400" aria-hidden="true" />
+            Pix ou cartão pelo Mercado Pago
+          </li>
+          <li className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-purple-300" aria-hidden="true" />
+            Reembolso em até 7 dias (LGPD e CDC)
+          </li>
+        </motion.ul>
+      </section>
+
+      {/* Como a leitura funciona — 3 passos (gatilho de clareza) */}
+      <section aria-label="Como funciona a consulta" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          {
+            icone: Users,
+            titulo: '1. Seus dados natal',
+            texto: 'Nome de solteiro(a) e data de nascimento: o raio-x da sua personalidade, caminhos e karma.',
+          },
+          {
+            icone: CalendarClock,
+            titulo: '2. O dia certo',
+            texto: 'O oráculo considera a energia de hoje e do dia que importa: "amanhã tenho entrevista", "daqui 4 dias assino".',
+          },
+          {
+            icone: Sparkles,
+            titulo: '3. O jogo real',
+            texto: 'O oraculista abre o jogo ao vivo e responde direto o que você perguntou — inclusive sobre outra pessoa.',
+          },
+        ].map((passo, i) => (
+          <motion.div
+            key={passo.titulo}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 + i * 0.12 }}
+            className="p-5 rounded-2xl glass-card border border-white/10 text-left hover:border-[#d4af37]/40 transition-colors"
+          >
+            <passo.icone className="w-6 h-6 text-[#d4af37] mb-3" aria-hidden="true" />
+            <h2 className="text-sm font-bold text-white mb-1">{passo.titulo}</h2>
+            <p className="text-xs text-gray-400 leading-relaxed">{passo.texto}</p>
+          </motion.div>
+        ))}
       </section>
 
       {/* Advanced Filter & Search Hub */}
@@ -677,6 +799,37 @@ export const ConsultantShowcase: React.FC<Props> = ({
           ))}
         </div>
       )}
+
+      {/* Chamada final para ação */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="mt-6 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#1F1638] via-[#150F26] to-[#1F1638] border border-[#d4af37]/30 text-center space-y-3"
+      >
+        <h2 className="font-serif text-2xl sm:text-3xl text-white font-light">
+          A sua pergunta merece uma resposta <span className="italic gold-accent">hoje</span>
+        </h2>
+        <p className="text-sm text-gray-400 max-w-xl mx-auto">
+          Escolha o oraculista que mais combina com você e comece com poucos minutos. Sigilo total, sem mensalidade.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <a
+            href="#advanced-search-hub"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('advanced-search-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-[#d4af37] text-black font-black uppercase tracking-wider text-xs hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+          >
+            Escolher meu oraculista
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </a>
+          <a href="/trabalhe-conosco" className="text-xs text-gray-400 hover:text-[#d4af37] underline underline-offset-4">
+            É oraculista? Trabalhe conosco
+          </a>
+        </div>
+      </motion.section>
     </div>
   );
 };

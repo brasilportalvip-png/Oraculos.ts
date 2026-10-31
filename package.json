@@ -19,7 +19,8 @@
     "lint": "tsc --noEmit",
     "test": "vitest run --exclude test/firestore-rules.test.ts",
     "test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\"",
-    "seo:indexnow": "node scripts/indexnow-ping.cjs"
+    "seo:indexnow": "node scripts/indexnow-ping.cjs",
+    "e2e:usuario-real": "node scripts/e2e-usuario-real.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -4,6 +4,7 @@ import { ORACLE_CATEGORIES } from '../data/oracleConfig';
 import { Consultant, OracleType } from '../types';
 import { canonicalOracleSlug, oracleTypeFromSlug } from '../routing/routes';
 import { SEOHead } from './SEOHead';
+import { seoOraculo, breadcrumbJsonLd, faqJsonLd } from '../seo/yoast';
 import { ConsultantCard } from './ConsultantCard';
 import { NotFoundPage } from './NotFoundPage';
 
@@ -187,25 +188,36 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
   });
 
   const displayConsultants = matchingConsultants;
+  const seoDoOraculo = seoOraculo(String(details.canonical || '').split('/').pop() || '');
 
   return (
     <div className="space-y-10 pb-16">
       <SEOHead
-        title={details.title}
-        description={details.subtitle}
+        title={seoDoOraculo?.titulo || details.title}
+        description={seoDoOraculo?.descricao || details.subtitle}
+        keywords={seoDoOraculo?.palavraChave}
         canonicalPath={details.canonical}
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'Service',
-          name: details.h1,
-          description: details.subtitle,
-          provider: {
-            '@type': 'Organization',
-            name: 'ORACULOS.TS',
-            url: 'https://oraculos-ts.vercel.app',
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: details.h1,
+            serviceType: seoDoOraculo?.palavraChave || details.title,
+            description: seoDoOraculo?.descricao || details.subtitle,
+            provider: {
+              '@type': 'Organization',
+              name: 'ORACULOS.TS',
+              url: 'https://oraculos-ts.vercel.app',
+            },
+            areaServed: 'BR',
+            availableLanguage: 'pt-BR',
           },
-          areaServed: 'BR',
-        }}
+          breadcrumbJsonLd([
+            { nome: 'Oráculos', caminho: '/oraculos' },
+            { nome: seoDoOraculo?.nome || details.h1, caminho: details.canonical },
+          ]),
+          ...(seoDoOraculo ? [faqJsonLd(seoDoOraculo.faq)] : []),
+        ]}
       />
 
       {/* Navigation breadcrumb */}
