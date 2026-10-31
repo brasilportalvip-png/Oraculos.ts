@@ -1513,6 +1513,10 @@ app.get('/api/admin/readiness-audit', ...requireAdmin, (_req: Request, res: Resp
 const sendXmlFileOrFallback = (res: Response, filePath: string, fallbackXml: string) => {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600');
+  const gerado = path.join(process.cwd(), 'dist', filePath);
+  if (fs.existsSync(gerado)) {
+    return res.sendFile(gerado);
+  }
   const fullPath = path.join(process.cwd(), filePath);
   if (fs.existsSync(fullPath)) {
     return res.sendFile(fullPath);
@@ -9183,7 +9187,16 @@ async function startLocalServer(): Promise<void> {
       'public',
     );
 
-    app.use(express.static(distPath));
+    // Páginas pré-renderizadas para buscadores: /oraculos/tarot -> dist/public/oraculos/tarot/index.html
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== 'GET' || req.path.startsWith('/api/') || path.extname(req.path)) return next();
+      const limpo = path.normalize(decodeURIComponent(req.path)).replace(/^([/\\])+/, '').replace(/[/\\]+$/, '');
+      if (!limpo || limpo.includes('..')) return next();
+      const arquivo = path.join(distPath, limpo, 'index.html');
+      if (arquivo.startsWith(distPath) && fs.existsSync(arquivo)) return res.sendFile(arquivo);
+      return next();
+    });
+    app.use(express.static(distPath, { redirect: false }));
 
     app.get('*', (_req: Request, res: Response) => {
       res.sendFile(

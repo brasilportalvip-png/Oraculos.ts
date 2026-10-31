@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Calendar, Clock, User, Tag, Share2, Check, MessageSquare, ShieldCheck, Sparkles } from 'lucide-react';
 import { INITIAL_BLOG_POSTS } from '../../data/mockData';
 import { SEOHead } from '../SEOHead';
+import { MarkdownContent } from './MarkdownContent';
 import { breadcrumbJsonLd } from '../../seo/yoast';
 import { NotFoundPage } from '../NotFoundPage';
 import { getSafeBlogImage, handleBlogImageError } from '../../utils/blogImageUtils';
@@ -43,8 +44,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
   return (
     <div className="space-y-8 max-w-3xl mx-auto pb-16">
       <SEOHead
-        title={post.title}
-        description={post.summary}
+        title={post.seoTitle || post.title}
+        description={post.seoDescription || post.summary}
+        keywords={[post.focusKeyword, ...(post.relatedKeywords || [])].filter(Boolean).join(', ')}
         canonicalPath={canonicalUrl}
         ogType="article"
         ogImage={safeCover}
@@ -143,9 +145,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
       </div>
 
       {/* Article Content */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-[#150F26]/60 border border-purple-800/30 space-y-6 text-sm text-gray-200 font-light leading-relaxed whitespace-pre-line">
-        {post.content.trim()}
-      </div>
+      <article className="p-6 sm:p-8 rounded-3xl bg-[#150F26]/60 border border-purple-800/30 space-y-5 text-sm sm:text-base text-gray-200 font-light leading-relaxed">
+        <MarkdownContent markdown={post.content} />
+      </article>
 
       {/* High-Conversion CTA Section */}
       <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-amber-500/20 via-[#150F26] to-purple-950/40 border border-[#d4af37]/50 shadow-2xl space-y-4 text-center sm:text-left">
@@ -192,10 +194,18 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
       <div className="pt-8 border-t border-purple-900/40 space-y-4">
         <h3 className="font-serif text-xl font-light text-white">Outros Artigos Recomendados</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {INITIAL_BLOG_POSTS.filter((p) => p.id !== post.id).slice(0, 4).map((other) => (
-            <div
+          {[...INITIAL_BLOG_POSTS]
+            .filter((p) => p.id !== post.id)
+            .sort((a, b) => Number(b.category === post.category) - Number(a.category === post.category))
+            .slice(0, 4)
+            .map((other) => (
+            <a
               key={other.id}
-              onClick={() => onSelectArticle(other.slug)}
+              href={`/blog/${other.slug}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectArticle(other.slug);
+              }}
               className="group p-4 rounded-2xl bg-[#150F26]/40 hover:bg-[#150F26] border border-purple-900/30 hover:border-amber-500/40 transition-all cursor-pointer flex gap-3 items-center"
             >
               <img
@@ -215,7 +225,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({
                   {other.summary}
                 </p>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </div>

@@ -1,162 +1,263 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Especialistas Humanos -->
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c1</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c2</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c3</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c4</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c5</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://oraculos-ts.vercel.app/especialistas/c6</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Atendentes Virtuais Oficiais (ai_c1 a ai_c20) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c1</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/aura-celeste.webp</image:loc>
+      <image:title>Aura Celeste — Mestra em Tarot Intuitivo e Mesa Radiônica</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c2</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/guilherme-solis.webp</image:loc>
+      <image:title>Guilherme Solis — Astrologia Cabalística &amp; Sinastria Amorosa</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c3</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/soraya-lenormand.webp</image:loc>
+      <image:title>Soraya Lenormand — Especialista em Baralho Cigano &amp; Encantamento Amoroso</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c4</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mestre-valerio.webp</image:loc>
+      <image:title>Mestre Valerio — Sabedoria das Runas Nórdicas &amp; Proteção</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c5</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mae-serena-oya.webp</image:loc>
+      <image:title>Mãe Serena de Oya — Sacerdotisa de Búzios, Ifá e Odus</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c6</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/iara-das-aguas.webp</image:loc>
+      <image:title>Iara das Águas — Tarot Intuitivo &amp; Sensibilidade das Águas</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c7</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/gabriel-aurea.webp</image:loc>
+      <image:title>Gabriel Áurea — Numerologia Pitagórica &amp; Cabala de Negócios</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c8</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/yanis-mistico.webp</image:loc>
+      <image:title>Yanis Místico — Tarot Terapêutico &amp; Alinhamento de Chakras</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c9</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/kaelen-runas.webp</image:loc>
+      <image:title>Kaelen das Runas — Oráculo Escandinavo &amp; Sabedoria Antiga</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c10</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/livia-estelar.webp</image:loc>
+      <image:title>Livia Estelar — Astrologia Emocional &amp; Leitura Lunar</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c11</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mae-nadja.webp</image:loc>
+      <image:title>Mãe Nadja — Jogo de Búzios Tradicional &amp; Tradição de Orixás</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c12</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/samuel-sagrado.webp</image:loc>
+      <image:title>Samuel Sagrado — I Ching &amp; Filosofia Oracular do Oriente</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c13</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/naiara-dos-anjos.webp</image:loc>
+      <image:title>Naiara dos Anjos — Oráculo Angélico &amp; Mensagens da Luz</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c14</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/alexandre-cosmico.webp</image:loc>
+      <image:title>Alexandre Cósmico — Tarot de Crowley &amp; Alquimia do Destino</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c15</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mestra-jurema-terra.webp</image:loc>
+      <image:title>Mestra Jurema da Terra — Sabedoria dos Cristais &amp; Oráculo da Natureza</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c16</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mestre-zahir-oriente.webp</image:loc>
+      <image:title>Mestre Zahir do Oriente — Baralho Cigano do Oriente &amp; Revelações Amorosas</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c17</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/anya-lunar.webp</image:loc>
+      <image:title>Anya Lunar — Tarot do Sagrado Feminino &amp; Arquetípico</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c18</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/guardia-morgana-lua.webp</image:loc>
+      <image:title>Guardiã Morgana da Lua — Tarot Obscuro &amp; Transformação Profunda</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c19</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/guardiao-rowan-mata.webp</image:loc>
+      <image:title>Guardião Rowan da Mata — Oráculo Ogham Druídico &amp; Conexão Ancestral</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://oraculos-ts.vercel.app/especialistas/ai_c20</loc>
-    <lastmod>2026-08-14T00:00:00+00:00</lastmod>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mestre-dante-sete-chaves.webp</image:loc>
+      <image:title>Mestre Dante das Sete Chaves — Interpretação Mística de Sonhos &amp; Tarot Egípcio</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c1</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/helena-da-luz.webp</image:loc>
+      <image:title>Helena da Luz — Taróloga e Mestra em Baralho Cigano</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c2</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mestre-gabriel-astros.webp</image:loc>
+      <image:title>Mestre Gabriel Astros — Astrologia Cabalística &amp; Sinastria Amorosa</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c3</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mae-serena-humana.webp</image:loc>
+      <image:title>Mãe Serena de Oya — Sacerdotisa de Búzios, Ifá &amp; Odus Ancestrais</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c4</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/clarice-mendonca.webp</image:loc>
+      <image:title>Clarice Mendonça — Litoterapeuta &amp; Mestra em Mesa Radiônica</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c5</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/sabio-liam-nordic.webp</image:loc>
+      <image:title>Sábio Liam Nordic — Mestre em Runas Nórdicas &amp; I Ching</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://oraculos-ts.vercel.app/especialistas/c6</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://oraculos-ts.vercel.app/consultants/mistica-vania.webp</image:loc>
+      <image:title>Mística Vânia — Taróloga Intuitiva &amp; Numeróloga da Alma</image:title>
+    </image:image>
   </url>
 </urlset>

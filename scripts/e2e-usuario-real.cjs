@@ -28,6 +28,8 @@ const PAGINAS = [
   { nome: 'Búzios', url: '/oraculos/buzios' },
   { nome: 'Astrologia', url: '/oraculos/astrologia' },
   { nome: 'Blog', url: '/blog' },
+  { nome: 'Artigo do blog', url: '/blog/tarot-sim-ou-nao' },
+  { nome: 'Especialista', url: '/especialistas/c1' },
   { nome: 'Como funciona', url: '/como-funciona' },
   { nome: 'Ajuda e privacidade', url: '/ajuda-e-privacidade' },
   { nome: 'Termos de uso', url: '/termos' },
@@ -46,7 +48,7 @@ let falhas = 0; // problemas graves: bloqueiam o envio
 let avisos = 0; // melhorias recomendadas: aparecem no relatório
 
 /** Verificações que travam o site para o cliente são graves; SEO e layout fino são avisos. */
-const GRAVES = /página abre|sem tela de erro|travamento|abre o formulário|logo visível no topo|oraculistas logo abaixo|perfil abre/;
+const GRAVES = /página abre|sem tela de erro|travamento|abre o formulário|logo visível no topo|oraculistas logo abaixo|perfil abre|Google vê|artigo formatado/;
 
 function registrar(aparelho, pagina, teste, ok, detalhe = '') {
   const grave = GRAVES.test(teste);
@@ -83,6 +85,21 @@ async function testarPagina(page, aparelho, pagina) {
   page.on('pageerror', onErro);
   page.on('console', onConsole);
 
+  if (!aparelho.mobile) {
+    // O que o robô do Google/Bing recebe ANTES de executar JavaScript
+    const bruto = await fetch(`${BASE}${pagina.url}`).then((r) => r.text()).catch(() => '');
+    const canonicalBruto = (bruto.match(/<link rel="canonical" href="([^"]+)"/) || [])[1] || '';
+    const esperado = `https://oraculos-ts.vercel.app${pagina.url === '/' ? '/' : pagina.url}`;
+    const textoBruto = (bruto.split('<div id="root">')[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    registrar(
+      aparelho.nome,
+      pagina.nome,
+      'Google vê a página certa (HTML pronto, canonical e texto)',
+      canonicalBruto === esperado && /<h1/.test(bruto) && textoBruto.length > 200,
+      `canonical ${canonicalBruto || 'ausente'} · ${textoBruto.length} caracteres de texto`,
+    );
+  }
+
   const resposta = await page.goto(`${BASE}${pagina.url}`, { waitUntil: 'networkidle', timeout: 30000 }).catch((e) => ({ erro: e }));
   if (!resposta || resposta.erro) {
     registrar(aparelho.nome, pagina.nome, 'página abre', false, String(resposta?.erro?.message || 'sem resposta'));
@@ -110,6 +127,9 @@ async function testarPagina(page, aparelho, pagina) {
   });
 
   registrar(aparelho.nome, pagina.nome, 'sem tela de erro', !info.telaDeErro);
+  if (pagina.url.startsWith('/blog/')) {
+    registrar(aparelho.nome, pagina.nome, 'artigo formatado (sem ** ou # aparecendo)', !/\*\*|^#{1,4}\s/m.test(info.texto));
+  }
   registrar(aparelho.nome, pagina.nome, 'sem travamento de JavaScript', travamentos.length === 0, travamentos.slice(0, 2).join(' | ').slice(0, 220));
   registrar(aparelho.nome, pagina.nome, 'console limpo', errosJs.length === 0, errosJs.slice(0, 2).join(' | ').slice(0, 220));
   registrar(aparelho.nome, pagina.nome, 'tem H1', info.h1.length >= 1, info.h1[0]?.slice(0, 70) || 'nenhum');

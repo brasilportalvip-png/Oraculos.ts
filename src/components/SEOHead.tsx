@@ -60,6 +60,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
   useEffect(() => {
     document.title = fullTitle;
+    // Remove os dados estruturados da página pré-renderizada (o React assume daqui em diante)
+    document.head.querySelectorAll('script[data-prerender="jsonld"]').forEach((el) => el.remove());
     document.documentElement.lang = 'pt-BR';
 
     setMeta('meta[name="description"]', 'name', 'description', description);

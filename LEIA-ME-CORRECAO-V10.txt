@@ -1,0 +1,48 @@
+ORACULOS.TS - V10 - TRAFEGO ORGANICO: O GOOGLE E O BING PASSAM A ENXERGAR O SITE DE VERDADE
+
+COMO INSTALAR
+1. Extraia o ZIP nos Downloads (Extrair tudo).
+2. Dois cliques em INSTALAR_TESTAR_E_ABRIR_PR_V10.cmd
+3. Ele testa tudo (inclusive o teste de usuario real e "o que o Google ve") e abre o Pull Request.
+4. Clique em "Merge pull request".
+5. Depois que a Vercel publicar (uns 3 minutos):
+   - Rode na pasta Oraculos.ts-V10:  npm run seo:indexnow   (avisa o Bing de todas as 60 paginas)
+   - No Google Search Console: Sitemaps > envie de novo  sitemap.xml
+     e em "Inspecao de URL" peca indexacao da pagina inicial e de /oraculos/tarot.
+
+1) O PROBLEMA MAIS GRAVE DE SEO (CORRIGIDO)
+- O site e montado no navegador. Ate agora, o Google e o Bing recebiam O MESMO HTML DA PAGINA
+  INICIAL em todos os enderecos: mesmo titulo, mesma descricao e o endereco oficial (canonical)
+  apontando para a home. Para os buscadores, /oraculos/tarot, os especialistas e os artigos
+  eram copias da home. O Bing quase nao executa esse tipo de site.
+- Agora cada um dos 60 enderecos publicos e entregue PRONTO: titulo, descricao, canonical,
+  dados estruturados, H1 e o TEXTO REAL da pagina (oraculos, especialistas, artigos completos,
+  termos, privacidade...). O visitante continua vendo o site normal.
+
+2) BLOG — O MOTOR DO TRAFEGO ORGANICO
+- 6 artigos novos, focados em buscas de muito volume no Brasil:
+  tarot sim ou nao | significado das cartas do baralho cigano | ele vai voltar |
+  como descobrir meu orixa | numerologia do nome | vou conseguir o emprego
+  Cada um no padrao Yoast, com links para os oraculos e chamada para consultar.
+- Os artigos apareciam com Markdown cru (#, **, >) na tela: agora com titulos, listas,
+  tabelas, destaques e links de verdade.
+- Datas falsas removidas: o artigo mais recente aparecia como publicado "hoje" todo dia
+  (o Google pune isso). Agora datas reais.
+- Promessas que o site nao cumpre removidas dos textos ("atendimento por Audio",
+  "bonus na 1a recarga", "5 estrelas").
+- Artigos recomendados viraram links reais (o Google segue de um artigo para o outro)
+  e priorizam o mesmo assunto.
+
+3) SITEMAPS
+- Gerados automaticamente a partir das mesmas paginas (XML com imagens + TXT), com as datas
+  reais de atualizacao. 60 enderecos: inicio, oraculos, 26 especialistas, 14 do blog, etc.
+
+4) DADOS ESTRUTURADOS
+- Removido o FAQ "invisivel" da home (o Google exige que o FAQ esteja visivel na pagina).
+- Cada pagina interna leva so os dados dela (Servico+FAQ nos oraculos, Pessoa nos
+  especialistas, Artigo no blog, Trilha de navegacao em todas).
+
+5) TESTE DE USUARIO REAL AMPLIADO
+- Novo teste "Google ve a pagina certa": baixa o HTML como um robo (sem JavaScript) e confere
+  canonical, H1 e texto em cada pagina.
+- Novo teste "artigo formatado": nada de ** ou # aparecendo.
