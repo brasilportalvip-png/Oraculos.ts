@@ -15,6 +15,20 @@ async function run() {
     },
   });
 
+  // Páginas prontas para Google/Bing + sitemaps (fonte única: src/seo/paginasPublicas.ts)
+  await buildBackend({
+    entryPoints: ['src/seo/prerenderBuild.ts'],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    packages: 'external',
+    jsx: 'automatic',
+    outfile: 'dist/prerender.cjs',
+  });
+  const { preRenderizar } = require(require('path').resolve('dist/prerender.cjs'));
+  const resultado = preRenderizar(require('path').resolve('dist/public'));
+  console.log(`[SEO] ${resultado.paginas} páginas pré-renderizadas · sitemaps: ${resultado.sitemaps.join(', ')}`);
+
   await buildBackend({
     entryPoints: ['server.ts'],
     bundle: true,

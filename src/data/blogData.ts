@@ -1,5 +1,6 @@
 import { BlogPost } from '../types';
 import { getSafeBlogImage } from '../utils/blogImageUtils';
+import { BLOG_PILLAR_POSTS } from './blogPillarPosts';
 
 /**
  * Base canônica de artigos otimizados para SEO número 1 nos motores de busca,
@@ -27,7 +28,7 @@ Cada carta dos Arcanos Maiores espelha uma fase crucial da jornada humana:
 ---
 
 > 🔮 **PRECISA DE RESPOSTAS CLARAS PARA SEU CORAÇÃO OU CARREIRA?**
-> Não deixe suas dúvidas tirarem sua paz de espírito. No **ORACULOS.TS**, nossos consultores credenciados estão online agora para realizar sua tiragem individual com sigilo absoluto, minutos bônus e atendimento em tempo real por Chat, Áudio ou Vídeo.
+> Não deixe suas dúvidas tirarem sua paz de espírito. No **ORACULOS.TS**, nossos consultores credenciados estão online agora para realizar sua tiragem individual com sigilo absoluto, minutos bônus e atendimento em tempo real por Chat ou Vídeo.
 >
 > 👉 **[CLIQUE AQUI PARA FALAR COM UM TARÓLOGO ONLINE AGORA](/especialistas?oracle=tarot)**
 
@@ -40,7 +41,7 @@ Para extrair a máxima precisão de uma tiragem de Tarot:
 2. **Mantenha a mente calma:** Respire fundo três vezes antes de iniciar o atendimento.
 3. **Anote os conselhos dos Arcanos:** O oráculo entrega orientações práticas que devem ser aplicadas no seu dia a dia.
 
-Conecte-se com nossos especialistas avaliados com 5 estrelas e receba a luz que seu caminho merece hoje mesmo!
+Conecte-se com nossos especialistas e receba a luz que seu caminho merece hoje mesmo!
     `,
     category: 'tarot',
     author: 'Helena da Luz',
@@ -56,8 +57,8 @@ Conecte-se com nossos especialistas avaliados com 5 estrelas e receba a luz que 
     status: 'published',
     focusKeyword: 'consulta de tarot online',
     relatedKeywords: ['tarot do amor', 'significado arcanos maiores', 'tiragem de tarot confiavel', 'melhores tarologos online'],
-    seoTitle: 'Consulta de Tarot Online: O Que as Cartas Revelam em 2026 | Oráculos.ts',
-    seoDescription: 'Consulte o Tarot online ao vivo com especialistas credenciados. Tire dúvidas de amor, carreira e dinheiro com sigilo absoluto e minutos bônus na 1ª recarga.',
+    seoTitle: 'Consulta de Tarot Online: O Que as Cartas Revelam em 2026',
+    seoDescription: 'Consulte o Tarot online ao vivo com especialistas credenciados. Tire dúvidas de amor, carreira e dinheiro com sigilo absoluto e minutos bônus nos pacotes.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/portal-do-tarot-2026',
     internalLinks: ['/especialistas?oracle=tarot', '/oraculos/tarot', '/como-funciona'],
   },
@@ -87,7 +88,7 @@ Composto por 78 lâminas (22 Arcanos Maiores e 56 Arcanos Menores):
 ---
 
 > 🌟 **AGENDE SUA CONSULTA CIGANA COM RESPOSTAS DIRETAS**
-> Desvende intenções ocultas e saiba o que esperar nos próximos dias. Nossos mestres em Baralho Cigano Lenormand estão prontos para atender você por Chat, Áudio ou Vídeo com sigilo garantido.
+> Desvende intenções ocultas e saiba o que esperar nos próximos dias. Nossos mestres em Baralho Cigano Lenormand estão prontos para atender você por Chat ou Vídeo com sigilo garantido.
 >
 > 👉 **[CLIQUE AQUI PARA CONSULTAR O BARALHO CIGANO AO VIVO](/especialistas?oracle=cigano)**
 
@@ -110,7 +111,7 @@ Se você precisa saber *"Essa pessoa tem sentimentos verdadeiros por mim?"* ou *
     status: 'published',
     focusKeyword: 'baralho cigano online',
     relatedKeywords: ['diferenca entre tarot e baralho cigano', 'baralho cigano respostas imediatas', 'cartas ciganas amor'],
-    seoTitle: 'Baralho Cigano ou Tarot: Qual Escolher? Guia Completo | Oráculos.ts',
+    seoTitle: 'Baralho Cigano ou Tarot: Qual Escolher? Guia Completo',
     seoDescription: 'Entenda as diferenças entre Baralho Cigano e Tarot Tradicional. Descubra qual oráculo é ideal para finanças, amor e decisões rápidas com nossos consultores.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/baralho-cigano-vs-tarot',
     internalLinks: ['/especialistas?oracle=cigano', '/oraculos/baralho-cigano'],
@@ -158,7 +159,7 @@ Os consulentes relatam frequentemente uma sensação profunda de leveza, melhora
     status: 'published',
     focusKeyword: 'mesa radionica quantica beneficios',
     relatedKeywords: ['como funciona mesa radionica', 'alinhamento de chakras a distancia', 'limpeza espiritual pendulo'],
-    seoTitle: 'Mesa Radiônica Quântica: Benefícios e Limpeza Energética | Oráculos.ts',
+    seoTitle: 'Mesa Radiônica Quântica: Benefícios e Limpeza Energética',
     seoDescription: 'Desbloqueie caminhos financeiros, afetivos e espirituais com a Mesa Radiônica Quântica. Consulta online ao vivo com terapeutas holísticos credenciados.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/mesa-radionica-quantica',
     internalLinks: ['/especialistas?oracle=mesaradionica', '/oraculos/mesa-radionica'],
@@ -204,7 +205,7 @@ Uma consulta oracular de matriz afro-brasileira deve ser sempre pautada pela ét
     status: 'published',
     focusKeyword: 'jogo de buzios online confiavel',
     relatedKeywords: ['consulta de buzios orixas', 'descobrir orixa de cabeca', 'jogo de buzios ifa online'],
-    seoTitle: 'Jogo de Búzios Online Confiável: A Voz dos Orixás | Oráculos.ts',
+    seoTitle: 'Jogo de Búzios Online Confiável: A Voz dos Orixás',
     seoDescription: 'Consulte os Búzios sagrados de Ifá ao vivo com sacerdotes e zeladores experientes. Respostas autênticas para seus caminhos espirituais e amorosos.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/jogo-de-buzios-online-sagrado',
     internalLinks: ['/especialistas?oracle=buzios', '/oraculos/buzios'],
@@ -253,7 +254,7 @@ Lembre-se: o Tarot não aprisiona você a um destino inalterável. Ele aponta te
     status: 'published',
     focusKeyword: 'tarot do amor online',
     relatedKeywords: ['o que ele sente por mim tarot', 'futuro do casal cartas', 'tarot do amor confiavel'],
-    seoTitle: 'Tarot do Amor Online: O Que as Cartas Revelam? | Oráculos.ts',
+    seoTitle: 'Tarot do Amor Online: O Que as Cartas Revelam?',
     seoDescription: 'Tire suas dúvidas sobre o amor com consultas de Tarot ao vivo. Descubra sentimentos ocultos, intenções do parceiro e caminhos afetivos.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/tarot-do-amor-como-funciona',
     internalLinks: ['/especialistas?oracle=tarot', '/oraculos/tarot'],
@@ -304,7 +305,7 @@ Cultive orações de proteção diárias e mantenha seus pensamentos alinhados c
     status: 'published',
     focusKeyword: 'limpeza espiritual profunda',
     relatedKeywords: ['sintomas de energia negativa', 'como se proteger de inveja', 'banho de ervas descarrego'],
-    seoTitle: 'Limpeza Espiritual e Blindagem Áurica: Guia Completo | Oráculos.ts',
+    seoTitle: 'Limpeza Espiritual e Blindagem Áurica: Guia Completo',
     seoDescription: 'Aprenda como fazer limpeza espiritual profunda, eliminar o olho gordo e blindar sua aura. Atendimento holístico com terapeutas online 24 horas.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/limpeza-espiritual-e-blindagem-aurica',
     internalLinks: ['/especialistas?oracle=mesaradionica', '/oraculos/mesa-radionica'],
@@ -353,7 +354,7 @@ Alinhe seus planos com o relógio do universo e aproveite cada trânsito favorá
     status: 'published',
     focusKeyword: 'mapa astral online completo',
     relatedKeywords: ['fazer mapa astral com astrologo', 'previsoes astrologicas 2026', 'sinastria amorosa signos'],
-    seoTitle: 'Mapa Astral Online Completo e Previsões dos Astros | Oráculos.ts',
+    seoTitle: 'Mapa Astral Online Completo e Previsões dos Astros',
     seoDescription: 'Consulte astrólogos credenciados e compreenda seu Mapa Astral, Sol, Lua e Ascendente. Previsões certeiras para o amor e carreira.',
     canonicalUrl: 'https://oraculos-ts.vercel.app/blog/mapa-astral-e-transitos-2026',
     internalLinks: ['/especialistas?oracle=astrologia', '/oraculos/astrologia'],
@@ -371,37 +372,20 @@ function formatDateBR(date: Date): string {
 }
 
 /**
- * Retorna a lista completa de artigos do blog sincronizada com o calendário real diário.
- * Garante que HOJE sempre tenha um artigo publicado com a data atual,
- * e os dias anteriores sigam uma cronologia contínua e lógica de 1 post por dia.
+ * Lista de artigos com as datas REAIS de publicação (o Google pune datas
+ * falsas — antes o artigo mais recente aparecia como "hoje" todos os dias).
+ * Ordem: mais recentes primeiro.
  */
 export function getDailyBlogPosts(): BlogPost[] {
-  const now = new Date();
-
-  return CANONICAL_BLOG_POSTS.map((post, index) => {
-    // Calcula a data retroativa a partir de hoje:
-    // Post 0 = hoje
-    // Post 1 = ontem
-    // Post 2 = anteontem, etc.
-    const postDate = new Date(now);
-    postDate.setDate(now.getDate() - index);
-
-    const isToday = index === 0;
-    const isYesterday = index === 1;
-
-    let dateLabel = formatDateBR(postDate);
-    if (isToday) {
-      dateLabel = `Hoje (${formatDateBR(postDate)})`;
-    } else if (isYesterday) {
-      dateLabel = `Ontem (${formatDateBR(postDate)})`;
-    }
-
-    return {
-      ...post,
-      date: dateLabel,
-      publishedAt: postDate.toISOString(),
-      updatedAt: postDate.toISOString(),
-      coverImage: getSafeBlogImage(post.coverImage, post.category),
-    };
-  });
+  return [...BLOG_PILLAR_POSTS, ...CANONICAL_BLOG_POSTS]
+    .filter((post) => post.status !== 'draft')
+    .map((post) => {
+      const publicado = post.publishedAt ? new Date(post.publishedAt) : null;
+      return {
+        ...post,
+        date: publicado && !Number.isNaN(publicado.getTime()) ? formatDateBR(publicado) : post.date,
+        coverImage: getSafeBlogImage(post.coverImage, post.category),
+      };
+    })
+    .sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || ''));
 }
