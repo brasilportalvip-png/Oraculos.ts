@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 import { auth } from '../firebase';
+import { obterDeviceId } from '../utils/deviceId';
 import { useAuth } from '../context/AuthContext';
 
 import type {
@@ -220,6 +221,8 @@ export const MercadoPagoRechargeModal: React.FC<Props> = ({
                 'application/json',
               Authorization:
                 `Bearer ${idToken}`,
+              'X-Device-Id':
+                obterDeviceId(),
             },
             body: JSON.stringify({
               amount:

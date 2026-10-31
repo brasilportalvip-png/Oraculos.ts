@@ -162,7 +162,7 @@ const RUNAS: Runa[] = [
     significado:
       'Representa vitalidade, resistência, coragem, recuperação e transformação por meio da experiência.',
     luz:
-      'força, saúde simbólica, renovação, poder pessoal, coragem e capacidade de superar.',
+      'força, saúde espiritual, renovação, poder pessoal, coragem e capacidade de superar.',
     sombra:
       'agressividade, teimosia, domínio, exaustão e uso descontrolado da força.',
     invertida:
@@ -216,7 +216,7 @@ const RUNAS: Runa[] = [
     prosperidade:
       'Pede proteção dos recursos e análise cuidadosa antes de assumir riscos.',
     espiritualidade:
-      'Simboliza defesa energética e confronto com padrões que já não podem continuar.',
+      'Representa defesa energética e confronto com padrões que já não podem continuar.',
     conselho:
       'Pare, observe e escolha conscientemente quando agir.',
     alerta:
@@ -720,7 +720,7 @@ const RUNAS: Runa[] = [
     prosperidade:
       'Aconselha preservar recursos, documentos e informações importantes.',
     espiritualidade:
-      'É uma runa simbólica de proteção e consciência energética.',
+      'É uma runa espiritual de proteção e consciência energética.',
     conselho:
       'Mantenha-se aberto, mas não abandone seus limites.',
     alerta:
@@ -832,7 +832,7 @@ const RUNAS: Runa[] = [
     essencia:
       'O crescimento protegido que necessita cuidado e tempo.',
     significado:
-      'Representa nascimento, crescimento, cuidado, renovação, fertilidade simbólica e desenvolvimento.',
+      'Representa nascimento, crescimento, cuidado, renovação, fertilidade espiritual e desenvolvimento.',
     luz:
       'cura, proteção, acolhimento, criatividade, crescimento e novo ciclo.',
     sombra:
@@ -1002,7 +1002,7 @@ const RUNAS: Runa[] = [
     significado:
       'Representa potencial, gestação, preparação, conclusão interna e energia pronta para emergir.',
     luz:
-      'fertilidade simbólica, amadurecimento, concentração, conclusão e novo começo.',
+      'fertilidade espiritual, amadurecimento, concentração, conclusão e novo começo.',
     sombra:
       'pressão acumulada, atraso, ansiedade, isolamento e dificuldade de liberar o potencial.',
     invertida:
@@ -1082,7 +1082,7 @@ const RUNAS: Runa[] = [
       'pertencimento'
     ],
     essencia:
-      'A herança material e simbólica que liga a pessoa às suas raízes.',
+      'A herança material e espiritual que liga a pessoa às suas raízes.',
     significado:
       'Representa lar, herança, ancestralidade, patrimônio, tradição e sentimento de pertencimento.',
     luz:
@@ -1322,7 +1322,7 @@ function interpretarPorTema(
       return `${runa.significado} No campo familiar, considere especialmente: ${runa.conselho}`;
 
     case 'saúde':
-      return `${runa.significado} Em questões de saúde, esta interpretação é simbólica e não substitui avaliação profissional.`;
+      return `${runa.significado} Em questões de saúde, esta interpretação é espiritual e não substitui avaliação profissional.`;
 
     default:
       return runa.significado;
@@ -1702,7 +1702,7 @@ riqueza, gravidez, cura ou qualquer resultado absoluto.
 
 Preserve o livre-arbítrio e a responsabilidade do consulente.
 
-A resposta deve ser firme, simbólica, profunda,
+A resposta deve ser firme, espiritual, profunda,
 natural, clara e coerente com o consultor escolhido.
 `.trim();
 

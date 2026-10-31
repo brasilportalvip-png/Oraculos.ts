@@ -11,6 +11,8 @@ import { useAuth } from './AuthContext';
 import { INITIAL_CONSULTANTS, INITIAL_TRANSACTIONS } from '../data/mockData';
 import { auth } from '../firebase';
 import { drawSymbolForOracle } from '../data/oracleDrawData';
+import { VIRTUAL_PROFILES } from '../data/virtualProfiles';
+import { montarBoasVindas } from '../utils/timeGreeting';
 
 interface ConsultationContextType {
   activeSession: ConsultationSession | null;
@@ -649,6 +651,13 @@ userProfile: {
 
 
             oracleType: activeSession.oracleType,
+            timezone: (() => {
+              try {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
+              } catch {
+                return 'America/Sao_Paulo';
+              }
+            })(),
           }),
         });
 
@@ -657,7 +666,7 @@ userProfile: {
         if (!res.ok) {
           throw new Error(
             result.error?.message ||
-              'Não foi possível consultar a assistente virtual.',
+              'Não foi possível falar com o especialista agora. Tente novamente em instantes.',
           );
         }
 
@@ -1135,7 +1144,13 @@ timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit
       id: `msg_welcome_${Date.now()}`,
       senderId: consultant.id,
       senderName: consultant.name,
-      text: `Olá ${user.name}, seja muito bem-vindo(a)! Estou concentrada(o) nas energias do ${oracle.toUpperCase()}. Como posso te guiar hoje?`,
+      text: montarBoasVindas({
+        nomeConsulente: user.name,
+        saudacaoAtendente: VIRTUAL_PROFILES.find(
+          (p) => p.id === String(consultant.id).replace(/^c_/, ''),
+        )?.greeting,
+        oraculo: String(oracle),
+      }),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 

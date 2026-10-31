@@ -39,3 +39,4 @@ Disallow: /*?*preference_id=*
 
 # Índice Oficial de Sitemaps XML
 Sitemap: https://oraculos-ts.vercel.app/sitemap.xml
+Sitemap: https://oraculos-ts.vercel.app/sitemap.txt

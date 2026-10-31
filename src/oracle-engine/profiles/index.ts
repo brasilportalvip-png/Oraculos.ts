@@ -27,6 +27,12 @@ export interface OracleProfileInput {
   birthTime?: string;
   city?: string;
   question?: string;
+  /**
+   * Chave do momento da consulta (somente dígitos). Mistura data/hora da
+   * tiragem com embaralhamento real para que cada consulta abra um jogo novo,
+   * sempre ancorado nos dados natal da pessoa.
+   */
+  drawKey?: string;
 }
 
 export interface OracleProfileDefinition {
@@ -47,7 +53,7 @@ export const ORACLE_PROFILES: Record<
     id: 'tarot',
     nome: 'Tarot',
     descricao:
-      'Leitura simbólica completa com passado, presente, tendência, obstáculos, conselho e energia oculta.',
+      'Leitura completa com raiz da questão, força atual, desfecho, obstáculo, conselho e energia oculta.',
     requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildTarotSupremo({
@@ -75,7 +81,7 @@ export const ORACLE_PROFILES: Record<
     id: 'astrologia',
     nome: 'Astrologia',
     descricao:
-      'Análise simbólica do signo solar, elementos, ciclos e forças planetárias.',
+      'Análise espiritual do signo solar, elementos, ciclos e forças planetárias.',
     requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildAstrologiaSuprema({
@@ -106,7 +112,7 @@ export const ORACLE_PROFILES: Record<
     id: 'buzios',
     nome: 'Búzios',
     descricao:
-      'Leitura simbólica com queda principal, complementar e alerta espiritual.',
+      'Leitura espiritual com queda principal, complementar e alerta espiritual.',
     requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildBuziosSupremo({
@@ -162,7 +168,7 @@ export const ORACLE_PROFILES: Record<
     id: 'cristais',
     nome: 'Cristais',
     descricao:
-      'Mandala simbólica dos campos emocional, mental, material e espiritual.',
+      'Mandala espiritual dos campos emocional, mental, material e espiritual.',
     requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildCristaisSupremos({
@@ -176,7 +182,7 @@ export const ORACLE_PROFILES: Record<
     id: 'mesa-radionica',
     nome: 'Mesa Radiônica',
     descricao:
-      'Mapa simbólico dos sete campos com indicadores, prioridades e direcionamento.',
+      'Mapa espiritual dos sete campos com indicadores, prioridades e direcionamento.',
     requiredFields: ['fullName', 'birthDate'],
     builder: (input) =>
       buildMesaRadionicaSuprema({
@@ -361,6 +367,19 @@ export function obterOracleProfile(
   return profile;
 }
 
+export function normalizarDataNascimentoBR(valor: string): string {
+  const texto = String(valor || '').trim();
+  const iso = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    return `${iso[3].padStart(2, '0')}/${iso[2].padStart(2, '0')}/${iso[1]}`;
+  }
+  const br = texto.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  if (br) {
+    return `${br[1].padStart(2, '0')}/${br[2].padStart(2, '0')}/${br[3]}`;
+  }
+  return texto;
+}
+
 export function executarOracleProfile(
   oracleId: string,
   input: OracleProfileInput
@@ -400,6 +419,16 @@ export function executarOracleProfile(
     throw new Error(
       'A data de nascimento é obrigatória.'
     );
+  }
+
+  // Os perfis de Astrologia e Numerologia leem a data como DD/MM/AAAA, mas o
+  // cadastro (input type="date") grava AAAA-MM-DD. Sem esta normalização o
+  // signo e os números do consulente saíam errados.
+  entradaNormalizada.birthDate = normalizarDataNascimentoBR(entradaNormalizada.birthDate);
+
+  const chave = String(input.drawKey || '').replace(/\D/g, '');
+  if (chave) {
+    entradaNormalizada.question = `${entradaNormalizada.question} ${chave}`.trim();
   }
 
   return profile.builder(

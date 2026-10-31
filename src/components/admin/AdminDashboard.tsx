@@ -696,7 +696,7 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
                 <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Auxilia o oraculista durante o atendimento no chat com interpretações simbólicas automáticas.
+                  Auxilia o oraculista durante o atendimento no chat com interpretações espirituais automáticas.
                 </p>
               </div>
 

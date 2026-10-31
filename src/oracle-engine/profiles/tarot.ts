@@ -38,12 +38,24 @@ function reduzirNumero(n: number): number {
   return n;
 }
 
-function calcularBaseNumerica(nome: string, data: string, pergunta: string): number {
-  const nomeValor = limparNome(nome)
-    .split('')
-    .reduce((soma, letra) => soma + letra.charCodeAt(0), 0);
+function somaPonderada(texto: string): number {
+  return Array.from(String(texto || '')).reduce(
+    (total, caractere, indice) => total + caractere.charCodeAt(0) * (indice + 1),
+    0
+  );
+}
 
-  return reduzirNumero(nomeValor + somaDigitos(data) + somaDigitos(pergunta));
+/**
+ * Base da tiragem: nome de nascimento + data natal + pergunta (que inclui a
+ * chave do momento da consulta). Antes o valor era reduzido a 1–9, o que fazia
+ * existir só ~13 tiragens possíveis. Agora as 78 cartas participam.
+ */
+function calcularBaseNumerica(nome: string, data: string, pergunta: string): number {
+  const nomeValor = somaPonderada(limparNome(nome));
+  const dataValor = somaPonderada(String(data || '').replace(/\D/g, ''));
+  const perguntaValor = somaPonderada(normalizar(pergunta));
+
+  return nomeValor * 3 + dataValor * 7 + perguntaValor * 11 + reduzirNumero(somaDigitos(data));
 }
 
 const ARCANOS: any[] = [
@@ -1667,7 +1679,7 @@ TAROT PREMIUM SUPREMO
 Tema detectado: ${tema}
 
 ═══════════════════════
-PASSADO
+RAIZ DA QUESTÃO
 ═══════════════════════
 
 Carta: ${passado.nome}
@@ -1688,7 +1700,7 @@ Conselho:
 ${passado.conselho}
 
 ═══════════════════════
-PRESENTE
+FORÇA QUE ATUA AGORA
 ═══════════════════════
 
 Carta: ${presente.nome}
@@ -1709,7 +1721,7 @@ Conselho:
 ${presente.conselho}
 
 ═══════════════════════
-TENDÊNCIA
+DESFECHO INDICADO
 ═══════════════════════
 
 Carta: ${tendencia.nome}
@@ -1795,17 +1807,17 @@ Nunca diga que sorteou cartas.
 Nunca diga que calculou.
 Nunca fale como relatório técnico.
 
-Use as cartas como bastidor da leitura.
+O jogo é real: fale das cartas que saíram com a autoridade de quem está vendo a mesa.
 
-Explique:
+Comece SEMPRE pela resposta direta à pergunta, a partir do desfecho indicado e da força que atua agora.
+Nunca abra falando de passado, presente ou futuro e nunca organize a resposta nesses rótulos.
 
-• o que aconteceu no passado;
-• o que acontece no presente;
-• a tendência futura;
-• os obstáculos;
-• os bloqueios;
-• os caminhos favoráveis;
-• a orientação espiritual.
+Depois, costure com naturalidade:
+
+• o que está na raiz da questão;
+• o obstáculo e como atravessá-lo;
+• a energia oculta que o consulente precisa enxergar;
+• o conselho espiritual e o passo prático.
 
 Responda de forma humana, natural, profunda e coerente com o consultor escolhido.
 `.trim();

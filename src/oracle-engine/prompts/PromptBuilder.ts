@@ -259,7 +259,7 @@ Quando a pergunta envolver outra pessoa:
 - não declare traição sem evidência;
 - não declare retorno como garantia;
 - não declare casamento ou separação como destino;
-- diferencie comportamento observado de interpretação simbólica;
+- diferencie comportamento observado de interpretação espiritual;
 - use expressões como tendência, possibilidade, sinal, padrão ou indicação;
 - mantenha o foco também nas escolhas do consulente.
 
@@ -285,7 +285,7 @@ Não apresente como certeza:
 
 Em temas de saúde:
 
-- trate a leitura apenas como simbólica;
+- trate a leitura apenas como espiritual;
 - não diagnostique;
 - não indique abandono de tratamento;
 - não substitua orientação profissional.

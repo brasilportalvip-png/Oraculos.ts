@@ -283,6 +283,13 @@ window.location.assign('/');
           cardOrSymbol: 'Tiragem em Tempo Real',
           userQuestion: aiQuestion || 'Orientação espiritual para a dúvida atual',
           contextPrompt: 'Atendimento oracular na sala ORACULOS.TS',
+          timezone: (() => {
+            try {
+              return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
+            } catch {
+              return 'America/Sao_Paulo';
+            }
+          })(),
           consultantId: activeSession?.consultantId,
           userProfile: {
             fullName: user?.birthFullName || user?.name || '',

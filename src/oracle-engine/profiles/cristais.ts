@@ -31,7 +31,7 @@ export interface Cristal {
   espiritualidade: string;
   conselho: string;
   alerta: string;
-  usoSimbolico: string;
+  usoEspiritual: string;
   polaridade: 'favorável' | 'neutra' | 'desafiadora';
 }
 
@@ -94,7 +94,7 @@ const CRISTAIS: Cristal[] = [
     significado:
       'Representa clareza, integração e capacidade de amplificar a intenção consciente.',
     luz:
-      'foco, organização, limpeza simbólica, percepção e integração entre diferentes áreas.',
+      'foco, organização, limpeza espiritual, percepção e integração entre diferentes áreas.',
     sombra:
       'excesso de estímulo, dispersão amplificada e intenção mal definida.',
     amor:
@@ -104,12 +104,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra que os resultados crescem quando existe direção clara.',
     espiritualidade:
-      'simboliza integração, consciência e refinamento da intenção.',
+      'representa integração, consciência e refinamento da intenção.',
     conselho:
       'defina com precisão o que deseja fortalecer.',
     alerta:
       'tudo que é amplificado precisa ser escolhido com responsabilidade.',
-    usoSimbolico:
+    usoEspiritual:
       'pode ser usado como símbolo de clareza durante reflexão ou meditação.',
     polaridade: 'favorável'
   },
@@ -134,12 +134,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'pede estratégia, paciência e cuidado com expectativas irreais.',
     espiritualidade:
-      'simboliza discernimento, silêncio interior e transmutação de padrões.',
+      'representa discernimento, silêncio interior e transmutação de padrões.',
     conselho:
       'acalme a mente antes de decidir.',
     alerta:
       'espiritualidade não deve ser usada para evitar decisões concretas.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar silêncio, proteção e concentração.',
     polaridade: 'favorável'
   },
@@ -164,12 +164,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra que segurança emocional influencia decisões materiais.',
     espiritualidade:
-      'simboliza cura do coração e compaixão consciente.',
+      'representa cura do coração e compaixão consciente.',
     conselho:
       'cuide de si com a mesma dedicação que oferece aos outros.',
     alerta:
       'amor sem limite pode transformar-se em abandono de si.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar amor-próprio durante práticas de reflexão.',
     polaridade: 'favorável'
   },
@@ -194,12 +194,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'é fortemente associado a expansão, organização e confiança material.',
     espiritualidade:
-      'simboliza luz pessoal e responsabilidade pelo próprio poder.',
+      'representa luz pessoal e responsabilidade pelo próprio poder.',
     conselho:
       'aja com confiança, mas mantenha planejamento.',
     alerta:
       'otimismo sem estrutura pode gerar desperdício.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar confiança e direcionamento para metas.',
     polaridade: 'favorável'
   },
@@ -224,12 +224,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'pede segurança, organização e prevenção de perdas.',
     espiritualidade:
-      'simboliza proteção, aterramento e retorno ao corpo.',
+      'representa proteção, aterramento e retorno ao corpo.',
     conselho:
       'fortaleça seus limites e verifique os fatos.',
     alerta:
       'não viva permanentemente em estado de defesa.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar proteção e aterramento em práticas pessoais.',
     polaridade: 'favorável'
   },
@@ -254,12 +254,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'aconselha identificar perdas ocultas e eliminar excessos.',
     espiritualidade:
-      'simboliza trabalho de sombra e verdade interior.',
+      'representa trabalho de sombra e verdade interior.',
     conselho:
       'encare a verdade sem usar a verdade como arma.',
     alerta:
       'processos profundos exigem ritmo, suporte e responsabilidade.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar reflexão sobre padrões ocultos.',
     polaridade: 'desafiadora'
   },
@@ -272,7 +272,7 @@ const CRISTAIS: Cristal[] = [
     vibracao: 'leveza, limpeza e elevação',
     palavrasChave: ['leveza', 'limpeza', 'clareza', 'elevação', 'paz'],
     significado:
-      'Representa leveza, organização energética simbólica, paz e simplificação.',
+      'Representa leveza, organização energética, paz e simplificação.',
     luz:
       'serenidade, clareza, pacificação, refinamento e leveza.',
     sombra:
@@ -284,12 +284,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra necessidade de simplificar processos e prioridades.',
     espiritualidade:
-      'simboliza elevação, silêncio e limpeza simbólica.',
+      'representa elevação, silêncio e limpeza espiritual.',
     conselho:
       'retire excessos e preserve o essencial.',
     alerta:
       'leveza não significa ignorar responsabilidades concretas.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar serenidade e limpeza durante contemplação.',
     polaridade: 'favorável'
   },
@@ -314,12 +314,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra ganhos ligados a conhecimento, voz e estratégia.',
     espiritualidade:
-      'simboliza verdade interior e visão consciente.',
+      'representa verdade interior e visão consciente.',
     conselho:
       'fale com clareza sem perder a escuta.',
     alerta:
       'a verdade sem empatia pode ferir e fechar caminhos.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar comunicação e discernimento.',
     polaridade: 'favorável'
   },
@@ -344,12 +344,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra crescimento quando existe fluxo e negociação clara.',
     espiritualidade:
-      'simboliza serenidade, respiração e movimento emocional.',
+      'representa serenidade, respiração e movimento emocional.',
     conselho:
       'fale com calma e mantenha sua posição.',
     alerta:
       'adaptar-se não significa aceitar qualquer condição.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar serenidade durante conversas importantes.',
     polaridade: 'favorável'
   },
@@ -374,12 +374,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'é associado a planejamento, proteção financeira e foco em metas.',
     espiritualidade:
-      'simboliza coragem com enraizamento.',
+      'representa coragem com enraizamento.',
     conselho:
       'observe antes de agir e mantenha foco no objetivo real.',
     alerta:
       'não transforme prudência em vigilância obsessiva.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar foco e coragem em decisões.',
     polaridade: 'favorável'
   },
@@ -404,12 +404,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra necessidade de orçamento, planejamento e consistência.',
     espiritualidade:
-      'simboliza aterramento e integração entre consciência e corpo.',
+      'representa aterramento e integração entre consciência e corpo.',
     conselho:
       'transforme intenção em rotina concreta.',
     alerta:
       'disciplina sem flexibilidade pode tornar-se prisão.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar presença e organização.',
     polaridade: 'neutra'
   },
@@ -434,12 +434,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'é associada a crescimento gradual e administração equilibrada.',
     espiritualidade:
-      'simboliza renovação e harmonia entre coração e realidade.',
+      'representa renovação e harmonia entre coração e realidade.',
     conselho:
       'aproveite oportunidades com constância, não apenas entusiasmo.',
     alerta:
       'não espere que a sorte substitua planejamento.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar crescimento e equilíbrio.',
     polaridade: 'favorável'
   },
@@ -464,12 +464,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'é fortemente ligada a estratégia, recursos e construção material.',
     espiritualidade:
-      'simboliza responsabilidade no uso do poder material.',
+      'representa responsabilidade no uso do poder material.',
     conselho:
       'construa prosperidade com estratégia e ética.',
     alerta:
       'não confunda brilho externo com valor real.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar metas, organização e prosperidade consciente.',
     polaridade: 'favorável'
   },
@@ -494,12 +494,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra ganhos por movimento, vendas e criatividade.',
     espiritualidade:
-      'simboliza energia vital e integração do desejo.',
+      'representa energia vital e integração do desejo.',
     conselho:
       'transforme impulso em criação consistente.',
     alerta:
       'não confunda intensidade com direção.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar criatividade e coragem.',
     polaridade: 'favorável'
   },
@@ -524,12 +524,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra resultado por resistência e constância.',
     espiritualidade:
-      'simboliza força vital e compromisso com o próprio caminho.',
+      'representa força vital e compromisso com o próprio caminho.',
     conselho:
       'use intensidade para sustentar, não para controlar.',
     alerta:
       'paixão sem limite pode transformar-se em prisão.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar coragem e persistência.',
     polaridade: 'neutra'
   },
@@ -554,12 +554,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'aconselha não decidir sob forte oscilação emocional.',
     espiritualidade:
-      'simboliza intuição, ciclos e percepção do inconsciente.',
+      'representa intuição, ciclos e percepção do inconsciente.',
     conselho:
       'observe os ciclos antes de reagir.',
     alerta:
       'não transforme emoção momentânea em verdade definitiva.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar ciclos e sensibilidade.',
     polaridade: 'neutra'
   },
@@ -574,7 +574,7 @@ const CRISTAIS: Cristal[] = [
     significado:
       'Representa percepção sutil, transformação e necessidade de distinguir aparência de essência.',
     luz:
-      'intuição, criatividade, proteção simbólica, adaptação e visão.',
+      'intuição, criatividade, proteção espiritual, adaptação e visão.',
     sombra:
       'fantasia, confusão, projeção e fascínio pelo oculto.',
     amor:
@@ -584,12 +584,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'aconselha verificar fatos antes de seguir uma impressão.',
     espiritualidade:
-      'simboliza mistério, percepção e transformação de identidade.',
+      'representa mistério, percepção e transformação de identidade.',
     conselho:
       'use a intuição como hipótese, não como prova.',
     alerta:
       'o brilho do mistério pode esconder falta de clareza.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar percepção e transição.',
     polaridade: 'neutra'
   },
@@ -614,12 +614,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra que o crescimento exige cortar padrões improdutivos.',
     espiritualidade:
-      'simboliza transformação profunda do coração.',
+      'representa transformação profunda do coração.',
     conselho:
       'mude o padrão, não apenas a aparência da situação.',
     alerta:
       'transformação sem estrutura pode gerar novo desequilíbrio.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar mudança e verdade emocional.',
     polaridade: 'desafiadora'
   },
@@ -644,12 +644,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra que acordos melhores dependem de posicionamento.',
     espiritualidade:
-      'simboliza coerência entre coração e voz.',
+      'representa coerência entre coração e voz.',
     conselho:
       'diga o que precisa ser dito com respeito e firmeza.',
     alerta:
       'evitar conflito pode prolongar situações injustas.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar verdade e equilíbrio.',
     polaridade: 'favorável'
   },
@@ -674,12 +674,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra ganhos por organização e conhecimento.',
     espiritualidade:
-      'simboliza discernimento e ordem interior.',
+      'representa discernimento e ordem interior.',
     conselho:
       'organize informações antes de decidir.',
     alerta:
       'pensar demais também pode impedir o movimento.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar estudo e foco.',
     polaridade: 'favorável'
   },
@@ -704,12 +704,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra crescimento por conhecimento e decisões racionais.',
     espiritualidade:
-      'simboliza honestidade interior e coerência.',
+      'representa honestidade interior e coerência.',
     conselho:
       'alinhe pensamento, palavra e atitude.',
     alerta:
       'não use racionalidade para evitar vulnerabilidade.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar coerência e comunicação.',
     polaridade: 'neutra'
   },
@@ -734,12 +734,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra resultado por disciplina e continuidade.',
     espiritualidade:
-      'simboliza aterramento e coragem.',
+      'representa aterramento e coragem.',
     conselho:
       'mantenha constância sem perder flexibilidade.',
     alerta:
       'persistência não é obrigação de insistir no que acabou.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar força e estabilidade.',
     polaridade: 'favorável'
   },
@@ -764,12 +764,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra necessidade de controle de gastos e compromisso.',
     espiritualidade:
-      'simboliza limite, contenção e força interior.',
+      'representa limite, contenção e força interior.',
     conselho:
       'sustente sua decisão sem endurecer o coração.',
     alerta:
       'controle excessivo pode bloquear ajuda e intimidade.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar disciplina e proteção.',
     polaridade: 'neutra'
   },
@@ -794,12 +794,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra necessidade de reparar decisões e reorganizar relações.',
     espiritualidade:
-      'simboliza compaixão com responsabilidade.',
+      'representa compaixão com responsabilidade.',
     conselho:
       'perdoe sem abandonar o aprendizado e os limites.',
     alerta:
       'perdão não exige tolerar repetição de dano.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar reparação emocional.',
     polaridade: 'favorável'
   },
@@ -824,12 +824,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'é associada a abundância construída com constância e ética.',
     espiritualidade:
-      'simboliza renovação do coração e coerência.',
+      'representa renovação do coração e coerência.',
     conselho:
       'cultive o que deseja preservar.',
     alerta:
       'não transforme valor em posse.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar crescimento e compromisso.',
     polaridade: 'favorável'
   },
@@ -854,12 +854,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra expansão por iniciativa e confiança.',
     espiritualidade:
-      'simboliza luz pessoal e autonomia.',
+      'representa luz pessoal e autonomia.',
     conselho:
       'apareça com verdade, não como personagem.',
     alerta:
       'brilhar não exige apagar ninguém.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar confiança e alegria.',
     polaridade: 'favorável'
   },
@@ -884,12 +884,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'mostra ganhos por conhecimento especializado.',
     espiritualidade:
-      'simboliza visão interior e investigação consciente.',
+      'representa visão interior e investigação consciente.',
     conselho:
       'vá à causa, não apenas ao sintoma.',
     alerta:
       'profundidade sem aterramento pode virar confusão.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar investigação e discernimento.',
     polaridade: 'neutra'
   },
@@ -914,12 +914,12 @@ const CRISTAIS: Cristal[] = [
     prosperidade:
       'aconselha evitar decisões financeiras impulsivas.',
     espiritualidade:
-      'simboliza silêncio e serenidade.',
+      'representa silêncio e serenidade.',
     conselho:
       'diminua a velocidade para enxergar melhor.',
     alerta:
       'paz não significa evitar toda decisão difícil.',
-    usoSimbolico:
+    usoEspiritual:
       'pode representar pausa e autocontrole.',
     polaridade: 'neutra'
   }
@@ -1020,7 +1020,7 @@ function interpretarPorTema(
     case 'família':
       return `${cristal.significado} No campo familiar, considere especialmente: ${cristal.conselho}`;
     case 'saúde':
-      return `${cristal.significado} Em questões de saúde, esta leitura é simbólica e não substitui avaliação profissional.`;
+      return `${cristal.significado} Em questões de saúde, esta leitura é espiritual e não substitui avaliação profissional.`;
     default:
       return cristal.significado;
   }
@@ -1129,7 +1129,7 @@ Alerta:
 ${cristal.alerta}
 
 Uso energético recomendado:
-${cristal.usoSimbolico}
+${cristal.usoEspiritual}
 `.trim();
 }
 
@@ -1243,7 +1243,7 @@ ${formatarCristal(integracao)}
 SÍNTESE
 ═══════════════════════
 
-Chakras simbólicos dominantes:
+Chakras espirituais dominantes:
 ${analise.chakrasDominantes.join(', ') || 'sem predominância'}
 
 Elementos dominantes:
@@ -1297,7 +1297,7 @@ Cruze:
 • o bloqueio principal;
 • a integração final.
 
-Use chakras, cores e elementos apenas como linguagem simbólica.
+Use chakras, cores e elementos apenas como linguagem espiritual.
 
 Em questões de saúde, deixe claro que a leitura não substitui avaliação,
 diagnóstico, tratamento ou acompanhamento profissional.
@@ -1323,7 +1323,7 @@ com a personalidade do consultor selecionado.
       nome: 'Mandala dos Sete Campos',
       quantidadeCristais: 7,
       descricao:
-        'Leitura simbólica dos campos essencial, emocional, mental, material, espiritual, bloqueio e integração.'
+        'Leitura espiritual dos campos essencial, emocional, mental, material, espiritual, bloqueio e integração.'
     },
     leitura: {
       essencia,

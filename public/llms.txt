@@ -1,0 +1,19 @@
+# ORACULOS.TS
+
+> Plataforma brasileira de consultas espirituais online por chat e vídeo com oraculistas: Tarot, Baralho Cigano (Lenormand), Búzios, Ifá, Runas, Astrologia, Numerologia, I Ching, Cristais e Mesa Radiônica.
+
+Cada leitura cruza os dados natal do consulente (nome completo de nascimento e data de nascimento) com a energia do dia da consulta e, quando citado, do dia do acontecimento. Perguntas que envolvem outras pessoas (amor, sócios, chefes, filhos, funcionários) são lidas conforme o vínculo.
+
+## Páginas principais
+- [Início](https://oraculos-ts.vercel.app/)
+- [Oraculistas](https://oraculos-ts.vercel.app/especialistas)
+- [Oráculos](https://oraculos-ts.vercel.app/oraculos)
+- [Blog](https://oraculos-ts.vercel.app/blog)
+- [Como funciona](https://oraculos-ts.vercel.app/como-funciona)
+- [Ajuda e privacidade](https://oraculos-ts.vercel.app/ajuda-e-privacidade)
+- [Termos de uso](https://oraculos-ts.vercel.app/termos)
+- [Política de privacidade](https://oraculos-ts.vercel.app/privacidade)
+
+## Mapa do site
+- [sitemap.xml](https://oraculos-ts.vercel.app/sitemap.xml)
+- [sitemap.txt](https://oraculos-ts.vercel.app/sitemap.txt)
