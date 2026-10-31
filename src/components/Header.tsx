@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConsultation } from '../context/ConsultationContext';
 import { RegisterModal } from './RegisterModal';
 import { resolveNavigationTarget } from '../routing/routes';
+import { saudacaoPorHorario, primeiroNome } from '../utils/timeGreeting';
 
 interface HeaderProps {
   currentTab: string;
@@ -26,6 +27,12 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => {
+  const [relogio, setRelogio] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setRelogio(new Date()), 60000);
+    return () => window.clearInterval(id);
+  }, []);
+  const dataCurta = relogio.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
   const {
     user,
     isAuthenticated,
@@ -392,11 +399,11 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab }) => 
                   className="w-8 h-8 rounded-full object-cover border border-[#d4af37]/40"
                 />
                 <div className="hidden md:block text-left pr-3">
-                  <span className="block text-xs font-medium text-white truncate max-w-[100px]">
-                    {user.name}
+                  <span className="block text-xs font-medium text-white truncate max-w-[140px]" title={user.name}>
+                    {saudacaoPorHorario(relogio)}, {primeiroNome(user.name)}
                   </span>
                   <span className="block text-[9px] gold-accent font-semibold uppercase tracking-wider">
-                    {user.role === 'user' ? 'Consulente' : user.role}
+                    {dataCurta} · {relogio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>

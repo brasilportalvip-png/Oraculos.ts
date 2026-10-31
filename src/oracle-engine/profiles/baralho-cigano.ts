@@ -349,7 +349,7 @@ const CARTAS: CartaBaralhoCigano[] = [
     dinheiro:
       'aconselha cortar perdas, dívidas ou hábitos financeiros prejudiciais.',
     espiritualidade:
-      'representa morte simbólica, limpeza e renascimento interior.',
+      'representa morte espiritual, limpeza e renascimento interior.',
     conselho:
       'aceite o encerramento necessário e abra espaço para o novo.',
     alerta:
@@ -1488,7 +1488,7 @@ function interpretarPorTema(
       return `${carta.significado} No campo familiar, observe especialmente: ${carta.conselho}`;
 
     case 'saúde':
-      return `${carta.significado} Em temas de saúde, esta carta deve ser entendida como orientação simbólica, sem substituir avaliação profissional.`;
+      return `${carta.significado} Em temas de saúde, esta carta deve ser entendida como orientação espiritual, sem substituir avaliação profissional.`;
 
     default:
       return carta.significado;
@@ -1765,12 +1765,13 @@ ser interrompido, evitado ou transformado.
 Uma carta favorável na posição de tendência mostra possibilidade de evolução,
 mas não deve ser apresentada como garantia absoluta.
 
-Responda diretamente à pergunta do consulente.
+Comece pela resposta direta à pergunta do consulente — o que o jogo diz.
+Nunca abra a leitura falando de passado, presente ou futuro e nunca organize
+a resposta nesses rótulos.
 
-Apresente:
+Depois, costure com naturalidade:
 
-• o cenário atual;
-• as influências do passado;
+• o que sustenta essa resposta na mesa;
 • os sentimentos e padrões relevantes;
 • os bloqueios;
 • as possibilidades;

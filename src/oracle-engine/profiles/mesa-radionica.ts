@@ -336,7 +336,7 @@ const INDICADORES: IndicadorRadionico[] = [
     nome: 'Limites Energéticos',
     categoria: 'proteção',
     descricao:
-      'Representa proteção simbólica por meio de limites, rotina e discernimento.',
+      'Representa proteção espiritual por meio de limites, rotina e discernimento.',
     luz:
       'segurança, autocuidado, organização e redução de exposição.',
     sombra:
@@ -384,7 +384,7 @@ const INDICADORES: IndicadorRadionico[] = [
     nome: 'Energia Disponível',
     categoria: 'vitalidade',
     descricao:
-      'Representa disposição simbólica para agir, decidir e sustentar demandas.',
+      'Representa disposição espiritual para agir, decidir e sustentar demandas.',
     luz:
       'vitalidade, iniciativa, presença e resistência.',
     sombra:
@@ -851,7 +851,7 @@ ${direcaoPrincipal}
 INSTRUÇÕES PARA O CONSULTOR
 ═══════════════════════
 
-Interprete esta mesa como um mapa simbólico de reflexão.
+Interprete esta mesa como um mapa espiritual de reflexão.
 
 Os percentuais são indicadores internos do método e não representam
 medições científicas, médicas, psicológicas ou energéticas comprovadas.
@@ -875,7 +875,7 @@ Cruze:
 
 Dê maior atenção aos três campos com maior prioridade.
 
-Use os indicadores como linguagem simbólica para explicar padrões,
+Use os indicadores como linguagem espiritual para explicar padrões,
 hábitos, limites, escolhas e atitudes possíveis.
 
 Quando o tema envolver proteção, não confirme perseguição, ataque,
@@ -907,7 +907,7 @@ natural e coerente com o consultor escolhido.
     metodo: {
       nome: 'Mapa dos Sete Campos',
       descricao:
-        'Leitura simbólica dos campos emocional, mental, material, relacional, espiritual, proteção e vitalidade.',
+        'Leitura espiritual dos campos emocional, mental, material, relacional, espiritual, proteção e vitalidade.',
       quantidadeCampos: 7
     },
 

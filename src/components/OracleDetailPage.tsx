@@ -255,7 +255,7 @@ export const OracleDetailPage: React.FC<OracleDetailPageProps> = ({
             {details.history}
           </p>
           <div className="pt-2 text-xs font-mono text-amber-400/80">
-            Base Simbólica: {details.symbolsCount}
+            Base Espiritual: {details.symbolsCount}
           </div>
         </div>
 

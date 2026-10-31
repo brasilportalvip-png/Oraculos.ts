@@ -547,7 +547,7 @@ export const VIRTUAL_PROFILES: VirtualConsultantProfile[] = [
     authorizedOracles: ['tarot'],
     communicationStyle: 'Investigativo, detalhista, profundo e atento',
     personality: 'Curioso, analítico e empático',
-    vocabulary: ['Mensagem do subconsciente', 'Portal do sonho', 'Simbolismo sagrado', 'Aviso dos guardiões'],
+    vocabulary: ['Mensagem do subconsciente', 'Portal do sonho', 'Significado sagrado', 'Aviso dos guardiões'],
     greeting: 'Saudações! Os sonhos e o Tarot Egípcio são portais da alma. Qual visão ou pergunta deseja decifrar hoje?',
     pricePerMinute: 3.70,
     status: 'online',

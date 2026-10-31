@@ -268,7 +268,7 @@ Use a astrologia como bastidor da leitura.
 Não fale como relatório técnico.
 Não diga que calculou.
 Não invente ascendente, Lua real ou planeta real sem coordenadas astronômicas.
-Use o Sol, elemento, regente, Lua energética, Vênus, Marte e Saturno como forças simbólicas e espirituais da leitura.
+Use o Sol, elemento, regente, Lua energética, Vênus, Marte e Saturno como forças espirituais da leitura.
 Fale com força, clareza, verdade e linguagem popular.
 `.trim();
 

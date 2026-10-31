@@ -1156,7 +1156,7 @@ function interpretarTema(h:HexagramaIChing,tema:TemaIChing):string{
     case'prosperidade':return `Na prosperidade, ${h.nome} pede organização dos recursos e atenção ao tempo correto. ${h.conselho}`;
     case'espiritualidade':case'proteção':return `No campo espiritual, ${h.nome} convida ao alinhamento interior e à conduta consciente. ${h.conselho}`;
     case'família':return `Na família, ${h.nome} pede revisão de papéis, limites e responsabilidades. ${h.conselho}`;
-    case'saúde':return `Em questões de saúde, a leitura é simbólica e não substitui avaliação profissional. ${h.conselho}`;
+    case'saúde':return `Em questões de saúde, a leitura é espiritual e não substitui avaliação profissional. ${h.conselho}`;
     default:return `${h.significado} ${h.conselho}`;
   }
 }

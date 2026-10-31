@@ -1,0 +1,65 @@
+ORACULOS.TS - V7 - INTELIGENCIA ORACULAR, RELOGIO, PERSONALIDADES, SEO E SEGURANCA
+
+COMO INSTALAR
+1. Extraia o ZIP DENTRO da pasta do projeto Oraculos.ts (a mesma pasta onde fica o package.json),
+   aceitando substituir os arquivos.
+2. De dois cliques em INSTALAR_TESTAR_E_ABRIR_PR_V7.cmd
+3. O instalador instala, verifica o TypeScript, roda todos os testes, gera o build,
+   envia ao GitHub e abre o Pull Request. Voce so clica em "Merge pull request".
+4. Depois que a Vercel publicar, rode uma vez:  npm run seo:indexnow   (avisa o Bing de todas as paginas)
+
+1) O SITE AGORA SABE O DIA E A HORA
+- Relogio oficial em horario de Brasilia (ou o fuso do aparelho do consulente).
+- Saudacao certa: Bom dia (5h-11h59), Boa tarde (12h-17h59), Boa noite (18h-4h59).
+- Topo do site mostra "Boa tarde, Ana" + dia e hora; a primeira mensagem do atendente tambem.
+- Entende datas na pergunta: hoje, amanha, depois de amanha, daqui 4 dias, daqui 2 semanas,
+  semana que vem, mes que vem, fim de semana, sexta-feira, dia 15, 15/11, 15 de novembro.
+- Nunca confunde a data de nascimento citada com a data do acontecimento.
+
+2) FORMULA DA LEITURA: DADOS NATAL + DIA DA CONSULTA + DIA DO ACONTECIMENTO + JOGO REAL
+- Para o dia da consulta e para o dia do acontecimento: planeta regente, Orixa do dia,
+  fase da Lua, vibracao universal e DIA PESSOAL do consulente (calculado do nascimento).
+- Cada consulta embaralha de verdade (momento da consulta + embaralhamento criptografico),
+  sempre ancorado no nome de nascimento e na data natal. 30 perguntas = 30 jogos diferentes.
+- CORRIGIDO: o Tarot reduzia tudo a 1-9 e so existiam ~13 tiragens possiveis. Agora as 78 cartas participam.
+- CORRIGIDO: o cadastro grava a data como AAAA-MM-DD e a Astrologia/Numerologia liam DD/MM/AAAA:
+  o signo e os numeros saiam errados. Agora a data e normalizada antes de qualquer calculo.
+
+3) PERGUNTAS QUE ENVOLVEM OUTRAS PESSOAS
+- O site identifica o vinculo e le de forma diferente:
+  amor | sociedade/parceria | emprego (gerente, chefe, recrutador) | contratacao (empregada,
+  funcionario, baba) | familia (filho, mae...) | amizade | relacao comercial.
+- Extrai nome completo, data de nascimento e empresa. Ex.: "gerente Gilmar Rodrigo Oliveira
+  nascido 05/04/1985 empresa tustao" -> emprego, Gilmar..., 05/04/1985, empresa tustao.
+- Abre o jogo tambem para a outra pessoa + signo, caminho de vida e combinacao dos elementos.
+- Se faltar nome ou data, da a primeira resposta e pede os dados com carinho.
+- Comparacao amorosa continua funcionando como antes.
+
+4) PERSONALIDADE PROPRIA DE CADA ATENDENTE
+- Os 20 atendentes tem voz unica: como tratam o consulente, como cumprimentam, ritmo,
+  expressoes proprias, como dao noticia dificil, despedida e um traco humano de bastidor.
+
+5) PADRAO DE LEITURA
+- Nunca comeca por passado/presente/futuro; abre com a resposta que o jogo deu.
+- O jogo e real: fala do que saiu na mesa como fato.
+- Palavra "simbolico" (e variacoes) removida de todo o motor e filtrada na saida.
+- Qualquer mencao a IA, robo, algoritmo, sistema ou sorteio e retirada antes de chegar ao cliente.
+
+6) SEO
+- sitemap.txt, llms.txt, robots.txt com os dois mapas.
+- FAQ estruturado (rich snippets Google/Bing) no index.
+- IndexNow (Bing/Yandex): chave publicada e comando npm run seo:indexnow.
+
+7) SEGURANCA - CUPONS E BONUS POR PESSOA
+- Alem da conta, o uso do cupom e contado por aparelho, identidade natal (nome + nascimento),
+  e-mail canonico (Gmail sem pontos/+apelido) e rede (com tolerancia para redes compartilhadas).
+- Bloqueado no checkout e conferido de novo na aprovacao do pagamento. Tudo guardado so como hash.
+- Opcional na Vercel: variavel COUPON_IDENTITY_SALT com um texto secreto qualquer.
+
+TESTES NOVOS
+- test/v7-oracle-intelligence.test.ts (21 testes): relogio, datas, outras pessoas, tiragem,
+  signo, linguagem, personalidades e anti-abuso de cupons.
+
+PENDENCIAS QUE DEPENDEM DE VOCE
+- Google Search Console e Bing Webmaster: cadastrar o site e enviar sitemap.xml (precisa da sua conta).
+- Para dominio proprio (.com.br), trocar oraculos-ts.vercel.app nos sitemaps/robots/index.

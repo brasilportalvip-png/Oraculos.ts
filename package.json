@@ -18,7 +18,8 @@
     "smoke:serverless": "node scripts/smoke-serverless.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run --exclude test/firestore-rules.test.ts",
-    "test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\""
+    "test:rules": "npx firebase-tools@15.28.1 emulators:exec --only firestore --project demo-oraculos \"vitest run test/firestore-rules.test.ts\"",
+    "seo:indexnow": "node scripts/indexnow-ping.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -28,7 +29,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.16.0",
-    "firebase-admin": "14.3.0",
+    "firebase-admin": "14.5.0",
     "helmet": "^8.3.0",
     "lucide-react": "^0.546.0",
     "mercadopago": "^3.2.1",
@@ -36,7 +37,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.1",
-    "vite": "^6.2.3"
+    "vite": "^6.4.5"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
@@ -51,7 +52,16 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3",
+    "vite": "^6.4.5",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7",
+    "@fastify/busboy": "^3.2.4",
+    "body-parser": "^1.20.9",
+    "proxy-addr": "^2.0.8",
+    "qs": "^6.17.1",
+    "source-map-js": "^1.2.2",
+    "brace-expansion": "^2.1.7"
   }
 }

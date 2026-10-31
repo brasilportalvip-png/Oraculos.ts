@@ -110,7 +110,7 @@ const SAFETY_RULES: SafetyRule[] = [
     message:
       'A pergunta solicita diagnóstico ou confirmação médica por meio do oráculo.',
     recommendation:
-      'Tratar apenas de forma simbólica e orientar avaliação profissional.',
+      'Tratar apenas de forma espiritual e orientar avaliação profissional.',
     patterns: [
       /\btenho câncer\b/i,
       /\btenho cancer\b/i,
@@ -192,7 +192,7 @@ const SAFETY_RULES: SafetyRule[] = [
     message:
       'A pergunta busca confirmação de ataque, demanda, maldição ou perseguição espiritual.',
     recommendation:
-      'Não confirmar influência espiritual como fato; tratar como interpretação simbólica.',
+      'Não confirmar influência espiritual como fato; tratar como interpretação espiritual.',
     patterns: [
       /\bfizeram demanda para mim\b/i,
       /\bfizeram trabalho contra mim\b/i,
@@ -497,7 +497,7 @@ export class SafetyEngine {
         )
         .replace(
           /\bdemanda espiritual\b/gi,
-          'conflito ou desgaste simbólico'
+          'conflito ou desgaste espiritual'
         )
         .replace(
           /\bmaldição\b/gi,
@@ -570,7 +570,7 @@ ${analysis.recommendations
   )
   .join('\n')}
 
-Nunca transforme interpretação simbólica em diagnóstico,
+Nunca transforme interpretação espiritual em diagnóstico,
 prova, certeza absoluta ou instrução perigosa.
 `.trim();
   }

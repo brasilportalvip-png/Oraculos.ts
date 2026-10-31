@@ -7,6 +7,14 @@ import {
   validarEntradaOraculo,
   normalizarOracleProfileId,
 } from './src/oracle-engine/index.js';
+import { montarContextoConsulta } from './src/oracle-engine/engine/consultationContext.js';
+import { blindarLinguagemOracular } from './src/oracle-engine/engine/languageGuard.js';
+import { obterVozAtendente, formatarVozParaPrompt } from './src/data/attendantVoices.js';
+import {
+  buildCouponIdentityKeys,
+  findExceededCouponIdentity,
+  incrementCouponIdentities,
+} from './server/security/couponIdentity.js';
 
 import { GoogleGenAI } from '@google/genai';
 import helmet from 'helmet';
@@ -602,6 +610,7 @@ export interface Coupon {
   currentUses: number;
   maxUsesPerUser: number;
   userUsesCount: Record<string, number>;
+  identityUsesCount?: Record<string, number>;
   eligibleProducts: string[];
   createdAt: string;
   createdBy: string;
@@ -2085,6 +2094,7 @@ app.post(
       }
 
       let couponBonusMinutes = 0;
+      let couponIdentityKeys: string[] = [];
 
       if (couponCode) {
         const coupon =
@@ -2177,6 +2187,32 @@ app.post(
                 'USER_LIMIT_REACHED',
               message:
                 'Você já atingiu o limite de uso para este cupom.',
+            },
+          });
+        }
+
+        const checkoutUserData = userDocument.data() || {};
+        couponIdentityKeys = buildCouponIdentityKeys({
+          ip: req.ip,
+          deviceId: String(req.headers['x-device-id'] || ''),
+          birthFullName: checkoutUserData.birthFullName || checkoutUserData.name,
+          birthDate: checkoutUserData.birthDate,
+          email: checkoutUserData.email || userEmail,
+        });
+
+        if (
+          findExceededCouponIdentity(
+            coupon.identityUsesCount,
+            couponIdentityKeys,
+            Number(coupon.maxUsesPerUser || 1),
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'IDENTITY_LIMIT_REACHED',
+              message:
+                'Este cupom já foi utilizado por você em outra conta ou aparelho. Bônus e cupons são limitados por pessoa.',
             },
           });
         }
@@ -2308,6 +2344,7 @@ const totalMinutes =
         couponCode:
           couponCode || null,
         couponBonusMinutes,
+        couponIdentityKeys,
         totalMinutes,
         status:
           'created',
@@ -3150,10 +3187,15 @@ paymentMethod:
                 ] || 0,
               );
 
+            const paymentIdentityKeys: string[] = Array.isArray(storedPreference.couponIdentityKeys)
+              ? storedPreference.couponIdentityKeys.filter((k: unknown) => typeof k === 'string')
+              : [];
+
             const couponEligible = coupon.active && coupon.type === 'bonus_fixed' &&
               (!coupon.expiresAt || new Date(coupon.expiresAt) > new Date()) &&
               currentUses < Number(coupon.maxUses || 0) &&
-              currentUserUses < Number(coupon.maxUsesPerUser || 1);
+              currentUserUses < Number(coupon.maxUsesPerUser || 1) &&
+              !findExceededCouponIdentity(coupon.identityUsesCount, paymentIdentityKeys, Number(coupon.maxUsesPerUser || 1));
 
             if (!couponEligible) {
               const currentUserDocument = await transaction.get(userReference);
@@ -3200,6 +3242,8 @@ paymentMethod:
                   currentUses + 1,
                 userUsesCount:
                   updatedUserUses,
+                identityUsesCount:
+                  incrementCouponIdentities(coupon.identityUsesCount, paymentIdentityKeys),
                 updatedAt:
                   new Date().toISOString(),
               },
@@ -6055,6 +6099,27 @@ app.post(
         });
       }
 
+      if (
+        findExceededCouponIdentity(
+          coupon.identityUsesCount,
+          buildCouponIdentityKeys({
+            ip: req.ip,
+            deviceId: String(req.headers['x-device-id'] || ''),
+            email: req.user?.email,
+          }),
+          Number(coupon.maxUsesPerUser || 1),
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'IDENTITY_LIMIT_REACHED',
+            message:
+              'Este cupom já foi utilizado por você em outra conta ou aparelho. Bônus e cupons são limitados por pessoa.',
+          },
+        });
+      }
+
       const bonusMinutes =
         getCouponBonusMinutes(
           coupon,
@@ -6571,28 +6636,37 @@ app.post(
     ).trim();
     const profileBirthDate = String(userProfile?.birthDate || '').trim();
 
-    // 7. Execute Oracle Engine Profile Builder Synchronously
-    const oracleProfileResult = executarOracleProfile(normalizedOracleId, {
-      fullName: profileFullName,
-      birthDate: profileBirthDate,
-      birthTime: userProfile?.birthTime,
-      city: userProfile?.city,
-      question: cleanUserQuestion,
-    }) as {
-      resumoParaOraculo?: string;
-      resumoParaMariaPadilha?: string;
-    };
+    // 7. Contexto completo: dados natal + momento da consulta + dia do acontecimento + outras pessoas
+    const contextoConsulta = montarContextoConsulta({
+      oracleId: normalizedOracleId,
+      pergunta: cleanUserQuestion,
+      consulente: {
+        nomeCompleto: profileFullName,
+        dataNascimento: profileBirthDate,
+        horaNascimento: userProfile?.birthTime,
+        cidade: userProfile?.city,
+      },
+      fusoHorario: typeof (req.body as { timezone?: unknown })?.timezone === 'string'
+        ? String((req.body as { timezone?: string }).timezone)
+        : undefined,
+      aleatorio: crypto.randomInt(0, 1_000_000_000),
+    });
 
-    const oracleProfileSummary =
-      oracleProfileResult.resumoParaOraculo ||
-      oracleProfileResult.resumoParaMariaPadilha ||
-      '';
+    const oracleProfileSummary = contextoConsulta.resumoOraculoConsulente;
 
-    const systemInstruction = `Você é um mestre oraculista especializado no oráculo ${normalizedOracleId}.
-Suas respostas devem ser profundas, éticas, acolhedoras, metafóricas e espiritualmente elevadas.
-Forneça insights claros, conselhos para reflexão pessoal e orientação prática.
-Evite fazer previsões médicas ou promessas absolutas sobre o futuro.
-Idioma: Português do Brasil. Formato: Markdown legível com tópicos.`;
+    const consultantProfileForVoice = consultantAuthResult?.resolvedConsultantId
+      ? VIRTUAL_PROFILES.find((p) => p.id === consultantAuthResult?.resolvedConsultantId)
+      : undefined;
+    const voiceBlock = consultantProfileForVoice
+      ? formatarVozParaPrompt(consultantProfileForVoice.name, obterVozAtendente(consultantProfileForVoice.id))
+      : '';
+
+    const systemInstruction = `Você é um mestre oraculista especializado no oráculo ${normalizedOracleId}, atendendo no ORACULOS.TS.
+Suas respostas são profundas, éticas, acolhedoras e espiritualmente elevadas, com a autoridade de quem está vendo o jogo na mesa.
+Idioma: Português do Brasil. Formato: texto humano e fluido (Markdown leve, sem relatório).
+
+${contextoConsulta.regrasDeLeitura}
+${voiceBlock ? `\n${voiceBlock}` : ''}`;
 
     const prompt = `
 Consulte o oráculo:
@@ -6607,19 +6681,23 @@ ${cleanUserQuestion}
 Contexto adicional:
 ${cleanContext}
 
+DADOS NATAL DO CONSULENTE (o raio-x da pessoa)
+Nome completo de nascimento: ${profileFullName}
+Data de nascimento: ${profileBirthDate}
+Horário de nascimento: ${userProfile?.birthTime || 'não informado'}
+
+${contextoConsulta.blocoPrompt}
+
 RESULTADO INTERNO DO PERFIL ORACULAR:
+(o jogo aberto agora para o consulente — dados natal + momento desta consulta)
 ${oracleProfileSummary}
 
 INSTRUÇÕES DE INTERPRETAÇÃO:
-- Utilize o resultado interno como base principal do atendimento.
-- Não contradiga cartas, símbolos, números, Odùs, runas ou hexagramas apresentados.
-- Não diga que executou código, cálculo ou seleção automática.
-- Responda diretamente à pergunta.
-- Explique forças favoráveis, obstáculos e tendência.
+- O jogo acima é a base da resposta. Não contradiga cartas, símbolos, números, Odùs, runas ou hexagramas apresentados.
+- Abra respondendo diretamente à pergunta — nunca começando por passado, presente ou futuro.
+- Explique forças favoráveis, obstáculos e o desfecho indicado, cruzando com a energia do dia${contextoConsulta.temporal.dataAlvo ? ' e do dia do acontecimento' : ''}.
 - Apresente orientação prática.
-- Preserve o livre-arbítrio.
-- Não faça promessas absolutas.
-- Não responda como relatório técnico.
+- Preserve o livre-arbítrio, sem promessas absolutas.
 `.trim();
 
     // 8. Atomic Gemini Execution (Exactly 1 call, no hidden retry loops or switches to generic prompt)
@@ -6644,7 +6722,9 @@ INSTRUÇÕES DE INTERPRETAÇÃO:
       });
 
       const rawText = String(response.text || '').trim();
-      const sanitizedOutput = rawText.replace(/<script.*?>.*?<\/script>/gi, '').trim();
+      const sanitizedOutput = blindarLinguagemOracular(
+        rawText.replace(/<script.*?>.*?<\/script>/gi, ''),
+      ).trim();
 
       if (sanitizedOutput.length <= 20) {
         return res.status(502).json({
@@ -6687,6 +6767,16 @@ INSTRUÇÕES DE INTERPRETAÇÃO:
             : undefined,
           modelUsed: modelToUse,
           generatedAt: new Date().toISOString(),
+          consultationMoment: {
+            localDateTime: contextoConsulta.temporal.agora.isoLocal,
+            greeting: contextoConsulta.temporal.agora.saudacao,
+            targetDate: contextoConsulta.temporal.dataAlvo?.descricao || null,
+            peopleInvolved: contextoConsulta.terceiros.pessoas.map((p) => ({
+              name: p.nome,
+              relationship: p.categoria,
+              missing: p.dadosFaltantes,
+            })),
+          },
         },
       });
     } catch (geminiError: any) {
@@ -6820,43 +6910,37 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
       });
     }
 
-    // Run specialized Oracle Engine calculation if user profile available
+    // Contexto completo da consulta: dados natal + momento real + dia do acontecimento + outras pessoas
     const profileFullName = String(
       userProfile?.birthFullName || userProfile?.fullName || userProfile?.name || ''
     ).trim();
     const profileBirthDate = String(userProfile?.birthDate || '').trim();
 
-    let oracleProfileSummary = '';
-    if (normalizedOracleId && profileFullName && profileBirthDate) {
-      try {
-        const oracleProfileResult = executarOracleProfile(normalizedOracleId, {
-          fullName: profileFullName,
-          birthDate: profileBirthDate,
-          birthTime: userProfile?.birthTime,
-          city: userProfile?.city,
-          question: cleanMessage,
-        }) as { resumoParaOraculo?: string; resumoParaMariaPadilha?: string };
+    const contextoConsulta = montarContextoConsulta({
+      oracleId: normalizedOracleId,
+      pergunta: cleanMessage,
+      consulente: {
+        nomeCompleto: profileFullName,
+        dataNascimento: profileBirthDate,
+        horaNascimento: userProfile?.doesNotKnowBirthTime ? null : userProfile?.birthTime,
+        cidade: userProfile?.city,
+      },
+      fusoHorario: typeof req.body?.timezone === 'string' ? req.body.timezone : undefined,
+      aleatorio: crypto.randomInt(0, 1_000_000_000),
+    });
+    const oracleProfileSummary = contextoConsulta.resumoOraculoConsulente;
 
-        oracleProfileSummary =
-          oracleProfileResult.resumoParaOraculo ||
-          oracleProfileResult.resumoParaMariaPadilha ||
-          '';
-      } catch (profileError) {
-        console.error('[ORACULOS.TS] Erro na execução do perfil oracular em chat virtual:', profileError);
-      }
-    }
-
-    // Intent Classification Logic
+    // Classificação de intenção (agora diferencia sociedade, emprego, família, contratação...)
     let classifiedIntent: ConsultationIntent = 'general_conversation';
     const lower = cleanMessage.toLowerCase();
 
-    if (/^(olá|oi|boa tarde|bom dia|boa noite|paz|saravá|saudações)/i.test(lower)) {
-      classifiedIntent = 'greeting';
-    } else if (/(ele|ela|meu ex|minha ex|meu namorado|minha namorada|meu marido|minha esposa|lucas|carlos|pedro|gabriel|ana|juliana|maria)/i.test(lower)) {
+    if (contextoConsulta.terceiros.envolveOutraPessoa) {
       classifiedIntent = 'third_person';
+    } else if (/^(olá|ola|oi|boa tarde|bom dia|boa noite|paz|saravá|sarava|saudações|axé)\b[\s!,.]*$/i.test(lower)) {
+      classifiedIntent = 'greeting';
     } else if (/(amor|paixão|relacionamento|fidelidade|volta|voltar|gosta de mim|saudades)/i.test(lower)) {
       classifiedIntent = 'love';
-    } else if (/(trabalho|emprego|carreira|empresa|chefe|promoção|negócio)/i.test(lower)) {
+    } else if (/(trabalho|emprego|carreira|empresa|chefe|promoção|negócio|entrevista|vaga)/i.test(lower)) {
       classifiedIntent = 'work';
     } else if (/(dinheiro|finanças|dívida|prosperidade|ganho|investimento)/i.test(lower)) {
       classifiedIntent = 'finance';
@@ -6866,12 +6950,13 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
       classifiedIntent = 'oracle_request';
     }
 
-    // Third-person name extraction
-    let thirdPersonName: string | null = null;
-    const thirdPersonMatch = cleanMessage.match(/(?:o|a|com|sobre|de)\s+([A-Z][a-zà-ú]+)/);
-    if (thirdPersonMatch && thirdPersonMatch[1] && !['Amor', 'Tarot', 'Deus', 'Búzios', 'Runas', 'Sim', 'Não'].includes(thirdPersonMatch[1])) {
-      thirdPersonName = thirdPersonMatch[1];
-    }
+    const thirdPersonName: string | null =
+      contextoConsulta.terceiros.pessoas.find((p) => p.nome)?.nome || null;
+
+    const previousUserMessages = Array.isArray(chatHistory)
+      ? chatHistory.filter((m: any) => m && !m.isSystem && String(m.senderId || '') === String(userId)).length
+      : 0;
+    const isOpeningOfConversation = previousUserMessages <= 1;
 
     const ai = getGeminiClient();
     if (!ai) {
@@ -6890,7 +6975,9 @@ app.post('/api/ai/virtual-attendant-chat', requireAuth, async (req: Authenticate
 
 
 
-const systemInstruction = `Você é ${attendant.name}, ${attendant.title}.
+const attendantVoice = obterVozAtendente(attendant.id);
+
+const systemInstruction = `Você é ${attendant.name}, ${attendant.title}, oraculista do ORACULOS.TS.
 Apresentação: ${attendant.bio}.
 Estilo de comunicação: ${attendant.communicationStyle}.
 Sua personalidade: ${attendant.personality}.
@@ -6898,15 +6985,17 @@ Vocabulário frequente: ${attendant.vocabulary.join(', ')}.
 Oráculos autorizados: ${attendant.authorizedOracles.join(', ')}.
 Regras de conduta e segurança: ${attendant.safetyLimits.join(', ')}.
 
-MANDATOS SAGRADOS E RIGOROSOS DE ATENDIMENTO HUMANO REAL:
-1. Responda SEMPRE em Português do Brasil na primeira pessoa, com acolhimento caloroso, empatia, escuta atenta, seriedade oracular e elegância como um ser humano real de carne e osso.
-2. É ABSOLUTAMENTE PROIBIDO dizer, sugerir ou admitir que você é uma inteligência artificial, IA, bot, robô, assistente virtual, modelo de linguagem ou programa de computador.
-3. Se o consulente perguntar diretamente se você é um robô, IA ou uma pessoa de verdade, responda com carinho e naturalidade confirmando que você é ${attendant.name}, uma pessoa real e oraculista aqui presente neste momento concentrado(a) nas cartas e energias para ajudá-lo(a).
-4. NUNCA utilize termos técnicos ou frios como 'esta leitura é simbólica', 'tempo simbólico', 'de forma simbólica' ou 'meramente simbólico'. Fale com a autoridade das cartas, dos astros, das forças ancestrais e das energias da vida.
-5. Se o consulente fizer uma pergunta sobre outra pessoa, acolha com carinho, observe as energias sem julgamentos e mantenha o sigilo ético.
-6. Se faltar o nome ou data de alguém mencionado, peça gentilmente antes de concluir a leitura final.
-7. Estruture sua resposta com clareza, empatia e conselhos construtivos sem causar desespero ou medo.
-8. Limite a resposta a no máximo 1200 caracteres para manter a agilidade da consulta por minutos.`;
+${formatarVozParaPrompt(attendant.name, attendantVoice)}
+
+MANDATOS DE ATENDIMENTO HUMANO REAL:
+1. Responda SEMPRE em Português do Brasil na primeira pessoa, como ${attendant.name}, um ser humano real, com o SEU jeito — você não fala igual a nenhum outro atendente do site.
+2. É ABSOLUTAMENTE PROIBIDO dizer, sugerir ou admitir que você é inteligência artificial, IA, bot, robô, assistente virtual, modelo de linguagem ou programa.
+3. Se perguntarem se você é robô/IA/pessoa de verdade, responda com naturalidade que você é ${attendant.name}, oraculista, aqui presente concentrado(a) no jogo.
+4. Você sabe o dia, a data e a hora exatos deste momento (veja MOMENTO REAL DA CONSULTA). Se perguntarem que dia ou que horas são, responda certo.
+5. Se faltar o nome completo ou a data de nascimento de alguém mencionado, dê a primeira resposta que o jogo mostra e peça esses dados com carinho para aprofundar.
+6. Limite a resposta a no máximo 1200 caracteres para manter a agilidade da consulta por minutos.
+
+${contextoConsulta.regrasDeLeitura}`;
 
 const birthTimeInformation =
   userProfile?.doesNotKnowBirthTime === true
@@ -6914,21 +7003,27 @@ const birthTimeInformation =
     : userProfile?.birthTime || 'Não informado';
 
 const prompt = `Consulente: ${userProfile?.name || 'Consulente'}
+DADOS NATAL (raio-x da pessoa: personalidade, caminhos, karma)
 Nome completo de nascimento: ${userProfile?.birthFullName || userProfile?.name || 'Não informado'}
 Data de nascimento: ${userProfile?.birthDate || 'Não informada'}
 Horário de nascimento: ${birthTimeInformation}
 
+${contextoConsulta.blocoPrompt}
+
 Histórico recente da conversa:
-${formattedHistory}
+${formattedHistory || '(início da conversa)'}
+
+${isOpeningOfConversation
+  ? `Esta é a abertura da conversa: cumprimente com "${contextoConsulta.temporal.agora.saudacao}" do seu jeito.`
+  : 'A conversa já começou: não repita a saudação, siga naturalmente.'}
 
 Nova mensagem do consulente: "${cleanMessage}"
 Intenção identificada: ${classifiedIntent}
-${thirdPersonName ? `Pessoa mencionada na pergunta: ${thirdPersonName}` : ''}
 
-RESULTADO INTERNO DO PERFIL ORACULAR (${normalizedOracleId}):
-${oracleProfileSummary || 'Utilize os dados do consulente e o oráculo ativo sem inventar valores aleatórios.'}
+O JOGO ABERTO AGORA (${normalizedOracleId}) — dados natal + momento desta consulta:
+${oracleProfileSummary || 'O consulente ainda não tem os dados natal completos: acolha e peça com carinho o nome completo de solteiro e a data de nascimento.'}
 
-Responda como ${attendant.name} de forma direta, acolhedora e alinhada ao oráculo (${normalizedOracleId}).`;
+Responda como ${attendant.name}, com a sua voz única, indo direto à resposta que o jogo deu.`;
 
 
 
@@ -7113,7 +7208,7 @@ for (
     }
 
     responseText =
-      candidateText;
+      blindarLinguagemOracular(candidateText);
 
     modelUsed =
       model;

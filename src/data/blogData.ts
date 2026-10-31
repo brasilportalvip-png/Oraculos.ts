@@ -73,7 +73,7 @@ Muitos consulentes ficam divididos entre uma consulta de **Baralho Cigano (Petit
 
 ## Baralho Cigano (Petit Lenormand): Objetividade e Respostas Rápidas
 
-Criado na Europa e enriquecido pela sabedoria do povo cigano, o Baralho Cigano é composto por 36 lâminas ricamente simbólicas:
+Criado na Europa e enriquecido pela sabedoria do povo cigano, o Baralho Cigano é composto por 36 lâminas ricamente espirituais:
 - **Foco de Atuação:** Respostas diretas, situações práticas do cotidiano, dúvidas financeiras, ambiente corporativo, intenções de terceiros e perguntas de "Sim ou Não".
 - **Cartas Típicas:** A Carta (notícias), As Alianças (união/parcerias), A Raposa (armadilhas ou cautela), O Sol (sucesso absoluto).
 - **Indicado Para:** Consulentes que necessitam de respostas claras, rápidas e sem rodeios para tomadas de decisão imediatas.
