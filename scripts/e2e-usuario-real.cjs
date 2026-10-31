@@ -9,7 +9,7 @@
  *  - tem título SEO (30-60), meta description (120-156), H1, canonical e JSON-LD;
  *  - não tem rolagem horizontal no celular (layout responsivo);
  *  - nenhuma palavra proibida ("simbólico", "inteligência artificial") visível.
- * Fluxos: botão "Consultar agora", abrir Cadastrar e Entrar, abrir um oráculo e
+ * Fluxos: logo e oraculistas no topo, abrir Cadastrar e Entrar, abrir um oráculo e
  * um especialista, filtro de busca.
  * Gera prints e um relatório HTML em TESTE_USUARIO_REAL/relatorio.html.
  */
@@ -46,7 +46,7 @@ let falhas = 0; // problemas graves: bloqueiam o envio
 let avisos = 0; // melhorias recomendadas: aparecem no relatório
 
 /** Verificações que travam o site para o cliente são graves; SEO e layout fino são avisos. */
-const GRAVES = /página abre|sem tela de erro|travamento|abre o formulário|"Consultar agora" visível|perfil abre/;
+const GRAVES = /página abre|sem tela de erro|travamento|abre o formulário|logo visível no topo|oraculistas logo abaixo|perfil abre/;
 
 function registrar(aparelho, pagina, teste, ok, detalhe = '') {
   const grave = GRAVES.test(teste);
@@ -160,21 +160,15 @@ async function testarFluxos(page, aparelho) {
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
 
-  // Botão principal "Consultar agora" leva à lista de oraculistas
-  const cta = page.locator('#hero-cta-consultar');
-  const temCta = (await cta.count()) > 0;
-  registrar(aparelho.nome, 'Início', 'botão "Consultar agora" visível', temCta && (await cta.isVisible()));
-  if (temCta) {
-    await cta.click();
-    await page.waitForTimeout(1200);
-    const naLista = await page.evaluate(() => {
-      const el = document.getElementById('advanced-search-hub');
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return r.top < window.innerHeight && r.bottom > 0;
-    });
-    registrar(aparelho.nome, 'Início', '"Consultar agora" leva à lista de oraculistas', naLista);
-  }
+  // Topo: logo em destaque e, logo abaixo, os oraculistas (sem precisar rolar)
+  const logo = page.locator('#hero-logo');
+  registrar(aparelho.nome, 'Início', 'logo visível no topo', (await logo.count()) > 0 && (await logo.isVisible()));
+  const listaNaTela = await page.evaluate(() => {
+    const el = document.getElementById('advanced-search-hub');
+    if (!el) return false;
+    return el.getBoundingClientRect().top < window.innerHeight;
+  });
+  registrar(aparelho.nome, 'Início', 'oraculistas logo abaixo do logo (sem rolar)', listaNaTela);
 
   // Lista de oraculistas aparece
   const cartoes = await page.locator('#advanced-search-hub ~ div').count();

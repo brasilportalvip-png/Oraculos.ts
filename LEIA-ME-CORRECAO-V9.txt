@@ -1,0 +1,17 @@
+ORACULOS.TS - V9 - PAGINA INICIAL LIMPA: LOGO + ORACULISTAS
+
+COMO INSTALAR
+1. Extraia o ZIP nos Downloads (Extrair tudo).
+2. Dois cliques em INSTALAR_TESTAR_E_ABRIR_PR_V9.cmd
+3. Ele testa tudo (inclusive o teste de usuario real com prints) e abre o Pull Request.
+4. Clique em "Merge pull request".
+
+O QUE MUDOU
+- Topo da pagina inicial agora tem SOMENTE o logo em destaque (maior, com brilho suave).
+- Logo abaixo ja aparecem os oraculistas ("Mostrando X de X oraculistas credenciados").
+- Removidos: saudacao, titulo grande, paragrafo, botoes "Consultar agora" e "Como funciona",
+  lista de garantias, bloco dos 3 passos e a chamada grande do final.
+- Mantido para o Google: titulo H1 com a palavra-chave "consulta de tarot online" (invisivel
+  na tela, lido pelos buscadores), titulo e descricao SEO da pagina.
+- "Trabalhe conosco" virou um link discreto no fim da pagina.
+- O teste de usuario real agora confere: logo visivel no topo e oraculistas logo abaixo sem rolar.
