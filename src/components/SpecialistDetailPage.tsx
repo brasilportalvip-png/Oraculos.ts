@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, Star, ShieldCheck, Clock, MessageSquare, Video, Calendar, Sparkles } from 'lucide-react';
 import { Consultant, OracleType } from '../types';
 import { SEOHead } from './SEOHead';
+import { breadcrumbJsonLd } from '../seo/yoast';
 import { NotFoundPage } from './NotFoundPage';
 import { handleAvatarError, getSafeConsultantAvatar, getGenderAwareAvatarFallback } from '../utils/avatarUtils';
 
@@ -33,18 +34,27 @@ export const SpecialistDetailPage: React.FC<SpecialistDetailPageProps> = ({
     <div className="space-y-8 max-w-4xl mx-auto pb-16">
       <SEOHead
         title={`${consultant.name} — ${consultant.title}`}
-        description={`${consultant.name}: ${consultant.bio.slice(0, 150)}... Atendimento online por chat e vídeo.`}
+        description={`${consultant.name}, ${consultant.title}. ${consultant.bio}`}
+        keywords={`${consultant.name}, ${consultant.title}, consulta online`}
         canonicalPath={canonicalUrl}
         ogImage={consultant.avatar}
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'Person',
-          name: consultant.name,
-          jobTitle: consultant.title,
-          description: consultant.bio,
-          image: consultant.avatar,
-          url: `https://oraculos-ts.vercel.app${canonicalUrl}`,
-        }}
+        ogType="profile"
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: consultant.name,
+            jobTitle: consultant.title,
+            description: consultant.bio,
+            image: consultant.avatar,
+            url: `https://oraculos-ts.vercel.app${canonicalUrl}`,
+            worksFor: { '@type': 'Organization', name: 'ORACULOS.TS', url: 'https://oraculos-ts.vercel.app' },
+          },
+          breadcrumbJsonLd([
+            { nome: 'Especialistas', caminho: '/especialistas' },
+            { nome: consultant.name, caminho: canonicalUrl },
+          ]),
+        ]}
       />
 
       {/* Back Button */}

@@ -8,6 +8,7 @@ import { ConsultantProfileModal } from './components/ConsultantProfileModal';
 import { MercadoPagoRechargeModal } from './components/MercadoPagoRechargeModal';
 
 import { SEOHead } from './components/SEOHead';
+import { SEO_PAGINAS, breadcrumbJsonLd } from './seo/yoast';
 import { Consultant, OracleType } from './types';
 import { LegalDocType } from './components/LegalPage';
 import { RouteAccessGuard } from './components/RouteAccessGuard';
@@ -64,21 +65,13 @@ const ArticleDetailPage = lazyWithRetry(() => import('./components/blog/ArticleD
 const NotFoundPage = lazyWithRetry(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const WorkWithUs = lazyWithRetry(() => import('./components/WorkWithUs').then((m) => ({ default: m.WorkWithUs })));
 
+/**
+ * A rota vem sempre do endereço real. Antes, ao abrir "/" o site restaurava a
+ * última página da sessão — quem clicava no logo ou voltava ao início via outra
+ * página com o endereço "/" (ruim para o cliente e para o Google).
+ */
 function parseLocation(): ParsedRoute {
-  const fromLocation = parseRouteLocation(window.location.pathname, window.location.hash);
-  if (fromLocation.view !== 'showcase') {
-    return fromLocation;
-  }
-  try {
-    const saved = sessionStorage.getItem('oraculos_last_route');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed.view === 'string' && parsed.view !== 'showcase') {
-        return parsed as ParsedRoute;
-      }
-    }
-  } catch {}
-  return fromLocation;
+  return parseRouteLocation(window.location.pathname, window.location.hash);
 }
 
 function MainAppContent() {
@@ -168,8 +161,9 @@ function MainAppContent() {
           {currentRoute.view === 'showcase' && (
             <>
               <SEOHead
-                title="Consultas de Tarot, Baralho Cigano, Búzios e Astrologia ao Vivo"
-                description="Conecte-se com especialistas oraculares em tempo real. Leituras autênticas e acolhedoras de Tarot, Baralho Cigano, Astrologia, Búzios e mais com tarifação por minuto real."
+                title={SEO_PAGINAS.inicio.titulo}
+                description={SEO_PAGINAS.inicio.descricao}
+                keywords={SEO_PAGINAS.inicio.palavraChave}
                 canonicalPath="/"
               />
               <ConsultantShowcase
@@ -227,9 +221,11 @@ function MainAppContent() {
           {currentRoute.view === 'oracles' && (
             <>
               <SEOHead
-                title="Os 10 Oráculos e Especialistas Online"
-                description="Conheça Tarot, Baralho Cigano, Astrologia, Numerologia, Búzios, Ifá, Runas, I Ching, Cristais e Mesa Radiônica e escolha um especialista."
+                title={SEO_PAGINAS.oraculos.titulo}
+                description={SEO_PAGINAS.oraculos.descricao}
+                keywords={SEO_PAGINAS.oraculos.palavraChave}
                 canonicalPath="/oraculos"
+                jsonLd={breadcrumbJsonLd([{ nome: 'Oráculos', caminho: '/oraculos' }])}
               />
               <OraclesDirectory
                 onSelectOracleCategory={(oracle) => {
@@ -242,9 +238,11 @@ function MainAppContent() {
           {currentRoute.view === 'blog' && (
             <>
               <SEOHead
-                title="Blog Místico — Tarot, Astrologia e Autoconhecimento"
-                description="Conteúdo publicado sobre Tarot, Astrologia, Baralho Cigano, espiritualidade responsável e autoconhecimento."
+                title={SEO_PAGINAS.blog.titulo}
+                description={SEO_PAGINAS.blog.descricao}
+                keywords={SEO_PAGINAS.blog.palavraChave}
                 canonicalPath="/blog"
+                jsonLd={breadcrumbJsonLd([{ nome: 'Blog', caminho: '/blog' }])}
               />
               <BlogSection />
             </>
@@ -253,9 +251,11 @@ function MainAppContent() {
           {currentRoute.view === 'howItWorks' && (
             <>
               <SEOHead
-                title="Como Funcionam as Consultas Online"
-                description="Entenda como escolher um especialista, comprar minutos e realizar consultas sigilosas por chat ou vídeo no ORACULOS.TS."
+                title={SEO_PAGINAS.comoFunciona.titulo}
+                description={SEO_PAGINAS.comoFunciona.descricao}
+                keywords={SEO_PAGINAS.comoFunciona.palavraChave}
                 canonicalPath="/como-funciona"
+                jsonLd={breadcrumbJsonLd([{ nome: 'Como funciona', caminho: '/como-funciona' }])}
               />
               <div className="space-y-12">
                 <HowItWorks />
@@ -267,9 +267,11 @@ function MainAppContent() {
           {currentRoute.view === 'helpAndPrivacy' && (
             <>
               <SEOHead
-                title="Central de Ajuda, Privacidade e LGPD"
-                description="Acesse suporte, orientações de segurança, privacidade e direitos previstos na LGPD para usuários do ORACULOS.TS."
+                title={SEO_PAGINAS.ajuda.titulo}
+                description={SEO_PAGINAS.ajuda.descricao}
+                keywords={SEO_PAGINAS.ajuda.palavraChave}
                 canonicalPath="/ajuda-e-privacidade"
+                jsonLd={breadcrumbJsonLd([{ nome: 'Ajuda e privacidade', caminho: '/ajuda-e-privacidade' }])}
               />
               <HelpAndPrivacy />
             </>
@@ -277,7 +279,13 @@ function MainAppContent() {
 
           {currentRoute.view === 'workWithUs' && (
             <>
-              <SEOHead title="Trabalhe Conosco" description="Cadastre-se para atuar como profissional no ORACULOS.TS." canonicalPath="/trabalhe-conosco" />
+              <SEOHead
+                title={SEO_PAGINAS.trabalheConosco.titulo}
+                description={SEO_PAGINAS.trabalheConosco.descricao}
+                keywords={SEO_PAGINAS.trabalheConosco.palavraChave}
+                canonicalPath="/trabalhe-conosco"
+                jsonLd={breadcrumbJsonLd([{ nome: 'Trabalhe conosco', caminho: '/trabalhe-conosco' }])}
+              />
               <WorkWithUs />
             </>
           )}
